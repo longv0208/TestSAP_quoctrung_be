@@ -1,0 +1,6 @@
+@FURPMS.API_HostAddress = http://localhost:5105
+
+GET {{FURPMS.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

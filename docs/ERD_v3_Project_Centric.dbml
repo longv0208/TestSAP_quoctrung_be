@@ -1,0 +1,849 @@
+// ============================================================================
+// FURPMS — ERD v3 PROJECT-CENTRIC (theo biên bản Review 2, 03/07/2026)
+// ✅ ĐÃ ÁP DỤNG VÀO DB THẬT: Phase A (PhaseA_ProjectCentric) + Phase B
+// (PhaseB_ReviewMN) + Phase C (PhaseC_ChangeRequests, 09/07/2026: bảng
+// proposal_change_request) — đây giờ là schema HIỆN HÀNH (~57 bảng).
+// Phân tích: DB_Redesign_v3_PostReview2.md. Đây LÀ schema hiện hành (đã áp Phase A/B).
+//
+// Thay đổi chính so với hiện trạng:
+//  (a) THÊM project (gốc); proposal thành tài liệu CÓ VERSION thuộc project;
+//      proposal_team_member → project_member; expected_product + product_deliverable
+//      → GỘP project_deliverable (con của project).
+//  (b) THÊM cycle_track (1 đợt chứa nhiều track).
+//  (c) review_round neo theo cycle_track (không theo proposal); project_round M-N;
+//      nhiều council song song / round; council_project_assignment; điểm + biên bản
+//      thêm chiều project.
+//  (d) project.order_id NOT NULL; research_order.is_default (order "Cơ bản" chung);
+//      rubric_template scope theo track/order.
+//  (e) contract → project (1-n); THÊM contract_phase; tranche gắn phase/deliverable.
+// ============================================================================
+
+// ───────────────────────── Domain 1 — Master Data (giữ nguyên) ─────────────
+Table research_type {
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  max_budget_cap decimal
+  require_ordering_unit bool
+  require_publication bool
+  is_active bool
+}
+
+Table research_track {
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  description varchar
+  owner_id guid
+  is_active bool
+}
+
+Table product_category {
+  id int [pk, increment]
+  code varchar
+  name varchar
+  is_active bool
+}
+
+Table amendment_category {
+  id int [pk, increment]
+  code varchar
+  name varchar
+  is_active bool
+}
+
+Table personnel_role_type {
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  default_coefficient decimal
+  is_active bool
+}
+
+Table system_financial_config {
+  id int [pk, increment]
+  code varchar [unique]
+  value decimal
+  effective_date date
+  is_active bool
+}
+
+Table budget_expense_category {
+  id int [pk, increment]
+  code varchar [unique]
+  name varchar
+  sequence int
+  is_active bool
+}
+
+Table llm_config {
+  id int [pk, increment]
+  config_code varchar [unique]
+  provider varchar
+  model_name varchar
+  is_active bool
+}
+
+// ──────────────── Domain 2 — Financial & Rubric (rubric đổi scope) ─────────
+Table budget_allocation_rule {
+  id int [pk, increment]
+  research_type_id int
+  category_code varchar
+  max_percentage decimal
+  is_active bool
+}
+
+Table disbursement_template {
+  id int [pk, increment]
+  research_type_id int
+  round_number int
+  percentage decimal
+  condition_description varchar
+  is_active bool
+}
+
+Table council_remuneration_rate {
+  id int [pk, increment]
+  council_type varchar
+  role_in_council varchar
+  amount decimal
+  effective_date date
+  is_active bool
+}
+
+Table rubric_template {
+  id int [pk, increment]
+  template_type varchar
+  name varchar
+  max_total_score decimal
+  track_id int [note: '(d) MỚI: scope theo track — nullable']
+  order_id int [note: '(d) MỚI: scope theo order — nullable']
+  is_active bool
+}
+
+Table rubric_criterion {
+  id int [pk, increment]
+  template_id int
+  criterion_name varchar
+  max_score decimal
+  sequence int
+  is_active bool
+}
+
+// ─────────────────────────── Domain 3 — Users (giữ nguyên) ─────────────────
+Table role {
+  id int [pk, increment]
+  name varchar
+}
+
+Table user {
+  id guid [pk]
+  email varchar [unique]
+  full_name varchar
+  status varchar
+  unit_id int
+  is_deleted bool
+}
+
+Table user_role {
+  user_id guid [pk]
+  role_id int [pk]
+  assigned_at datetime
+  assigned_by guid
+}
+
+Table organizational_unit {
+  id int [pk, increment]
+  name varchar
+  code varchar [unique]
+  unit_type varchar
+  parent_id int
+  head_user_id guid
+  is_active bool
+}
+
+Table academic_profile {
+  id int [pk, increment]
+  user_id guid [unique]
+  academic_title varchar
+  degree_level varchar
+  is_eligible_pi bool
+  updated_at datetime
+}
+
+// ─────────────── Domain 4 — Cycle & Track & Orders ((b) + (d)) ─────────────
+Table research_cycle {
+  id int [pk, increment]
+  cycle_year int
+  semester_code varchar
+  research_type_id int
+  submission_open_date date
+  submission_deadline date
+  review_deadline date
+  status varchar
+  created_by guid
+}
+
+Table cycle_track {
+  id int [pk, increment]
+  cycle_id int
+  track_id int
+  is_open bool
+  Note: '(b) MỚI — 1 đợt chứa nhiều track; PI nộp vào 1 track cụ thể'
+
+  indexes {
+    (cycle_id, track_id) [unique]
+  }
+}
+
+Table research_order {
+  id int [pk, increment]
+  cycle_id int
+  ordering_unit_id int
+  research_area varchar
+  problem_description varchar
+  expected_products varchar
+  budget_cap decimal [note: 'trần kinh phí của order']
+  is_default bool [note: '(d) MỚI — order "Nghiên cứu cơ bản" chung do Admin tạo mỗi cycle; đề tài tự do map về đây → 100%% project có order']
+  status varchar
+  created_by guid
+}
+
+// ───────────────── Domain 5 — PROJECT (gốc mới, (a)) ───────────────────────
+Table project {
+  id guid [pk]
+  project_code varchar [unique]
+  cycle_track_id int [not null]
+  order_id int [not null, note: '(d) 100%% project thuộc 1 order']
+  pi_user_id guid [not null]
+  hosting_unit_id int
+  research_type_id int
+  title_vi varchar
+  title_en varchar
+  status varchar [note: 'PROPOSED / UNDER_REVIEW / APPROVED / IN_PROGRESS / ACCEPTANCE / COMPLETED / CANCELLED / TERMINATED']
+  planned_start_date date
+  planned_end_date date
+  created_at datetime
+  updated_at datetime
+  Note: '(a) THỰC THỂ TRUNG TÂM — giữ members, deliverables, proposal versions, contracts, final report'
+}
+
+Table project_member {
+  id int [pk, increment]
+  project_id guid
+  user_id guid
+  full_name varchar
+  email varchar
+  academic_title varchar
+  work_content varchar
+  work_months decimal
+  is_pi bool
+  is_secretary bool
+  member_role_code varchar [note: 'CN / TK / TVC / KTV — supervisors map vào đây']
+  salary_coefficient decimal
+  sequence int
+  Note: '(a) đổi tên từ proposal_team_member — thành viên thuộc PROJECT'
+}
+
+Table proposal {
+  id guid [pk]
+  project_id guid [not null]
+  version_no int [not null, note: 'v1, v2… — REVISION tạo bản mới, giữ lịch sử']
+  is_current bool
+  title_vi varchar
+  title_en varchar
+  duration_months int
+  abstract_vi varchar
+  research_objectives varchar
+  methodology varchar
+  novelty_originality varchar
+  expected_output varchar
+  funding_method varchar [note: 'WHOLE / PARTIAL']
+  status varchar [note: 'DRAFT / SUBMITTED / REVISION_REQUIRED / APPROVED — status TÀI LIỆU; vòng đời lớn ở project.status']
+  submitted_at datetime
+  created_at datetime
+  Note: '(a) chỉ còn là TÀI LIỆU có version trong project — cột neo (cycle/track/order/pi) đã dời lên project'
+
+  indexes {
+    (project_id, version_no) [unique]
+  }
+}
+
+Table proposal_budget {
+  id int [pk, increment]
+  proposal_id guid [unique, note: 'theo proposal-VERSION (Q2): dự toán là nội dung đề cương']
+  total_amount decimal
+  labor_amount decimal
+  equipment_amount decimal
+  conference_amount decimal
+}
+
+Table proposal_budget_labor_detail {
+  id int [pk, increment]
+  proposal_id guid
+  project_member_id int [note: 'đổi FK từ proposal_team_member → project_member']
+  total_research_hours decimal
+  hourly_rate decimal
+  total_amount decimal [note: 'computed']
+  coefficient decimal
+}
+
+Table proposal_budget_item {
+  id int [pk, increment]
+  proposal_id guid
+  category_id int
+  amount decimal
+  sequence int
+}
+
+Table proposal_research_content {
+  id int [pk, increment]
+  proposal_id guid
+  content_number int
+  title varchar
+  sequence int
+}
+
+Table proposal_activity {
+  id int [pk, increment]
+  content_id int
+  proposal_id guid
+  activity_name varchar
+  expected_result varchar
+  start_month int
+  end_month int
+  estimated_cost decimal
+}
+
+Table proposal_change_request {
+  id guid [pk]
+  project_id guid [not null]
+  type int [note: '1 ExtendTime · 2 ContentChange · 3 PersonnelChange · 4 BudgetChange · 5 Suspend']
+  description varchar
+  new_value varchar
+  status varchar [note: 'Pending / Approved / Rejected (PascalCase)']
+  admin_note varchar
+  requested_by guid
+  requested_at datetime
+  reviewed_by guid
+  reviewed_at datetime
+  Note: 'Phase C — PI gửi yêu cầu thay đổi đề tài, Staff/Admin duyệt'
+}
+
+Table project_deliverable {
+  id int [pk, increment]
+  project_id guid [not null]
+  contract_id guid [note: 'nullable — HĐ ký 1 TẬP CON deliverables (ký từng phần)']
+  contract_phase_id int [note: 'nullable — thuộc giai đoạn nào của HĐ']
+  category_id int
+  product_name varchar
+  scientific_requirements varchar
+  due_date date
+  submitted_at datetime
+  file_url varchar
+  acceptance_status varchar [note: 'nghiệm thu TỪNG sản phẩm']
+  is_completed bool
+  sequence int
+  Note: '(a) GỘP proposal_expected_product + product_deliverable — "project deliverables" con của Project (đúng lời thầy)'
+}
+
+// ───────────────── Domain 6 — Review ((c): round theo track, M-N) ──────────
+Table review_round {
+  id guid [pk]
+  cycle_track_id int [not null, note: '(c) ĐẢO NEO: round thuộc TRACK trong đợt — không còn proposal_id']
+  round_number int
+  round_type varchar [note: 'SCREENING / SPECIALIZED / ACCEPTANCE']
+  dimension varchar [note: 'SCIENCE / FINANCE — giữ rule #2: FINANCE mở sau SCIENCE PASSED']
+  rubric_template_id int [note: 'mỗi round 1 bộ tiêu chí riêng']
+  sequence int
+  prerequisite_round_id guid
+  status varchar
+  opened_at datetime
+  closed_at datetime
+
+  indexes {
+    (cycle_track_id, round_number, dimension) [unique]
+  }
+}
+
+Table project_round {
+  id int [pk, increment]
+  project_id guid
+  round_id guid
+  status varchar [note: 'PENDING / PASSED / FAILED / REVISION']
+  result varchar
+  finalized_at datetime
+  Note: '(c) MỚI — Project–Round NHIỀU-NHIỀU; đạt round này mới vào round sau'
+
+  indexes {
+    (project_id, round_id) [unique]
+  }
+}
+
+Table review_council {
+  id guid [pk]
+  round_id guid [not null, note: '(c) chỉ thuộc ROUND — nhiều council song song / round']
+  council_type varchar
+  establishment_decision_no varchar
+  meeting_deadline date
+  min_members_required int
+  max_members_allowed int
+  status varchar
+  created_by guid
+}
+
+Table council_project_assignment {
+  id int [pk, increment]
+  council_id guid
+  project_id guid
+  Note: '(c) MỚI — 1 council chấm 1 NHÓM project trong round'
+
+  indexes {
+    (council_id, project_id) [unique]
+  }
+}
+
+Table council_member {
+  id guid [pk]
+  council_id guid
+  user_id guid
+  member_role varchar [note: 'Chủ tịch / Thư ký / Phản biện / Thành viên. COI: không được là project_member của project được gán (rule #5)']
+  invitation_sent_at datetime
+  confirmed_at datetime
+  status varchar
+}
+
+Table council_meeting {
+  id guid [pk]
+  council_id guid
+  platform varchar [note: 'IN_PERSON / GOOGLE_MEET / TEAMS']
+  meeting_link varchar
+  calendar_event_id varchar
+  scheduled_at datetime
+  status varchar
+}
+
+Table meeting_attendance {
+  id int [pk, increment]
+  meeting_id guid
+  member_id guid
+  rsvp_status varchar
+  actually_attended bool
+  absence_reason varchar
+
+  indexes {
+    (meeting_id, member_id) [unique]
+  }
+}
+
+Table project_review_score {
+  id int [pk, increment]
+  council_id guid
+  project_id guid [note: '(c) MỚI chiều project — council chấm nhiều project']
+  evaluator_member_id guid
+  template_id int
+  general_comments varchar
+  submitted_at datetime
+  is_valid_ballot bool
+  Note: 'đổi tên từ proposal_review_score'
+
+  indexes {
+    (council_id, project_id, evaluator_member_id) [unique]
+  }
+}
+
+Table review_score_detail {
+  id int [pk, increment]
+  score_id int
+  criterion_id int
+  given_score decimal
+  comments varchar
+}
+
+Table council_decision {
+  id int [pk, increment]
+  council_id guid
+  project_id guid [note: '(c) MỚI — Chủ tịch chốt TỪNG đề tài']
+  result varchar [note: 'quyết định của Chủ tịch (rule #12) — điểm/phiếu chỉ tham khảo']
+  council_comments varchar
+  chair_user_id guid
+  secretary_user_id guid
+  finalized_at datetime [note: 'cờ khóa biên bản (Thư ký soạn → Chủ tịch duyệt)']
+
+  indexes {
+    (council_id, project_id) [unique]
+  }
+}
+
+Table reviewer_feedback {
+  id int [pk, increment]
+  council_id guid
+  project_id guid
+  reviewer_member_id guid
+  overall_assessment varchar
+  submitted_at datetime
+
+  indexes {
+    (council_id, project_id, reviewer_member_id) [unique]
+  }
+}
+
+Table acceptance_evaluation {
+  id int [pk, increment]
+  council_id guid
+  project_id guid
+  evaluator_member_id guid
+  result varchar
+  submitted_at datetime
+
+  indexes {
+    (council_id, project_id, evaluator_member_id) [unique]
+  }
+}
+
+// ──────────────── Domain 7 — Contracts ((e): phase + 1-n) ──────────────────
+Table contract {
+  id guid [pk]
+  project_id guid [not null, note: '(e) 1 project → N contract (ký từng phần/giai đoạn) — bỏ unique cũ']
+  contract_number varchar [unique]
+  scope_title varchar [note: 'MỚI — HĐ này ký hạng mục/giai đoạn gì']
+  signed_at datetime
+  total_amount decimal
+  start_date date
+  end_date date
+  original_end_date date
+  max_extension_months int
+  side_a_representative varchar [note: 'Bên A = Nhà trường; Bên B = PI']
+  status varchar
+  created_by guid
+}
+
+Table contract_phase {
+  id int [pk, increment]
+  contract_id guid
+  phase_no int
+  name varchar
+  start_date date
+  end_date date
+  amount decimal
+  status varchar
+  Note: '(e) MỚI — giai đoạn thực hiện trong HĐ; deliverables + tranche gắn vào phase'
+
+  indexes {
+    (contract_id, phase_no) [unique]
+  }
+}
+
+Table contract_disbursement {
+  id int [pk, increment]
+  contract_id guid
+  phase_id int [note: '(e) MỚI nullable — tranche theo phase (applied)']
+  deliverable_id int [note: 'hoặc theo sản phẩm đã nghiệm thu (basic)']
+  round_number int
+  percentage decimal
+  planned_amount decimal
+  actual_amount decimal
+  condition_description varchar
+  condition_met_at datetime
+  disbursed_at datetime
+  status varchar [note: 'tiền KHÔNG tự giải ngân — Staff xác nhận tay (rule #3)']
+
+  indexes {
+    (contract_id, round_number) [unique]
+  }
+}
+
+Table contract_settlement {
+  id int [pk, increment]
+  contract_id guid [unique]
+  total_contracted_amount decimal
+  total_disbursed_amount decimal
+  total_returned_amount decimal
+  settlement_signed_at datetime
+}
+
+Table amendment_request {
+  id guid [pk]
+  contract_id guid
+  category_id int
+  change_description varchar
+  change_percentage decimal [note: 'gia hạn ≤ 50%%']
+  requires_rector_approval bool
+  requested_by guid
+  status varchar
+}
+
+// ──────────────── Domain 8 — Progress ((a): final_report → project) ────────
+Table progress_report {
+  id guid [pk]
+  contract_id guid [note: 'GIỮ theo contract — tiến độ là của HĐ-giai đoạn']
+  report_round int
+  reporting_period_start date
+  reporting_period_end date
+  overall_completion_pct decimal
+  expenditure_to_date decimal
+  submitted_at datetime
+  status varchar
+  due_date date
+  evaluated_by guid
+
+  indexes {
+    (contract_id, report_round) [unique]
+  }
+}
+
+Table progress_report_item {
+  id int [pk, increment]
+  report_id guid
+  activity_id int
+  completion_rate decimal
+  completion_status varchar
+}
+
+Table final_report {
+  id guid [pk]
+  project_id guid [unique, note: '(a) ĐỔI NEO contract → PROJECT: 1 bản nghiệm thu cuối / đề tài (Q1)']
+  report_file_url varchar
+  submitted_at datetime
+  deadline date
+  status varchar
+}
+
+// ───────────── Domain 9+10 — AI / Logs (giữ nguyên, polymorphic) ───────────
+Table document {
+  id guid [pk]
+  entity_type varchar [note: 'thêm giá trị "PROJECT"']
+  entity_id varchar
+  document_category varchar
+  original_file_name varchar
+  storage_url varchar
+  uploaded_by guid
+}
+
+Table notification {
+  id guid [pk]
+  user_id guid
+  notification_type varchar
+  title varchar
+  related_entity_type varchar
+  related_entity_id varchar
+  is_read bool
+}
+
+Table llm_output {
+  id guid [pk]
+  entity_type varchar
+  entity_id varchar
+  output_type varchar
+  content varchar
+  is_active bool
+}
+
+Table semantic_search_vector {
+  id int [pk, increment]
+  entity_type varchar
+  entity_id varchar
+  content_hash varchar
+  index_status varchar
+}
+
+Table audit_log {
+  id bigint [pk, increment]
+  user_id guid
+  action varchar
+  entity_type varchar
+  entity_id varchar
+  created_at datetime
+}
+
+Table email_log {
+  id bigint [pk, increment]
+  recipient_user_id guid
+  recipient_email varchar
+  email_type varchar
+  status varchar
+}
+
+// ═══════════════════════════════ QUAN HỆ ═══════════════════════════════════
+
+// Domain 2
+Ref: budget_allocation_rule.research_type_id > research_type.id
+Ref: disbursement_template.research_type_id > research_type.id
+Ref: rubric_criterion.template_id > rubric_template.id
+Ref: rubric_template.track_id > research_track.id
+Ref: rubric_template.order_id > research_order.id
+
+// Domain 3
+Ref: user.unit_id > organizational_unit.id
+Ref: user_role.user_id > user.id
+Ref: user_role.role_id > role.id
+Ref: organizational_unit.parent_id > organizational_unit.id
+Ref: organizational_unit.head_user_id > user.id
+Ref: academic_profile.user_id - user.id
+
+// Domain 4 — (b)
+Ref: research_cycle.research_type_id > research_type.id
+Ref: research_cycle.created_by > user.id
+Ref: cycle_track.cycle_id > research_cycle.id
+Ref: cycle_track.track_id > research_track.id
+Ref: research_order.cycle_id > research_cycle.id
+Ref: research_order.ordering_unit_id > organizational_unit.id
+
+// Domain 5 — (a) PROJECT gốc
+Ref: project.cycle_track_id > cycle_track.id
+Ref: project.order_id > research_order.id
+Ref: project.pi_user_id > user.id
+Ref: project.hosting_unit_id > organizational_unit.id
+Ref: project.research_type_id > research_type.id
+Ref: project_member.project_id > project.id
+Ref: project_member.user_id > user.id
+Ref: proposal.project_id > project.id
+Ref: proposal_budget.proposal_id - proposal.id
+Ref: proposal_budget_labor_detail.proposal_id > proposal.id
+Ref: proposal_budget_labor_detail.project_member_id > project_member.id
+Ref: proposal_budget_item.proposal_id > proposal.id
+Ref: proposal_budget_item.category_id > budget_expense_category.id
+Ref: proposal_research_content.proposal_id > proposal.id
+Ref: proposal_activity.content_id > proposal_research_content.id
+Ref: proposal_activity.proposal_id > proposal.id
+Ref: project_deliverable.project_id > project.id
+Ref: project_deliverable.contract_id > contract.id
+Ref: project_deliverable.contract_phase_id > contract_phase.id
+Ref: project_deliverable.category_id > product_category.id
+Ref: proposal_change_request.project_id > project.id
+Ref: proposal_change_request.requested_by > user.id
+Ref: proposal_change_request.reviewed_by > user.id
+
+// Domain 6 — (c)
+Ref: review_round.cycle_track_id > cycle_track.id
+Ref: review_round.rubric_template_id > rubric_template.id
+Ref: review_round.prerequisite_round_id > review_round.id
+Ref: project_round.project_id > project.id
+Ref: project_round.round_id > review_round.id
+Ref: review_council.round_id > review_round.id
+Ref: review_council.created_by > user.id
+Ref: council_project_assignment.council_id > review_council.id
+Ref: council_project_assignment.project_id > project.id
+Ref: council_member.council_id > review_council.id
+Ref: council_member.user_id > user.id
+Ref: council_meeting.council_id > review_council.id
+Ref: meeting_attendance.meeting_id > council_meeting.id
+Ref: meeting_attendance.member_id > council_member.id
+Ref: project_review_score.council_id > review_council.id
+Ref: project_review_score.project_id > project.id
+Ref: project_review_score.evaluator_member_id > council_member.id
+Ref: project_review_score.template_id > rubric_template.id
+Ref: review_score_detail.score_id > project_review_score.id
+Ref: review_score_detail.criterion_id > rubric_criterion.id
+Ref: council_decision.council_id > review_council.id
+Ref: council_decision.project_id > project.id
+Ref: council_decision.chair_user_id > user.id
+Ref: council_decision.secretary_user_id > user.id
+Ref: reviewer_feedback.council_id > review_council.id
+Ref: reviewer_feedback.project_id > project.id
+Ref: reviewer_feedback.reviewer_member_id > council_member.id
+Ref: acceptance_evaluation.council_id > review_council.id
+Ref: acceptance_evaluation.project_id > project.id
+Ref: acceptance_evaluation.evaluator_member_id > council_member.id
+
+// Domain 7 — (e)
+Ref: contract.project_id > project.id
+Ref: contract.created_by > user.id
+Ref: contract_phase.contract_id > contract.id
+Ref: contract_disbursement.contract_id > contract.id
+Ref: contract_disbursement.phase_id > contract_phase.id
+Ref: contract_disbursement.deliverable_id > project_deliverable.id
+Ref: contract_settlement.contract_id - contract.id
+Ref: amendment_request.contract_id > contract.id
+Ref: amendment_request.category_id > amendment_category.id
+Ref: amendment_request.requested_by > user.id
+
+// Domain 8
+Ref: progress_report.contract_id > contract.id
+Ref: progress_report.evaluated_by > user.id
+Ref: progress_report_item.report_id > progress_report.id
+Ref: progress_report_item.activity_id > proposal_activity.id
+Ref: final_report.project_id - project.id
+
+// Domain 9+10
+Ref: notification.user_id > user.id
+Ref: document.uploaded_by > user.id
+Ref: audit_log.user_id > user.id
+Ref: email_log.recipient_user_id > user.id
+
+// ═══════════════════════════ NHÓM BẢNG (layout) ═══════════════════════════
+TableGroup "1. Master Data" {
+  research_type
+  research_track
+  product_category
+  amendment_category
+  personnel_role_type
+  system_financial_config
+  budget_expense_category
+  llm_config
+}
+TableGroup "2. Financial & Rubric" {
+  budget_allocation_rule
+  disbursement_template
+  council_remuneration_rate
+  rubric_template
+  rubric_criterion
+}
+TableGroup "3. Users" {
+  role
+  user
+  user_role
+  organizational_unit
+  academic_profile
+}
+TableGroup "4. Cycle - Track - Orders" {
+  research_cycle
+  cycle_track
+  research_order
+}
+TableGroup "5. PROJECT (goc) + Proposal versions" {
+  project
+  project_member
+  proposal
+  proposal_budget
+  proposal_budget_labor_detail
+  proposal_budget_item
+  proposal_research_content
+  proposal_activity
+  project_deliverable
+  proposal_change_request
+}
+TableGroup "6. Review (round theo track, M-N)" {
+  review_round
+  project_round
+  review_council
+  council_project_assignment
+  council_member
+  council_meeting
+  meeting_attendance
+  project_review_score
+  review_score_detail
+  council_decision
+  reviewer_feedback
+  acceptance_evaluation
+}
+TableGroup "7. Contracts (phase + 1-n)" {
+  contract
+  contract_phase
+  contract_disbursement
+  contract_settlement
+  amendment_request
+}
+TableGroup "8. Progress" {
+  progress_report
+  progress_report_item
+  final_report
+}
+TableGroup "9-10. AI / Logs" {
+  document
+  notification
+  llm_output
+  semantic_search_vector
+  audit_log
+  email_log
+}
