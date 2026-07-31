@@ -1,0 +1,467 @@
+using FURPMS.Application.Constants;
+using FURPMS.Application.DTOs.ReviewScoring;
+using FURPMS.Application.Interfaces.Repositories;
+using FURPMS.Application.Interfaces.Services;
+using FURPMS.Domain.Entities.Review;
+using Microsoft.EntityFrameworkCore;
+
+namespace FURPMS.Infrastructure.Services;
+
+public class ReviewScoringService : IReviewScoringService
+{
+    private readonly IReviewRepository _review;
+    private readonly IMasterDataRepository _masterData;
+    private readonly IProposalRepository _proposals;
+
+    public ReviewScoringService(
+        IReviewRepository review,
+        IMasterDataRepository masterData,
+        IProposalRepository proposals)
+    {
+        _review = review;
+        _masterData = masterData;
+        _proposals = proposals;
+    }
+
+    // Phase B: council chấm NHÓM đề tài — suy ra project từ assignment
+    // (1 đề tài → tự suy; nhiều đề tài → request phải chỉ rõ projectId).
+    private async Task<Guid> ResolveProjectIdAsync(Guid councilId, Guid? explicitProjectId)
+    {
+        var assignments = await _review.ProjectAssignments
+            .Where(a => a.CouncilId == councilId)
+            .Select(a => a.ProjectId)
+            .ToListAsync();
+
+        if (assignments.Count == 0)
+            throw new InvalidOperationException("Hội đồng chưa được gán đề tài nào để chấm.");
+
+        if (explicitProjectId.HasValue)
+        {
+            if (!assignments.Contains(explicitProjectId.Value))
+                throw new KeyNotFoundException("Đề tài không thuộc phạm vi chấm của hội đồng này.");
+            return explicitProjectId.Value;
+        }
+
+        if (assignments.Count == 1) return assignments[0];
+        throw new InvalidOperationException(
+            "Hội đồng này chấm nhiều đề tài — cần chỉ rõ projectId trong request.");
+    }
+
+    // ── Rubric templates ──────────────────────────────────────────────────────
+
+    public async Task<IEnumerable<RubricTemplateDto>> GetRubricTemplatesAsync()
+    {
+        var templates = await _masterData.RubricTemplates
+            .Where(t => t.IsActive)
+            .Include(t => t.Criteria)
+            .OrderBy(t => t.TemplateType)
+            .ToListAsync();
+
+        return templates.Select(MapTemplate);
+    }
+
+    public async Task<RubricTemplateDto> GetRubricTemplateByIdAsync(int templateId)
+    {
+        var template = await _masterData.RubricTemplates
+            .Include(t => t.Criteria)
+            .FirstOrDefaultAsync(t => t.Id == templateId)
+            ?? throw new KeyNotFoundException($"Rubric template {templateId} not found.");
+
+        return MapTemplate(template);
+    }
+
+    // ── Submit score ──────────────────────────────────────────────────────────
+
+    public async Task<ReviewScoreDto> SubmitScoreAsync(Guid councilId, Guid userId, SubmitScoreRequest request)
+    {
+        var council = await _review.Query()
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        var projectId = await ResolveProjectIdAsync(councilId, request.ProjectId);
+
+        // Đã có biên bản KHÓA cho đề tài này → không sửa điểm nữa.
+        var lockedDecision = await _review.Decisions
+            .AnyAsync(d => d.CouncilId == councilId && d.ProjectId == projectId && d.FinalizedAt != null);
+        if (council.Status == CouncilStatus.Decided || lockedDecision)
+            throw new InvalidOperationException("Council decision is already finalized; cannot modify scores.");
+
+        var member = await _review.CouncilMembers
+            .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId)
+            ?? throw new UnauthorizedAccessException("You are not a member of this review council.");
+
+        var template = await _masterData.RubricTemplates
+            .Include(t => t.Criteria)
+            .FirstOrDefaultAsync(t => t.Id == request.TemplateId)
+            ?? throw new KeyNotFoundException($"Rubric template {request.TemplateId} not found.");
+
+        // Validate all criteria provided
+        var criterionIds = template.Criteria.Select(c => c.Id).ToHashSet();
+        var providedIds = request.ScoreDetails.Select(d => d.CriterionId).ToHashSet();
+        var missing = criterionIds.Except(providedIds).ToList();
+        if (missing.Count > 0)
+            throw new ArgumentException($"Missing scores for criterion IDs: {string.Join(", ", missing)}.");
+
+        // Validate score ranges
+        foreach (var detail in request.ScoreDetails)
+        {
+            var criterion = template.Criteria.FirstOrDefault(c => c.Id == detail.CriterionId);
+            if (criterion == null)
+                throw new ArgumentException($"Criterion {detail.CriterionId} does not belong to this template.");
+            if (detail.GivenScore < 0 || detail.GivenScore > criterion.MaxScore)
+                throw new ArgumentException(
+                    $"Score {detail.GivenScore} for '{criterion.CriterionName}' is out of range [0, {criterion.MaxScore}].");
+        }
+
+        // Upsert: if score already exists for this member+council, replace details
+        var existing = await _review.ReviewScores
+            .Include(s => s.ScoreDetails)
+            .FirstOrDefaultAsync(s => s.CouncilId == councilId && s.ProjectId == projectId && s.EvaluatorMemberId == member.Id);
+
+        ProposalReviewScore score;
+        if (existing != null)
+        {
+            _review.RemoveScoreDetailsRange(existing.ScoreDetails);
+            existing.TemplateId = request.TemplateId;
+            existing.GeneralComments = request.GeneralComments;
+            existing.OtherRecommendations = request.OtherRecommendations;
+            existing.SubmittedAt = DateTime.UtcNow;
+            existing.IsValidBallot = true;
+            score = existing;
+        }
+        else
+        {
+            score = new ProposalReviewScore
+            {
+                CouncilId = councilId,
+                ProjectId = projectId,
+                EvaluatorMemberId = member.Id,
+                TemplateId = request.TemplateId,
+                GeneralComments = request.GeneralComments,
+                OtherRecommendations = request.OtherRecommendations,
+                SubmittedAt = DateTime.UtcNow,
+                IsValidBallot = true
+            };
+            await _review.AddScoreAsync(score);
+        }
+
+        await _review.SaveChangesAsync();
+
+        _review.AddScoreDetailsRange(request.ScoreDetails.Select(d => new ReviewScoreDetail
+        {
+            ScoreId = score.Id,
+            CriterionId = d.CriterionId,
+            GivenScore = d.GivenScore,
+            Comments = d.Comments
+        }));
+        await _review.SaveChangesAsync();
+
+        return await BuildScoreDto(score, template, member.UserId);
+    }
+
+    // ── Get scores ────────────────────────────────────────────────────────────
+
+    public async Task<ReviewScoreDto?> GetMyScoreAsync(Guid councilId, Guid userId)
+    {
+        var member = await _review.CouncilMembers
+            .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId);
+        if (member == null) return null;
+
+        var score = await _review.ReviewScores
+            .Include(s => s.ScoreDetails).ThenInclude(d => d.Criterion)
+            .Include(s => s.Template).ThenInclude(t => t.Criteria)
+            .FirstOrDefaultAsync(s => s.CouncilId == councilId && s.EvaluatorMemberId == member.Id);
+
+        if (score == null) return null;
+        return MapScore(score, userId);
+    }
+
+    public async Task<IEnumerable<ReviewScoreDto>> GetCouncilScoresAsync(Guid councilId)
+    {
+        _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        var scores = await _review.ReviewScores
+            .Include(s => s.ScoreDetails).ThenInclude(d => d.Criterion)
+            .Include(s => s.Template).ThenInclude(t => t.Criteria)
+            .Include(s => s.EvaluatorMember).ThenInclude(m => m.User)
+            .Where(s => s.CouncilId == councilId)
+            .ToListAsync();
+
+        return scores.Select(s => MapScore(s, s.EvaluatorMember.UserId));
+    }
+
+    // ── Finalize decision (NGỪNG DÙNG) ────────────────────────────────────────
+
+    // Đường chốt trực tiếp này BỎ QUA biên bản Thư ký→Chủ tịch (vi phạm rule #12) và trước đây
+    // KHÔNG đồng bộ project_round → gây lệch dữ liệu round/proposal. Đã khóa lại: hãy chốt qua
+    // luồng biên bản — POST .../minutes (Thư ký soạn) rồi POST .../minutes/approve (Chủ tịch duyệt).
+    public Task<CouncilDecisionDto> FinalizeDecisionAsync(Guid councilId, FinalizeDecisionRequest request)
+        => throw new InvalidOperationException(
+            "Đã ngừng dùng: hãy chốt kết quả qua biên bản (POST .../minutes rồi POST .../minutes/approve).");
+
+    // ── Biên bản: Thư ký soạn (nháp) → Chủ tịch duyệt = khóa ───────────────────
+
+    public async Task<CouncilDecisionDto> SaveMinutesAsync(Guid councilId, Guid secretaryUserId, SaveMinutesRequest request)
+    {
+        var validResults = new[] { ReviewResult.Approved, ReviewResult.Rejected, ReviewResult.RevisionRequired };
+        if (!validResults.Contains(request.Result))
+            throw new ArgumentException($"Result must be one of: {string.Join(", ", validResults)}.");
+
+        var council = await _review.Query().Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        if (council.Status == CouncilStatus.Decided)
+            throw new InvalidOperationException("Biên bản đã được Chủ tịch khóa, không thể sửa.");
+
+        var me = council.Members.FirstOrDefault(m => m.UserId == secretaryUserId)
+            ?? throw new UnauthorizedAccessException("Bạn không thuộc hội đồng này.");
+        if (!IsSecretary(me.MemberRole))
+            throw new UnauthorizedAccessException("Chỉ Thư ký hội đồng được soạn biên bản.");
+
+        var projectIdM = await ResolveProjectIdAsync(councilId, request.ProjectId);
+        var (total, attending, valid, invalid, avg) = await ComputeTallyAsync(council, councilId, projectIdM);
+
+        var decision = await _review.Decisions
+            .FirstOrDefaultAsync(d => d.CouncilId == councilId && d.ProjectId == projectIdM);
+        if (decision != null && decision.FinalizedAt != null)
+            throw new InvalidOperationException("Biên bản đã được khóa.");
+
+        if (decision == null)
+        {
+            decision = new CouncilDecision { CouncilId = councilId, ProjectId = projectIdM };
+            await _review.AddDecisionAsync(decision);
+        }
+
+        decision.TotalMembers = total;
+        decision.AttendingMembers = attending;
+        decision.ValidBallots = valid;
+        decision.InvalidBallots = invalid;
+        decision.AverageScore = avg;                 // điểm/phiếu chỉ để tham khảo
+        decision.Result = request.Result;            // Thư ký ghi nhận kết quả họp kín
+        decision.CouncilComments = request.CouncilComments;
+        decision.Recommendations = request.Recommendations;
+        decision.SecretaryUserId = secretaryUserId;
+        decision.FinalizedAt = null;                 // vẫn là nháp, CHƯA khóa
+
+        await _review.SaveChangesAsync();
+        return MapDecision(decision);
+    }
+
+    public async Task<CouncilDecisionDto> ApproveMinutesAsync(Guid councilId, Guid chairUserId)
+    {
+        var council = await _review.Query().Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        if (council.Status == CouncilStatus.Decided)
+            throw new InvalidOperationException("Biên bản đã được khóa.");
+
+        var me = council.Members.FirstOrDefault(m => m.UserId == chairUserId)
+            ?? throw new UnauthorizedAccessException("Bạn không thuộc hội đồng này.");
+        if (!IsChair(me.MemberRole))
+            throw new UnauthorizedAccessException("Chỉ Chủ tịch hội đồng được duyệt biên bản.");
+
+        // Bản nháp đang chờ duyệt (per project) — council 1 đề tài thì chỉ có 1 nháp.
+        var drafts = await _review.Decisions
+            .Where(d => d.CouncilId == councilId && d.FinalizedAt == null)
+            .ToListAsync();
+        if (drafts.Count == 0)
+            throw new InvalidOperationException("Chưa có biên bản nháp để duyệt.");
+        if (drafts.Count > 1)
+            throw new InvalidOperationException(
+                "Hội đồng có nhiều biên bản nháp (nhiều đề tài) — duyệt từng biên bản qua API theo đề tài.");
+        var decision = drafts[0];
+
+        decision.ChairUserId = chairUserId;
+        decision.FinalizedAt = DateTime.UtcNow;      // duyệt = khóa
+
+        await MarkDecidedIfAllProjectsFinalizedAsync(council, decision.ProjectId);
+
+        // Chỉ KHI Chủ tịch duyệt mới cập nhật status đề tài (bản hiện hành + project).
+        var proposal = await _proposals.Query().IgnoreQueryFilters()
+            .Include(p => p.Project)
+            .FirstOrDefaultAsync(p => p.ProjectId == decision.ProjectId && p.IsCurrent);
+        if (proposal != null)
+        {
+            proposal.Status = decision.Result switch
+            {
+                ReviewResult.Approved => ProposalStatus.Approved,
+                ReviewResult.Rejected => ProposalStatus.Rejected,
+                ReviewResult.RevisionRequired => ProposalStatus.RevisionRequired,
+                _ => proposal.Status
+            };
+            proposal.UpdatedAt = DateTime.UtcNow;
+            proposal.Project.Status = decision.Result switch
+            {
+                ReviewResult.Approved => ProjectStatus.Approved,
+                ReviewResult.Rejected => ProjectStatus.Cancelled,
+                _ => proposal.Project.Status
+            };
+            proposal.Project.UpdatedAt = DateTime.UtcNow;
+        }
+
+        // Nối mạch project_round (dùng chung logic với CloseRoundAsync qua ReviewRoundFinalizer):
+        // đánh dấu kết quả CỦA ĐỀ TÀI NÀY + tự đóng round khi mọi đề tài đã CHỐT terminal.
+        // REVISION_REQUIRED giữ vòng mở (không terminal) để PI sửa & nộp lại — rule #1.
+        if (council.RoundId.HasValue)
+        {
+            var round = await _review.ReviewRounds
+                .Include(r => r.ProjectRounds)
+                .FirstOrDefaultAsync(r => r.Id == council.RoundId.Value);
+            var projectRound = round?.ProjectRounds.FirstOrDefault(pr => pr.ProjectId == decision.ProjectId);
+            if (round != null && projectRound != null)
+                ReviewRoundFinalizer.ApplyProjectResult(round, projectRound, decision.Result, DateTime.UtcNow);
+        }
+
+        await _review.SaveChangesAsync();
+        return MapDecision(decision);
+    }
+
+    // Council chỉ chuyển DECIDED khi MỌI đề tài được gán đều đã có biên bản khóa.
+    private async Task MarkDecidedIfAllProjectsFinalizedAsync(ReviewCouncil council, Guid justFinalizedProjectId)
+    {
+        var assigned = await _review.ProjectAssignments
+            .Where(a => a.CouncilId == council.Id)
+            .Select(a => a.ProjectId)
+            .ToListAsync();
+        var finalized = await _review.Decisions
+            .Where(d => d.CouncilId == council.Id && d.FinalizedAt != null)
+            .Select(d => d.ProjectId)
+            .ToListAsync();
+        finalized.Add(justFinalizedProjectId);
+
+        if (assigned.All(pid => finalized.Contains(pid)))
+        {
+            council.Status = CouncilStatus.Decided;
+            council.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    private async Task<(int Total, int Attending, int Valid, int Invalid, decimal? Avg)> ComputeTallyAsync(
+        ReviewCouncil council, Guid councilId, Guid projectId)
+    {
+        var scores = await _review.ReviewScores
+            .Where(s => s.CouncilId == councilId && s.ProjectId == projectId && s.SubmittedAt != null)
+            .ToListAsync();
+
+        var validBallots = scores.Count(s => s.IsValidBallot);
+        var avgScore = validBallots > 0
+            ? scores.Where(s => s.IsValidBallot).Average(s =>
+                _review.ReviewScoreDetails
+                    .Where(d => d.ScoreId == s.Id)
+                    .Sum(d => d.GivenScore))
+            : (decimal?)null;
+
+        return (council.Members.Count, scores.Count, validBallots, scores.Count - validBallots, avgScore);
+    }
+
+    private static bool RoleIs(string? role, string target)
+        => !string.IsNullOrWhiteSpace(role) && role.Trim().Equals(target, StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsChair(string? role) => RoleIs(role, CouncilMemberRole.Chair) || RoleIs(role, "Chairman");
+    private static bool IsSecretary(string? role) => RoleIs(role, CouncilMemberRole.Secretary);
+
+    public async Task<CouncilDecisionDto?> GetDecisionAsync(Guid councilId)
+    {
+        var decision = await _review.Decisions
+            .FirstOrDefaultAsync(d => d.CouncilId == councilId);
+        return decision == null ? null : MapDecision(decision);
+    }
+
+    // ── Mappers ───────────────────────────────────────────────────────────────
+
+    private static RubricTemplateDto MapTemplate(Domain.Entities.Financial.RubricTemplate t) => new()
+    {
+        Id = t.Id,
+        TemplateType = t.TemplateType,
+        Name = t.Name,
+        MaxTotalScore = t.MaxTotalScore,
+        IsActive = t.IsActive,
+        Criteria = t.Criteria.OrderBy(c => c.Sequence).Select(c => new RubricCriterionDto
+        {
+            Id = c.Id,
+            CriterionName = c.CriterionName,
+            MaxScore = c.MaxScore,
+            Sequence = c.Sequence
+        }).ToList()
+    };
+
+    private static ReviewScoreDto MapScore(Domain.Entities.Review.ProposalReviewScore s, Guid userId) => new()
+    {
+        Id = s.Id,
+        CouncilId = s.CouncilId,
+        EvaluatorMemberId = s.EvaluatorMemberId,
+        EvaluatorName = s.EvaluatorMember?.User?.FullName ?? userId.ToString(),
+        TemplateId = s.TemplateId,
+        TotalScore = s.ScoreDetails.Sum(d => d.GivenScore),
+        MaxPossibleScore = s.Template?.MaxTotalScore ?? 0m,
+        IsValidBallot = s.IsValidBallot,
+        GeneralComments = s.GeneralComments,
+        OtherRecommendations = s.OtherRecommendations,
+        SubmittedAt = s.SubmittedAt,
+        ScoreDetails = s.ScoreDetails.Select(d => new ReviewScoreDetailDto
+        {
+            Id = d.Id,
+            CriterionId = d.CriterionId,
+            CriterionName = d.Criterion?.CriterionName ?? "—",
+            MaxScore = d.Criterion?.MaxScore ?? 0m,
+            GivenScore = d.GivenScore,
+            Comments = d.Comments
+        }).ToList()
+    };
+
+    private static CouncilDecisionDto MapDecision(CouncilDecision d) => new()
+    {
+        Id = d.Id,
+        CouncilId = d.CouncilId,
+        TotalMembers = d.TotalMembers,
+        AttendingMembers = d.AttendingMembers,
+        ValidBallots = d.ValidBallots,
+        InvalidBallots = d.InvalidBallots,
+        AverageScore = d.AverageScore,
+        Result = d.Result,
+        CouncilComments = d.CouncilComments,
+        Recommendations = d.Recommendations,
+        FinalizedAt = d.FinalizedAt
+    };
+
+    private async Task<ReviewScoreDto> BuildScoreDto(
+        Domain.Entities.Review.ProposalReviewScore score,
+        Domain.Entities.Financial.RubricTemplate template,
+        Guid userId)
+    {
+        var details = await _review.ReviewScoreDetails
+            .Include(d => d.Criterion)
+            .Where(d => d.ScoreId == score.Id)
+            .ToListAsync();
+
+        score.ScoreDetails = details;
+        score.Template = template;
+
+        return new ReviewScoreDto
+        {
+            Id = score.Id,
+            CouncilId = score.CouncilId,
+            EvaluatorMemberId = score.EvaluatorMemberId,
+            EvaluatorName = userId.ToString(),
+            TemplateId = score.TemplateId,
+            TotalScore = details.Sum(d => d.GivenScore),
+            MaxPossibleScore = template.MaxTotalScore,
+            IsValidBallot = score.IsValidBallot,
+            GeneralComments = score.GeneralComments,
+            OtherRecommendations = score.OtherRecommendations,
+            SubmittedAt = score.SubmittedAt,
+            ScoreDetails = details.Select(d => new ReviewScoreDetailDto
+            {
+                Id = d.Id,
+                CriterionId = d.CriterionId,
+                CriterionName = d.Criterion?.CriterionName ?? "—",
+                MaxScore = d.Criterion?.MaxScore ?? 0m,
+                GivenScore = d.GivenScore,
+                Comments = d.Comments
+            }).ToList()
+        };
+    }
+}
