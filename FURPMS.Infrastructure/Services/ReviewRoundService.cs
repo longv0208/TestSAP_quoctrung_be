@@ -1,0 +1,402 @@
+using FURPMS.Application.Constants;
+using FURPMS.Application.DTOs.Councils;
+using FURPMS.Application.DTOs.ReviewRounds;
+using FURPMS.Application.Interfaces.Repositories;
+using FURPMS.Application.Interfaces.Services;
+using FURPMS.Domain.Entities.AI;
+using FURPMS.Domain.Entities.Review;
+using Microsoft.EntityFrameworkCore;
+
+namespace FURPMS.Infrastructure.Services;
+
+// Phase B (Review 2 điểm c): round thuộc CYCLE_TRACK, project tham gia qua ProjectRound
+// (nhiều-nhiều). Route vẫn theo proposalId (FE giữ nguyên) — service resolve
+// proposal → project → cycle_track. Nhiều project cùng track DÙNG CHUNG round.
+public class ReviewRoundService : IReviewRoundService
+{
+    private readonly IReviewRepository _review;
+    private readonly IProposalRepository _proposals;
+    private readonly INotificationRepository _notifications;
+
+    public ReviewRoundService(
+        IReviewRepository review,
+        IProposalRepository proposals,
+        INotificationRepository notifications)
+    {
+        _review = review;
+        _proposals = proposals;
+        _notifications = notifications;
+    }
+
+    private async Task<(Guid projectId, int cycleTrackId)> ResolveProjectAsync(Guid proposalId)
+    {
+        var proposal = await _proposals.Query().IgnoreQueryFilters()
+            .Include(p => p.Project)
+            .FirstOrDefaultAsync(p => p.Id == proposalId)
+            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+        return (proposal.ProjectId, proposal.Project.CycleTrackId);
+    }
+
+    public async Task<IEnumerable<ReviewRoundResponse>> GetProposalRoundsAsync(Guid proposalId)
+    {
+        var (projectId, _) = await ResolveProjectAsync(proposalId);
+
+        var projectRounds = await _review.ProjectRounds
+            .Include(pr => pr.Round)
+            .Where(pr => pr.ProjectId == projectId)
+            .OrderBy(pr => pr.Round.Sequence)
+            .ToListAsync();
+
+        var roundIds = projectRounds.Select(pr => pr.RoundId).ToList();
+
+        // Council của từng round mà có gán project này (nhiều council song song / round).
+        var councils = await _review.Query()
+            .Where(c => c.RoundId != null && roundIds.Contains(c.RoundId.Value)
+                        && c.ProjectAssignments.Any(a => a.ProjectId == projectId))
+            .Include(c => c.Members)
+                .ThenInclude(m => m.User)
+            .ToListAsync();
+
+        var councilsByRound = councils
+            .GroupBy(c => c.RoundId!.Value)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        return projectRounds.Select(pr =>
+        {
+            var council = councilsByRound.GetValueOrDefault(pr.RoundId);
+            var response = MapToResponse(pr.Round, council?.Id);
+            // Kết quả CỦA ĐỀ TÀI NÀY trong round (project_round) đè lên trạng thái chung.
+            if (pr.Status != ReviewRoundStatus.Pending || pr.Result != null)
+            {
+                response.Status = pr.Status == ReviewRoundStatus.Pending ? response.Status : pr.Status;
+                response.Result = pr.Result ?? response.Result;
+            }
+            if (council != null)
+                response.Members = council.Members.Select(MapMember).ToList();
+            return response;
+        });
+    }
+
+    public async Task<ReviewRoundResponse> CreateRoundAsync(Guid proposalId, CreateReviewRoundRequest request, Guid createdBy)
+    {
+        if (string.IsNullOrWhiteSpace(request.Dimension) ||
+            (request.Dimension != ReviewRoundDimension.Science && request.Dimension != ReviewRoundDimension.Finance))
+            throw new ArgumentException("Dimension must be SCIENCE or FINANCE.");
+
+        if (string.IsNullOrWhiteSpace(request.RoundType) ||
+            !new[] { "SCREENING", "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
+            throw new ArgumentException("RoundType must be SCREENING, REVIEW, or ACCEPTANCE.");
+
+        var (projectId, cycleTrackId) = await ResolveProjectAsync(proposalId);
+
+        if (request.PrerequisiteRoundId.HasValue)
+        {
+            var prereq = await _review.GetRoundByIdAsync(request.PrerequisiteRoundId.Value)
+                ?? throw new KeyNotFoundException($"Prerequisite round {request.PrerequisiteRoundId} not found.");
+            if (prereq.CycleTrackId != cycleTrackId)
+                throw new ArgumentException("Prerequisite round does not belong to this cycle-track.");
+        }
+
+        // Rule #2 per-project: đề tài chỉ vào round FINANCE khi round SCIENCE của nó PASSED.
+        if (request.Dimension == ReviewRoundDimension.Finance && request.PrerequisiteRoundId.HasValue)
+        {
+            var prereqProjectRound = await _review.ProjectRounds
+                .FirstOrDefaultAsync(pr => pr.ProjectId == projectId && pr.RoundId == request.PrerequisiteRoundId.Value);
+            if (prereqProjectRound != null && prereqProjectRound.Status != ReviewRoundStatus.Passed)
+                throw new InvalidOperationException(
+                    $"Đề tài chưa ĐẠT vòng tiên quyết (hiện: {prereqProjectRound.Status}). Không thể vào vòng FINANCE.");
+        }
+
+        // DÙNG CHUNG round theo track (helper chung với ReviewBoardService).
+        var round = await ReviewShared.GetOrCreateOpenRoundAsync(
+            _review, cycleTrackId, request.Dimension, request.RoundType, request.RubricTemplateId, request.PrerequisiteRoundId);
+
+        var existingLink = await _review.ProjectRounds
+            .AnyAsync(pr => pr.ProjectId == projectId && pr.RoundId == round.Id);
+        if (existingLink)
+            throw new InvalidOperationException("Đề tài đã tham gia vòng chấm này rồi.");
+
+        await _review.AddProjectRoundAsync(new ProjectRound
+        {
+            ProjectId = projectId,
+            RoundId = round.Id,
+            Status = ReviewRoundStatus.Pending
+        });
+        await _review.SaveChangesAsync();
+
+        return MapToResponse(round, null);
+    }
+
+    public async Task<ReviewRoundResponse> OpenRoundAsync(Guid roundId)
+    {
+        var round = await _review.GetRoundByIdAsync(roundId)
+            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+
+        if (round.Status != ReviewRoundStatus.Pending)
+            throw new InvalidOperationException($"Round is already {round.Status}; only PENDING rounds can be opened.");
+
+        if (round.PrerequisiteRoundId.HasValue)
+        {
+            var prereq = await _review.GetRoundByIdAsync(round.PrerequisiteRoundId.Value)
+                ?? throw new KeyNotFoundException("Prerequisite round not found.");
+
+            if (prereq.Status != ReviewRoundStatus.Passed)
+                throw new InvalidOperationException(
+                    $"Prerequisite round (#{prereq.RoundNumber}, {prereq.Dimension}) has not PASSED yet. Current status: {prereq.Status}.");
+        }
+
+        round.Status = ReviewRoundStatus.Open;
+        round.OpenedAt = DateTime.UtcNow;
+        await _review.SaveChangesAsync();
+
+        return MapToResponse(round, null);
+    }
+
+    public async Task<ReviewRoundResponse> CloseRoundAsync(Guid roundId, CloseRoundRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Result) ||
+            !new[] { ReviewResult.Approved, ReviewResult.Rejected, ReviewResult.RevisionRequired }.Contains(request.Result))
+            throw new ArgumentException("Result must be APPROVED, REJECTED, or REVISION_REQUIRED.");
+
+        var round = await _review.ReviewRounds
+            .Include(r => r.Councils)
+            .Include(r => r.ProjectRounds)
+            .FirstOrDefaultAsync(r => r.Id == roundId)
+            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+
+        if (round.Status != ReviewRoundStatus.Open)
+            throw new InvalidOperationException($"Round is {round.Status}; only OPEN rounds can be closed.");
+
+        // Kết quả áp cho TỪNG đề tài (project_round). Round nhiều đề tài → phải chỉ rõ.
+        var targetLink = ResolveTargetProjectRound(round, request.ProposalProjectId);
+
+        // Dùng chung logic với ApproveMinutesAsync: chốt project_round + tự đóng round nhất quán.
+        ReviewRoundFinalizer.ApplyProjectResult(round, targetLink, request.Result, DateTime.UtcNow);
+
+        if (request.Result == ReviewResult.Rejected)
+        {
+            // Rule #1: REJECTED → kết thúc luôn — set cả bản đề cương hiện hành lẫn project.
+            var proposal = await _proposals.Query().IgnoreQueryFilters()
+                .Include(p => p.Project)
+                .FirstOrDefaultAsync(p => p.ProjectId == targetLink.ProjectId && p.IsCurrent)
+                ?? throw new KeyNotFoundException($"Current proposal of project {targetLink.ProjectId} not found.");
+            proposal.Status = ProposalStatus.Rejected;
+            proposal.Project.Status = ProjectStatus.Cancelled;
+        }
+
+        await _review.SaveChangesAsync();
+
+        await NotifyProjectPiAsync(targetLink.ProjectId, round, request.Result);
+
+        return MapToResponse(round, round.Councils.FirstOrDefault()?.Id);
+    }
+
+    // Round nhiều đề tài: request phải kèm ProposalProjectId; round 1 đề tài: tự suy.
+    private static ProjectRound ResolveTargetProjectRound(ReviewRound round, Guid? explicitProjectId)
+    {
+        if (explicitProjectId.HasValue)
+            return round.ProjectRounds.FirstOrDefault(pr => pr.ProjectId == explicitProjectId.Value)
+                ?? throw new KeyNotFoundException("Project is not part of this round.");
+
+        var pending = round.ProjectRounds.Where(pr => pr.Status == ReviewRoundStatus.Pending).ToList();
+        if (pending.Count == 1) return pending[0];
+        if (round.ProjectRounds.Count == 1) return round.ProjectRounds.First();
+
+        throw new InvalidOperationException(
+            "Round này có nhiều đề tài — cần chỉ rõ projectId khi chốt kết quả (trường proposalProjectId).");
+    }
+
+    private async Task NotifyProjectPiAsync(Guid projectId, ReviewRound round, string result)
+    {
+        var project = await _proposals.Projects.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(p => p.Id == projectId);
+        if (project == null) return;
+
+        var message = result == ReviewResult.Approved
+            ? $"Vòng xét duyệt #{round.RoundNumber} ({round.Dimension}) đã được PHÊ DUYỆT."
+            : result == ReviewResult.Rejected
+                ? $"Vòng xét duyệt #{round.RoundNumber} ({round.Dimension}) bị TỪ CHỐI. Đề tài bị từ chối."
+                : $"Vòng xét duyệt #{round.RoundNumber} ({round.Dimension}) yêu cầu CHỈNH SỬA.";
+
+        await _notifications.AddAsync(new Notification
+        {
+            Id = Guid.NewGuid(),
+            UserId = project.PiUserId,
+            NotificationType = "REVIEW_ROUND_CLOSED",
+            Title = $"Kết quả xét duyệt vòng {round.RoundNumber}",
+            Body = message,
+            RelatedEntityType = "ReviewRound",
+            RelatedEntityId = round.Id.ToString(),
+            Priority = result == ReviewResult.Rejected ? "HIGH" : "NORMAL",
+            CreatedAt = DateTime.UtcNow
+        });
+        await _notifications.SaveChangesAsync();
+    }
+
+    public async Task<IEnumerable<CouncilMemberResponse>> GetRoundMembersAsync(Guid roundId)
+    {
+        var council = await _review.Query()
+            .Where(c => c.RoundId == roundId)
+            .Include(c => c.Members).ThenInclude(m => m.User)
+            .FirstOrDefaultAsync();
+
+        if (council == null) return Enumerable.Empty<CouncilMemberResponse>();
+
+        return council.Members.Select(MapMember);
+    }
+
+    public async Task<CouncilMemberResponse> AddRoundMemberAsync(Guid roundId, AddRoundMemberRequest request, Guid addedBy)
+    {
+        if (!new[] { "Member", "Chair", "Secretary", "Opponent" }.Contains(request.MemberRole))
+            throw new ArgumentException("MemberRole must be Member, Chair, Secretary, or Opponent.");
+
+        var round = await _review.ReviewRounds
+            .Include(r => r.ProjectRounds)
+            .FirstOrDefaultAsync(r => r.Id == roundId)
+            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+
+        // Find or auto-create council for this round
+        var council = await _review.Query()
+            .Include(c => c.Members)
+            .Include(c => c.ProjectAssignments)
+            .FirstOrDefaultAsync(c => c.RoundId == roundId);
+
+        if (council == null)
+        {
+            council = new ReviewCouncil
+            {
+                Id = Guid.NewGuid(),
+                RoundId = roundId,
+                CouncilType = round.RoundType,
+                MinMembersRequired = 3,
+                MaxMembersAllowed = 5,
+                Status = CouncilStatus.Forming,
+                CreatedBy = addedBy,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            await _review.AddAsync(council);
+
+            // Council chấm NHÓM đề tài của round — gán toàn bộ project đang tham gia round.
+            foreach (var pr in round.ProjectRounds)
+                await _review.AddProjectAssignmentAsync(new CouncilProjectAssignment
+                {
+                    CouncilId = council.Id,
+                    ProjectId = pr.ProjectId
+                });
+
+            await _review.SaveChangesAsync();
+            council.Members = new List<CouncilMember>();
+        }
+
+        // COI (rule #5) — check với TẤT CẢ đề tài council này chấm.
+        var assignedProjectIds = round.ProjectRounds.Select(pr => pr.ProjectId).ToList();
+        await ReviewShared.AssertNoCoiAsync(_proposals, assignedProjectIds, new[] { request.ReviewerId });
+
+        if (council.Members.Any(m => m.UserId == request.ReviewerId))
+            throw new InvalidOperationException("This user is already a member of the council.");
+
+        // Chỉ GÁN, chưa gửi thư mời — Staff bấm "Gửi thư mời" sau (tránh spam, rule #13).
+        var member = new CouncilMember
+        {
+            Id = Guid.NewGuid(),
+            CouncilId = council.Id,
+            UserId = request.ReviewerId,
+            MemberRole = request.MemberRole,
+            IsExternal = request.IsExternal,
+            Status = CouncilMemberStatus.Assigned,
+            InvitationSentAt = null
+        };
+
+        await _review.AddMemberAsync(member);
+        await _review.SaveChangesAsync();
+
+        var memberWithUser = await _review.CouncilMembers
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.Id == member.Id);
+
+        return MapMember(memberWithUser ?? member);
+    }
+
+    // Rule #1: nộp lại bản REVISION → mở lại hội đồng đã chốt "cần chỉnh sửa" (GIỮ điểm cũ).
+    public async Task ReopenAfterResubmitAsync(Guid projectId)
+    {
+        // Biên bản đã KHÓA với kết quả REVISION_REQUIRED của đề tài này.
+        var revisionDecisions = await _review.Decisions
+            .Where(d => d.ProjectId == projectId && d.FinalizedAt != null
+                        && d.Result == ReviewResult.RevisionRequired)
+            .ToListAsync();
+        if (revisionDecisions.Count == 0) return;
+
+        foreach (var decision in revisionDecisions)
+        {
+            // Mở khóa biên bản → về NHÁP (Thư ký/Chủ tịch chấm & chốt lại). KHÔNG đụng ProposalReviewScore
+            // ⇒ điểm cũ được giữ; reviewer chỉ chỉnh nếu muốn.
+            decision.FinalizedAt = null;
+
+            var council = await _review.Query()
+                .FirstOrDefaultAsync(c => c.Id == decision.CouncilId);
+            if (council != null && council.Status == CouncilStatus.Decided)
+            {
+                council.Status = CouncilStatus.Forming;
+                council.UpdatedAt = DateTime.UtcNow;
+            }
+
+            if (council?.RoundId is Guid roundId)
+            {
+                var pr = await _review.ProjectRounds
+                    .FirstOrDefaultAsync(x => x.RoundId == roundId && x.ProjectId == projectId);
+                if (pr != null)
+                {
+                    pr.Status = ReviewRoundStatus.Open;
+                    pr.Result = null;
+                    pr.FinalizedAt = null;
+                }
+
+                // Nếu round đã đóng (đề tài này từng làm round terminal) → mở lại.
+                var round = await _review.GetRoundByIdAsync(roundId);
+                if (round != null &&
+                    (round.Status == ReviewRoundStatus.Passed || round.Status == ReviewRoundStatus.Failed))
+                {
+                    round.Status = ReviewRoundStatus.Open;
+                    round.Result = null;
+                    round.ClosedAt = null;
+                }
+            }
+        }
+
+        await _review.SaveChangesAsync();
+    }
+
+    public async Task RemoveRoundMemberAsync(Guid roundId, Guid memberId)
+    {
+        var council = await _review.Query()
+            .FirstOrDefaultAsync(c => c.RoundId == roundId)
+            ?? throw new KeyNotFoundException($"No council found for round {roundId}.");
+
+        var member = await _review.CouncilMembers
+            .FirstOrDefaultAsync(m => m.Id == memberId && m.CouncilId == council.Id)
+            ?? throw new KeyNotFoundException($"Member {memberId} not found in round's council.");
+
+        _review.RemoveMember(member);
+        await _review.SaveChangesAsync();
+    }
+
+    private static CouncilMemberResponse MapMember(CouncilMember m) => ReviewShared.MapMember(m);
+
+    private static ReviewRoundResponse MapToResponse(ReviewRound r, Guid? councilId) => new()
+    {
+        Id = r.Id,
+        RoundNumber = r.RoundNumber,
+        Dimension = r.Dimension,
+        RoundType = r.RoundType,
+        RubricTemplateId = r.RubricTemplateId,
+        Sequence = r.Sequence,
+        PrerequisiteRoundId = r.PrerequisiteRoundId,
+        Status = r.Status,
+        OpenedAt = r.OpenedAt,
+        ClosedAt = r.ClosedAt,
+        Result = r.Result,
+        CouncilId = councilId
+    };
+}

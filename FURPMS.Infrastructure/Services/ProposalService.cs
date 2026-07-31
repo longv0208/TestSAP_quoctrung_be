@@ -1,0 +1,598 @@
+using FURPMS.Application.Constants;
+using FURPMS.Application.DTOs.Proposals;
+using FURPMS.Application.Interfaces;
+using FURPMS.Application.Interfaces.Repositories;
+using FURPMS.Application.Interfaces.Services;
+using FURPMS.Domain.Entities.Cycles;
+using FURPMS.Domain.Entities.Projects;
+using FURPMS.Domain.Entities.Proposals;
+using Microsoft.EntityFrameworkCore;
+
+namespace FURPMS.Infrastructure.Services;
+
+// Sau Review 2 (Project-centric): tạo đề tài = tạo PROJECT (gốc) + Proposal v1 (tài liệu).
+// Route/DTO giữ theo proposalId để FE không phải sửa lớn; service tự resolve project.
+public class ProposalService : IProposalService
+{
+    private readonly IProposalRepository _proposals;
+    private readonly ICycleRepository _cycles;
+    private readonly IMasterDataRepository _masterData;
+    private readonly IUserRepository _users;
+    private readonly IClock _clock;
+    private readonly IReviewRoundService _reviewRounds;
+
+    public ProposalService(
+        IProposalRepository proposals,
+        ICycleRepository cycles,
+        IMasterDataRepository masterData,
+        IUserRepository users,
+        IClock clock,
+        IReviewRoundService reviewRounds)
+    {
+        _proposals = proposals;
+        _cycles = cycles;
+        _masterData = masterData;
+        _users = users;
+        _clock = clock;
+        _reviewRounds = reviewRounds;
+    }
+
+    private IQueryable<Proposal> QueryWithProject() => _proposals.Query()
+        .IgnoreQueryFilters()
+        .Include(p => p.Project).ThenInclude(pr => pr.CycleTrack).ThenInclude(ct => ct.Track)
+        .Include(p => p.Project).ThenInclude(pr => pr.CycleTrack).ThenInclude(ct => ct.Cycle)
+        .Include(p => p.Project).ThenInclude(pr => pr.PiUser)
+        .Include(p => p.Project).ThenInclude(pr => pr.ResearchType)
+        .Include(p => p.Budget);
+
+    public async Task<IEnumerable<ProposalSummaryDto>> GetProposalsAsync(
+        ProposalQueryParams queryParams,
+        Guid requesterId,
+        IEnumerable<string> requesterRoles)
+    {
+        var query = QueryWithProject()
+            .Where(p => p.IsCurrent)     // danh sách chỉ hiện bản hiện hành của mỗi project
+            .AsQueryable();
+
+        var roleSet = requesterRoles.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (!roleSet.Contains("Admin") && !roleSet.Contains("Staff"))
+            query = query.Where(p => p.Project.PiUserId == requesterId && !p.IsDeleted && !p.Project.IsDeleted);
+        else
+            query = query.Where(p => !p.IsDeleted && !p.Project.IsDeleted);
+
+        if (!string.IsNullOrWhiteSpace(queryParams.CycleId) && int.TryParse(queryParams.CycleId, out int cycleId))
+            query = query.Where(p => p.Project.CycleTrack.CycleId == cycleId);
+
+        if (!string.IsNullOrWhiteSpace(queryParams.TrackId) && int.TryParse(queryParams.TrackId, out int trackId))
+            query = query.Where(p => p.Project.CycleTrack.TrackId == trackId);
+
+        if (!string.IsNullOrWhiteSpace(queryParams.Status))
+            query = query.Where(p => p.Status == queryParams.Status.ToUpperInvariant());
+
+        if (!string.IsNullOrWhiteSpace(queryParams.Search))
+        {
+            var search = queryParams.Search.ToLower();
+            query = query.Where(p => p.TitleVi.ToLower().Contains(search)
+                || (p.TitleEn != null && p.TitleEn.ToLower().Contains(search)));
+        }
+
+        var proposals = await query.OrderByDescending(p => p.CreatedAt).ToListAsync();
+        return proposals.Select(MapSummary);
+    }
+
+    public async Task<ProposalDto> GetProposalByIdAsync(Guid proposalId)
+    {
+        var proposal = await QueryWithProject()
+            .Include(p => p.Project).ThenInclude(pr => pr.Members)
+            .FirstOrDefaultAsync(p => p.Id == proposalId)
+            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+
+        var budgetItems = await _proposals.BudgetItems
+            .Include(i => i.Category)
+            .Where(i => i.ProposalId == proposalId)
+            .OrderBy(i => i.Sequence)
+            .ToListAsync();
+
+        return MapDetail(proposal, budgetItems);
+    }
+
+    public async Task<ProposalDto> CreateProposalAsync(CreateProposalRequest request, Guid piUserId)
+    {
+        if (string.IsNullOrWhiteSpace(request.TitleVI))
+            throw new ArgumentException("Title is required.");
+        if (request.DurationMonths <= 0)
+            throw new ArgumentException("DurationMonths must be positive.");
+
+        if (!int.TryParse(request.TrackId, out int trackId))
+            throw new ArgumentException("TrackId must be a valid integer.");
+
+        _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
+            ?? throw new KeyNotFoundException($"Track {request.TrackId} not found.");
+
+        // PI chọn đợt: nếu có CycleId → dùng đúng đợt đó (phải OPEN); null → fallback đợt OPEN mới nhất.
+        var openCycle = request.CycleId.HasValue
+            ? await _cycles.Query().FirstOrDefaultAsync(c => c.Id == request.CycleId.Value && c.Status == CycleStatus.Open)
+              ?? throw new InvalidOperationException($"Đợt nộp #{request.CycleId} không tồn tại hoặc không ở trạng thái mở.")
+            : await _cycles.Query()
+                .Where(c => c.Status == CycleStatus.Open)
+                .OrderByDescending(c => c.CycleYear)
+                .FirstOrDefaultAsync()
+              ?? throw new InvalidOperationException("No open research cycle found. Cannot submit proposal.");
+
+        var researchType = await _masterData.ResearchTypes
+            .FirstOrDefaultAsync(r => r.Id == request.ResearchType)
+            ?? await _masterData.ResearchTypes.FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Research type not found.");
+
+        var piUser = await _users.GetByIdAsync(piUserId)
+            ?? throw new KeyNotFoundException($"User {piUserId} not found.");
+
+        var cycleTrack = await EnsureCycleTrackAsync(openCycle.Id, trackId);
+        var orderId = await ResolveOrderIdAsync(openCycle, request.OrderId, piUser.UnitId ?? 1, piUserId);
+
+        // 1) PROJECT — thực thể gốc
+        var project = new Project
+        {
+            CycleTrackId = cycleTrack.Id,
+            OrderId = orderId,
+            PiUserId = piUserId,
+            HostingUnitId = piUser.UnitId ?? 1,
+            ResearchTypeId = researchType.Id,
+            TitleVi = request.TitleVI,
+            TitleEn = request.TitleEN,
+            Status = ProjectStatus.Proposed,
+            PlannedStartDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            PlannedEndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(request.DurationMonths))
+        };
+        _proposals.AddProject(project);
+
+        // 2) Proposal v1 — tài liệu đề cương
+        var proposal = new Proposal
+        {
+            ProjectId = project.Id,
+            VersionNo = 1,
+            IsCurrent = true,
+            TitleVi = request.TitleVI,
+            TitleEn = request.TitleEN,
+            DurationMonths = request.DurationMonths,
+            PlannedStartDate = project.PlannedStartDate,
+            PlannedEndDate = project.PlannedEndDate,
+            AbstractVi = request.Objectives,
+            AbstractEn = request.AbstractEN,
+            ResearchObjectives = request.Objectives,
+            Methodology = request.Methodology,
+            ExpectedOutput = request.ExpectedOutput,
+            LiteratureReview = request.Urgency,
+            NoveltyOriginality = request.Novelty,
+            ApplicationPotential = request.ApplicationPotential,
+            TransferPotential = request.TransferPotential,
+            FacilitiesEquipment = request.Facilities,
+            FundingMethod = request.FundingMethod,
+            Status = ProposalStatus.Draft
+        };
+
+        await _proposals.AddAsync(proposal);
+        await _proposals.SaveChangesAsync();
+
+        // Create budget skeleton
+        var budget = new ProposalBudget { ProposalId = proposal.Id };
+        _masterData.Add(budget);
+        await _masterData.SaveChangesAsync();
+
+        // Add team members (thuộc PROJECT)
+        AddProjectMembers(project.Id, request.Members);
+        if (request.Members.Count > 0)
+            await _proposals.SaveChangesAsync();
+
+        // Persist budget items + tổng kinh phí
+        await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems);
+
+        return await GetProposalByIdAsync(proposal.Id);
+    }
+
+    // Tìm/tạo cặp (cycle, track) — Review 2 điểm b: 1 đợt chứa nhiều track.
+    private async Task<CycleTrack> EnsureCycleTrackAsync(int cycleId, int trackId)
+    {
+        var existing = await _cycles.CycleTracks
+            .FirstOrDefaultAsync(ct => ct.CycleId == cycleId && ct.TrackId == trackId);
+        if (existing != null) return existing;
+
+        var cycleTrack = new CycleTrack { CycleId = cycleId, TrackId = trackId };
+        await _cycles.AddCycleTrackAsync(cycleTrack);
+        await _cycles.SaveChangesAsync();
+        return cycleTrack;
+    }
+
+    // Review 2 điểm d: 100% project thuộc 1 order. Đề tài tự do → order "Nghiên cứu cơ bản"
+    // mặc định của đợt (tạo nếu chưa có).
+    private async Task<int> ResolveOrderIdAsync(ResearchCycle cycle, int? requestedOrderId, int fallbackUnitId, Guid createdBy)
+    {
+        if (requestedOrderId.HasValue)
+        {
+            var order = await _cycles.Orders.FirstOrDefaultAsync(o => o.Id == requestedOrderId.Value)
+                ?? throw new KeyNotFoundException($"Research order {requestedOrderId} not found.");
+            return order.Id;
+        }
+
+        var defaultOrder = await _cycles.Orders
+            .FirstOrDefaultAsync(o => o.CycleId == cycle.Id && o.IsDefault);
+        if (defaultOrder != null) return defaultOrder.Id;
+
+        var newDefault = new ResearchOrder
+        {
+            CycleId = cycle.Id,
+            OrderingUnitId = fallbackUnitId,
+            ResearchArea = "Nghiên cứu tự do (đề xuất của PI)",
+            ProblemDescription = "Order mặc định của đợt — gom các đề tài PI tự đề xuất (không có đơn vị đặt hàng cụ thể).",
+            IsDefault = true,
+            Status = "OPEN",
+            CreatedBy = createdBy
+        };
+        await _cycles.AddOrderAsync(newDefault);
+        await _cycles.SaveChangesAsync();
+        return newDefault.Id;
+    }
+
+    // Thêm danh sách thành viên (lưu cả email + đơn vị) — thuộc PROJECT.
+    private void AddProjectMembers(Guid projectId, List<CreateMemberRequest> members)
+    {
+        int seq = 1;
+        foreach (var m in members)
+        {
+            _proposals.AddProjectMember(new ProjectMember
+            {
+                ProjectId = projectId,
+                FullName = m.FullName,
+                Email = m.Email,
+                UnitName = m.Department,
+                AcademicTitle = m.AcademicTitle,
+                MemberRoleCode = m.MemberRoleCode,
+                WorkContent = m.Role,
+                WorkMonths = m.WorkMonths,
+                IsPi = false,
+                IsSecretary = m.IsSecretary,
+                Sequence = seq++
+            });
+        }
+    }
+
+    // Thay toàn bộ budget items: ánh xạ tên hạng mục (FE nhập) -> BudgetExpenseCategory,
+    // fallback "OTHER" nếu không khớp; cập nhật lại tổng kinh phí trên ProposalBudget.
+    private async Task SyncBudgetItemsAsync(Guid proposalId, List<CreateBudgetItemRequest> items)
+    {
+        var existing = await _proposals.BudgetItems.Where(i => i.ProposalId == proposalId).ToListAsync();
+        if (existing.Count > 0)
+            _proposals.RemoveBudgetItemsRange(existing);
+
+        var categories = await _masterData.BudgetExpenseCategories.ToListAsync();
+        var fallback = categories.FirstOrDefault(c => c.Code == "OTHER") ?? categories.FirstOrDefault();
+
+        int seq = 1;
+        decimal total = 0m;
+        foreach (var it in items)
+        {
+            if (it.Amount <= 0 && string.IsNullOrWhiteSpace(it.Category))
+                continue;
+            var cat = categories.FirstOrDefault(c => string.Equals(c.Name, it.Category, StringComparison.OrdinalIgnoreCase))
+                   ?? categories.FirstOrDefault(c => string.Equals(c.Code, it.Category, StringComparison.OrdinalIgnoreCase))
+                   ?? fallback;
+            if (cat == null)
+                continue;
+
+            _proposals.AddBudgetItem(new ProposalBudgetItem
+            {
+                ProposalId = proposalId,
+                CategoryId = cat.Id,
+                Amount = it.Amount,
+                Note = it.Note,
+                Sequence = seq++
+            });
+            total += it.Amount;
+        }
+
+        var budget = await _proposals.Budgets.FirstOrDefaultAsync(b => b.ProposalId == proposalId);
+        if (budget != null)
+            budget.TotalAmount = total;
+
+        await _proposals.SaveChangesAsync();
+    }
+
+    public async Task<ProposalDto> UpdateProposalAsync(Guid proposalId, CreateProposalRequest request, Guid userId)
+    {
+        var proposal = await _proposals.Query().IgnoreQueryFilters()
+            .Include(p => p.Project).ThenInclude(pr => pr.CycleTrack).ThenInclude(ct => ct.Cycle)
+            .FirstOrDefaultAsync(p => p.Id == proposalId)
+            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+
+        var project = proposal.Project;
+
+        if (project.PiUserId != userId)
+            throw new UnauthorizedAccessException("Only the PI can edit this proposal.");
+
+        // DRAFT: sửa tại chỗ. REVISION_REQUIRED: tạo BẢN MỚI (versioning — Review 2 điểm a).
+        if (proposal.Status == ProposalStatus.RevisionRequired && proposal.IsCurrent)
+            return await CreateRevisionAsync(proposal, request, userId);
+
+        if (proposal.Status != ProposalStatus.Draft)
+            throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only DRAFT proposals can be edited. Withdraw it first.");
+
+        // Hết hạn đợt → khóa, không cho sửa nháp nữa (đồng bộ với chặn nộp quá hạn).
+        var todayEdit = DateOnly.FromDateTime(_clock.UtcNow);
+        var cycle = project.CycleTrack.Cycle;
+        if (cycle != null && todayEdit > cycle.SubmissionDeadline)
+            throw new InvalidOperationException(
+                $"Đã quá hạn nộp của đợt (hạn {cycle.SubmissionDeadline:dd/MM/yyyy}). Không thể sửa đề cương.");
+
+        if (string.IsNullOrWhiteSpace(request.TitleVI))
+            throw new ArgumentException("Title is required.");
+        if (request.DurationMonths <= 0)
+            throw new ArgumentException("DurationMonths must be positive.");
+        if (!int.TryParse(request.TrackId, out int trackId))
+            throw new ArgumentException("TrackId must be a valid integer.");
+
+        _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
+            ?? throw new KeyNotFoundException($"Track {request.TrackId} not found.");
+
+        var researchType = await _masterData.ResearchTypes
+            .FirstOrDefaultAsync(r => r.Id == request.ResearchType)
+            ?? await _masterData.ResearchTypes.FirstOrDefaultAsync()
+            ?? throw new KeyNotFoundException("Research type not found.");
+
+        // Đổi track → đổi cycle_track trên PROJECT (giữ nguyên cycle).
+        if (project.CycleTrack.TrackId != trackId)
+        {
+            var newCycleTrack = await EnsureCycleTrackAsync(project.CycleTrack.CycleId, trackId);
+            project.CycleTrackId = newCycleTrack.Id;
+        }
+        project.ResearchTypeId = researchType.Id;
+        project.TitleVi = request.TitleVI;
+        project.TitleEn = request.TitleEN;
+        project.PlannedEndDate = project.PlannedStartDate.AddMonths(request.DurationMonths);
+        project.UpdatedAt = DateTime.UtcNow;
+
+        proposal.TitleVi = request.TitleVI;
+        proposal.TitleEn = request.TitleEN;
+        proposal.DurationMonths = request.DurationMonths;
+        proposal.PlannedEndDate = proposal.PlannedStartDate.AddMonths(request.DurationMonths);
+        proposal.AbstractVi = request.Objectives;
+        proposal.AbstractEn = request.AbstractEN;
+        proposal.ResearchObjectives = request.Objectives;
+        proposal.Methodology = request.Methodology;
+        proposal.ExpectedOutput = request.ExpectedOutput;
+        proposal.LiteratureReview = request.Urgency;
+        proposal.NoveltyOriginality = request.Novelty;
+        proposal.ApplicationPotential = request.ApplicationPotential;
+        proposal.TransferPotential = request.TransferPotential;
+        proposal.FacilitiesEquipment = request.Facilities;
+        proposal.FundingMethod = request.FundingMethod;
+        proposal.UpdatedAt = DateTime.UtcNow;
+
+        await _proposals.SaveChangesAsync();
+
+        // Chỉ thay team members khi request có gửi danh sách (≠ rỗng) — để workspace lưu
+        // riêng "thông tin chung" mà KHÔNG xoá members/labor đã nhập.
+        if (request.Members.Count > 0)
+            await ReplaceProjectMembersAsync(project.Id, request.Members);
+
+        // Chỉ thay budget items khi request có gửi (≠ rỗng) — để không xoá cột nguồn vốn đã nhập riêng.
+        if (request.BudgetItems.Count > 0)
+            await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems);
+
+        return await GetProposalByIdAsync(proposalId);
+    }
+
+    // Versioning (Review 2 điểm a): REVISION_REQUIRED → bản cũ giữ lịch sử, tạo v(n+1) làm bản hiện hành.
+    private async Task<ProposalDto> CreateRevisionAsync(Proposal oldVersion, CreateProposalRequest request, Guid userId)
+    {
+        if (string.IsNullOrWhiteSpace(request.TitleVI))
+            throw new ArgumentException("Title is required.");
+        if (request.DurationMonths <= 0)
+            throw new ArgumentException("DurationMonths must be positive.");
+
+        var project = oldVersion.Project;
+        var maxVersion = await _proposals.Query().IgnoreQueryFilters()
+            .Where(p => p.ProjectId == project.Id)
+            .MaxAsync(p => p.VersionNo);
+
+        oldVersion.IsCurrent = false;
+        oldVersion.UpdatedAt = DateTime.UtcNow;
+
+        var revision = new Proposal
+        {
+            ProjectId = project.Id,
+            VersionNo = maxVersion + 1,
+            IsCurrent = true,
+            TitleVi = request.TitleVI,
+            TitleEn = request.TitleEN,
+            DurationMonths = request.DurationMonths,
+            PlannedStartDate = oldVersion.PlannedStartDate,
+            PlannedEndDate = oldVersion.PlannedStartDate.AddMonths(request.DurationMonths),
+            AbstractVi = request.Objectives,
+            AbstractEn = request.AbstractEN,
+            ResearchObjectives = request.Objectives,
+            Methodology = request.Methodology,
+            ExpectedOutput = request.ExpectedOutput,
+            LiteratureReview = request.Urgency,
+            NoveltyOriginality = request.Novelty,
+            ApplicationPotential = request.ApplicationPotential,
+            TransferPotential = request.TransferPotential,
+            FacilitiesEquipment = request.Facilities,
+            FundingMethod = request.FundingMethod ?? oldVersion.FundingMethod,
+            Status = ProposalStatus.Draft
+        };
+        await _proposals.AddAsync(revision);
+
+        project.TitleVi = request.TitleVI;
+        project.TitleEn = request.TitleEN;
+        project.UpdatedAt = DateTime.UtcNow;
+        await _proposals.SaveChangesAsync();
+
+        var budget = new ProposalBudget { ProposalId = revision.Id };
+        _masterData.Add(budget);
+        await _masterData.SaveChangesAsync();
+
+        if (request.Members.Count > 0)
+            await ReplaceProjectMembersAsync(project.Id, request.Members);
+        await SyncBudgetItemsAsync(revision.Id, request.BudgetItems);
+
+        return await GetProposalByIdAsync(revision.Id);
+    }
+
+    private async Task ReplaceProjectMembersAsync(Guid projectId, List<CreateMemberRequest> members)
+    {
+        // Phải xoá labor details phụ thuộc trước (FK proposal_budget_labor_details -> project_members).
+        var existingMembers = await _proposals.ProjectMembers
+            .Where(m => m.ProjectId == projectId)
+            .ToListAsync();
+        if (existingMembers.Count > 0)
+        {
+            var memberIds = existingMembers.Select(m => m.Id).ToList();
+            var laborDetails = await _proposals.LaborDetails
+                .Where(l => memberIds.Contains(l.ProjectMemberId))
+                .ToListAsync();
+            if (laborDetails.Count > 0)
+                _proposals.RemoveLaborDetailsRange(laborDetails);
+            _proposals.RemoveProjectMembersRange(existingMembers);
+            await _proposals.SaveChangesAsync();
+        }
+        AddProjectMembers(projectId, members);
+        await _proposals.SaveChangesAsync();
+    }
+
+    public async Task<ProposalDto> SubmitProposalAsync(Guid proposalId, Guid userId, bool confirmCvUpToDate = false)
+    {
+        var proposal = await _proposals.Query().IgnoreQueryFilters()
+            .Include(p => p.Project).ThenInclude(pr => pr.CycleTrack).ThenInclude(ct => ct.Cycle)
+            .FirstOrDefaultAsync(p => p.Id == proposalId)
+            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+
+        var project = proposal.Project;
+
+        if (project.PiUserId != userId)
+            throw new UnauthorizedAccessException("Only the PI can submit this proposal.");
+
+        if (proposal.Status != ProposalStatus.Draft)
+            throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only DRAFT proposals can be submitted.");
+
+        // Chặn nộp quá hạn (dùng đồng hồ hệ thống — công cụ tua thời gian test được).
+        // Bản revision (v2+) không bị chặn deadline nộp lần đầu — deadline sửa nằm ở RevisionDeadline.
+        var today = DateOnly.FromDateTime(_clock.UtcNow);
+        var cycle = project.CycleTrack.Cycle;
+        if (proposal.VersionNo == 1 && cycle != null && today > cycle.SubmissionDeadline)
+            throw new InvalidOperationException(
+                $"Đã quá hạn nộp của đợt (hạn {cycle.SubmissionDeadline:dd/MM/yyyy}). Không thể nộp.");
+
+        // Nhắc cập nhật CV trước khi nộp (rule tuần 6): CV thiếu/cũ > 6 tháng → bắt PI xác nhận.
+        if (!confirmCvUpToDate)
+        {
+            var profile = await _users.AcademicProfiles.FirstOrDefaultAsync(a => a.UserId == userId);
+            var staleBefore = _clock.UtcNow.AddMonths(-6);
+            if (profile == null || profile.UpdatedAt < staleBefore)
+                throw new InvalidOperationException(
+                    "Lý lịch khoa học (CV) chưa được cập nhật gần đây. Vui lòng cập nhật CV hoặc xác nhận CV vẫn đúng trước khi nộp.");
+        }
+
+        proposal.Status = ProposalStatus.Submitted;
+        proposal.SubmittedAt = DateTime.UtcNow;
+        proposal.UpdatedAt = DateTime.UtcNow;
+        project.Status = ProjectStatus.UnderReview;
+        project.UpdatedAt = DateTime.UtcNow;
+        await _proposals.SaveChangesAsync();
+
+        // Rule #1: nộp lại bản REVISION (v2+) → mở lại hội đồng đã chốt "cần chỉnh sửa" để chấm lại
+        // (giữ điểm cũ). No-op nếu không có biên bản REVISION nào.
+        if (proposal.VersionNo > 1)
+            await _reviewRounds.ReopenAfterResubmitAsync(project.Id);
+
+        return await GetProposalByIdAsync(proposalId);
+    }
+
+    public async Task<ProposalDto> WithdrawProposalAsync(Guid proposalId, Guid userId)
+    {
+        var proposal = await _proposals.Query().IgnoreQueryFilters()
+            .Include(p => p.Project)
+            .FirstOrDefaultAsync(p => p.Id == proposalId)
+            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+
+        if (proposal.Project.PiUserId != userId)
+            throw new UnauthorizedAccessException("Only the PI can withdraw this proposal.");
+
+        if (proposal.Status != ProposalStatus.Submitted)
+            throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only SUBMITTED proposals can be withdrawn.");
+
+        proposal.Status = ProposalStatus.Draft;
+        proposal.SubmittedAt = null;
+        proposal.UpdatedAt = DateTime.UtcNow;
+        proposal.Project.Status = ProjectStatus.Proposed;
+        proposal.Project.UpdatedAt = DateTime.UtcNow;
+        await _proposals.SaveChangesAsync();
+
+        return await GetProposalByIdAsync(proposalId);
+    }
+
+    private static ProposalSummaryDto MapSummary(Proposal p) => new()
+    {
+        Id = p.Id,
+        TitleVI = p.TitleVi,
+        ResearchType = p.Project?.ResearchType?.Name ?? "—",
+        Status = p.Status,
+        TrackName = p.Project?.CycleTrack?.Track?.Name ?? "—",
+        PrincipalInvestigatorName = p.Project?.PiUser?.FullName ?? "—",
+        TotalBudget = p.Budget?.TotalAmount ?? 0m,
+        CreatedAt = p.CreatedAt,
+        SubmittedAt = p.SubmittedAt
+    };
+
+    private static ProposalDto MapDetail(Proposal p, List<ProposalBudgetItem> budgetItems) => new()
+    {
+        Id = p.Id,
+        ProjectId = p.ProjectId,
+        ProjectStatus = p.Project?.Status,
+        VersionNo = p.VersionNo,
+        TitleVI = p.TitleVi,
+        TitleEN = p.TitleEn,
+        ResearchType = p.Project?.ResearchType?.Name ?? "—",
+        Status = p.Status,
+        TrackId = p.Project?.CycleTrack?.TrackId.ToString() ?? "",
+        ResearchTypeId = p.Project?.ResearchTypeId ?? 0,
+        TrackName = p.Project?.CycleTrack?.Track?.Name ?? "—",
+        CycleId = p.Project?.CycleTrack?.CycleId.ToString() ?? "",
+        CycleName = p.Project?.CycleTrack?.Cycle?.SemesterCode ?? p.Project?.CycleTrack?.Cycle?.CycleYear.ToString() ?? "—",
+        PrincipalInvestigatorName = p.Project?.PiUser?.FullName ?? "—",
+        TotalBudget = p.Budget?.TotalAmount ?? 0m,
+        DurationMonths = p.DurationMonths,
+        Objectives = p.ResearchObjectives,
+        Methodology = p.Methodology,
+        ExpectedOutput = p.ExpectedOutput,
+        RejectionReason = p.RejectionReason,
+        AbstractEN = p.AbstractEn,
+        Urgency = p.LiteratureReview,
+        Novelty = p.NoveltyOriginality,
+        ApplicationPotential = p.ApplicationPotential,
+        TransferPotential = p.TransferPotential,
+        Facilities = p.FacilitiesEquipment,
+        FundingMethod = p.FundingMethod,
+        CreatedAt = p.CreatedAt,
+        SubmittedAt = p.SubmittedAt,
+        Members = (p.Project?.Members ?? Enumerable.Empty<ProjectMember>()).OrderBy(m => m.Sequence).Select(m => new ProposalMemberDto
+        {
+            Id = m.Id,
+            FullName = m.FullName,
+            Email = m.Email,
+            Department = m.UnitName,
+            Role = !string.IsNullOrWhiteSpace(m.WorkContent) ? m.WorkContent : (m.MemberRoleCode ?? (m.IsPi ? "PI" : "Member")),
+            WorkMonths = m.WorkMonths,
+            AcademicTitle = m.AcademicTitle,
+            MemberRoleCode = m.MemberRoleCode,
+            IsSecretary = m.IsSecretary
+        }).ToList(),
+        BudgetItems = budgetItems.Select(i => new ProposalBudgetItemDto
+        {
+            Id = i.Id,
+            Category = i.Category?.Name ?? "—",
+            Amount = i.Amount,
+            Note = i.Note
+        }).ToList(),
+        Documents = new List<ProposalDocumentDto>()
+    };
+}
