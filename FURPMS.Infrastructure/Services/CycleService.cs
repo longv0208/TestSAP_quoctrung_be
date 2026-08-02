@@ -35,7 +35,29 @@ public class CycleService : ICycleService
             .Select(g => new { CycleId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.CycleId, x => x.Count);
 
-        return cycles.Select(c => MapCycle(c, trackCounts.GetValueOrDefault(c.Id)));
+        // Ghi đè deadline hiển thị = hạn HIỆU LỰC (sau gia hạn) — trước đây luôn trả hạn gốc dù đã gia hạn.
+        var cycleIdStrs = cycles.Select(c => c.Id.ToString()).ToList();
+        var exts = await _cycles.DeadlineExtensions
+            .Where(e => e.TargetType == TargetTypeCycle && cycleIdStrs.Contains(e.TargetId))
+            .ToListAsync();
+        var extByCycle = exts.GroupBy(e => e.TargetId).ToDictionary(g => g.Key, g => g.ToList());
+
+        return cycles.Select(c =>
+        {
+            var dto = MapCycle(c, trackCounts.GetValueOrDefault(c.Id));
+            ApplyEffectiveDeadline(dto, extByCycle.GetValueOrDefault(c.Id.ToString()));
+            return dto;
+        }).ToList();
+    }
+
+    // Nếu đợt đã gia hạn: SubmissionDeadline = hạn mới nhất, giữ hạn gốc ở OriginalDeadline + đếm số lần.
+    private static void ApplyEffectiveDeadline(CycleDto dto, List<DeadlineExtension>? exts)
+    {
+        if (exts == null || exts.Count == 0) return;
+        var latest = exts.OrderByDescending(e => e.CreatedAt).First();
+        dto.OriginalDeadline = dto.SubmissionDeadline;
+        dto.SubmissionDeadline = latest.NewDeadline.ToString("yyyy-MM-dd");
+        dto.ExtensionCount = exts.Count;
     }
 
     public async Task<CycleDto> GetCycleByIdAsync(int cycleId)
@@ -48,7 +70,12 @@ public class CycleService : ICycleService
         var tracks = await GetTracksByCycleAsync(cycleId);
         var trackList = tracks.ToList();
 
-        return MapCycle(cycle, trackList.Count, trackList);
+        var dto = MapCycle(cycle, trackList.Count, trackList);
+        var exts = await _cycles.DeadlineExtensions
+            .Where(e => e.TargetType == TargetTypeCycle && e.TargetId == cycleId.ToString())
+            .ToListAsync();
+        ApplyEffectiveDeadline(dto, exts);
+        return dto;
     }
 
     // Lĩnh vực ĐÃ GẮN vào đợt này qua cycle_track (không phải toàn bộ lĩnh vực toàn hệ thống).
@@ -78,6 +105,34 @@ public class CycleService : ICycleService
         }
 
         return MapTrack(track, cycleId);
+    }
+
+    // Gắn 1 lĩnh vực CÓ SẴN vào đợt (đợt tự chọn lĩnh vực nó mở — reuse global track).
+    public async Task AttachTrackToCycleAsync(int cycleId, int trackId)
+    {
+        _ = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
+            ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
+        _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
+            ?? throw new KeyNotFoundException($"Track {trackId} not found.");
+
+        if (await _cycles.CycleTracks.AnyAsync(ct => ct.CycleId == cycleId && ct.TrackId == trackId))
+            throw new InvalidOperationException("Lĩnh vực đã được gắn vào đợt này.");
+
+        await _cycles.AddCycleTrackAsync(new CycleTrack { CycleId = cycleId, TrackId = trackId });
+        await _cycles.SaveChangesAsync();
+    }
+
+    public async Task DetachTrackFromCycleAsync(int cycleId, int trackId)
+    {
+        var link = await _cycles.CycleTracks.FirstOrDefaultAsync(ct => ct.CycleId == cycleId && ct.TrackId == trackId)
+            ?? throw new KeyNotFoundException("Lĩnh vực không được gắn vào đợt này.");
+
+        // Chặn gỡ nếu đã có đề tài trong (đợt, lĩnh vực) này — tránh vỡ FK / mất dữ liệu.
+        if (await _proposals.Projects.IgnoreQueryFilters().AnyAsync(p => p.CycleTrackId == link.Id))
+            throw new InvalidOperationException("Lĩnh vực đã có đề tài trong đợt này — không thể gỡ.");
+
+        _cycles.RemoveCycleTrack(link);
+        await _cycles.SaveChangesAsync();
     }
 
     public async Task<IEnumerable<ResearchTypeDto>> GetResearchTypesAsync(bool includeInactive = false)
@@ -319,11 +374,16 @@ public class CycleService : ICycleService
 
         if (!string.IsNullOrWhiteSpace(request.Name))
         {
-            track.Name = request.Name;
-            track.Code = request.Name.ToUpperInvariant().Replace(" ", "_");
+            var newCode = request.Name.Trim().ToUpperInvariant().Replace(" ", "_");
+            if (newCode != track.Code && await _cycles.Tracks.AnyAsync(t => t.Code == newCode && t.Id != trackId))
+                throw new InvalidOperationException($"Lĩnh vực với mã '{newCode}' đã tồn tại — hãy đặt tên khác.");
+            track.Name = request.Name.Trim();
+            track.Code = newCode;
         }
         if (request.Description != null)
             track.Description = request.Description;
+        // Đổi người phụ trách ngay trong form Sửa.
+        track.OwnerId = string.IsNullOrWhiteSpace(request.OwnerId) ? null : Guid.Parse(request.OwnerId);
 
         _masterData.Update(track);
         await _masterData.SaveChangesAsync();
@@ -353,6 +413,70 @@ public class CycleService : ICycleService
         _masterData.Update(track);
         await _masterData.SaveChangesAsync();
         return MapTrack(track);
+    }
+
+    // ── Gia hạn deadline đợt (rule tuần 10) — ghi log, deadline gốc giữ nguyên ─────
+    private const string TargetTypeCycle = "CYCLE";
+
+    public async Task<DeadlineExtensionDto> ExtendCycleDeadlineAsync(int cycleId, ExtendDeadlineRequest request, Guid createdBy)
+    {
+        var cycle = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
+            ?? throw new KeyNotFoundException($"Đợt {cycleId} không tồn tại.");
+        if (!DateOnly.TryParse(request.NewDeadline, out var newDeadline))
+            throw new ArgumentException("NewDeadline phải là ngày hợp lệ (yyyy-MM-dd).");
+
+        var current = await GetEffectiveDeadlineAsync(cycleId, cycle.SubmissionDeadline);
+        if (newDeadline <= current)
+            throw new ArgumentException($"Ngày gia hạn phải SAU deadline hiện tại ({current:yyyy-MM-dd}).");
+
+        var ext = new DeadlineExtension
+        {
+            TargetType = TargetTypeCycle,
+            TargetId = cycleId.ToString(),
+            OldDeadline = current,          // gốc/hiệu lực trước khi gia hạn — KHÔNG đụng cycle.SubmissionDeadline
+            NewDeadline = newDeadline,
+            Reason = request.Reason,
+            CreatedBy = createdBy
+        };
+        await _cycles.AddDeadlineExtensionAsync(ext);
+        await _cycles.SaveChangesAsync();
+
+        return new DeadlineExtensionDto
+        {
+            Id = ext.Id,
+            OldDeadline = ext.OldDeadline.ToString("yyyy-MM-dd"),
+            NewDeadline = ext.NewDeadline.ToString("yyyy-MM-dd"),
+            Reason = ext.Reason,
+            CreatedAt = ext.CreatedAt
+        };
+    }
+
+    public async Task<IEnumerable<DeadlineExtensionDto>> GetCycleDeadlineExtensionsAsync(int cycleId)
+    {
+        var rows = await _cycles.DeadlineExtensions
+            .Where(e => e.TargetType == TargetTypeCycle && e.TargetId == cycleId.ToString())
+            .OrderByDescending(e => e.CreatedAt)
+            .Select(e => new { e.Id, e.OldDeadline, e.NewDeadline, e.Reason, e.CreatedAt, Name = e.CreatedByUser.FullName })
+            .ToListAsync();
+
+        return rows.Select(e => new DeadlineExtensionDto
+        {
+            Id = e.Id,
+            OldDeadline = e.OldDeadline.ToString("yyyy-MM-dd"),
+            NewDeadline = e.NewDeadline.ToString("yyyy-MM-dd"),
+            Reason = e.Reason,
+            CreatedByName = e.Name,
+            CreatedAt = e.CreatedAt
+        });
+    }
+
+    private async Task<DateOnly> GetEffectiveDeadlineAsync(int cycleId, DateOnly original)
+    {
+        var latest = await _cycles.DeadlineExtensions
+            .Where(e => e.TargetType == TargetTypeCycle && e.TargetId == cycleId.ToString())
+            .OrderByDescending(e => e.CreatedAt)
+            .FirstOrDefaultAsync();
+        return latest?.NewDeadline ?? original;
     }
 
     private static CycleDto MapCycle(ResearchCycle c, int trackCount = 0, List<TrackDto>? tracks = null) => new()

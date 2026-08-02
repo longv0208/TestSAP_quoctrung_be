@@ -8,6 +8,7 @@ public class ContractListResponse
     public Guid ProposalId { get; set; }    // bản đề cương hiện hành (giữ cho FE cũ)
     public string? ProposalCode { get; set; }
     public string? ProposalTitle { get; set; }
+    public string? PiName { get; set; }        // chủ nhiệm đề tài (hiển thị ở danh sách hợp đồng)
     public string Status { get; set; } = null!;
     public decimal TotalAmount { get; set; }
     public DateOnly StartDate { get; set; }

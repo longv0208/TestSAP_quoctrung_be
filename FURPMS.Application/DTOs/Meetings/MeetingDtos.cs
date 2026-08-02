@@ -7,6 +7,7 @@ public class MeetingDto
     public string? Title { get; set; }
     public string Platform { get; set; } = "IN_PERSON";
     public string? MeetingLink { get; set; }
+    public string? Location { get; set; }
     public DateTime ScheduledAt { get; set; }
     public int DurationMinutes { get; set; }
     public string? Agenda { get; set; }
@@ -25,11 +26,27 @@ public class MeetingListDto : MeetingDto
     public int? RoundNumber { get; set; }
 }
 
+// Điểm danh (rule tuần 10): Thư ký tick có mặt/vắng+lý do cho từng TV → điền vào biên bản.
+public class AttendanceEntryDto
+{
+    public Guid MemberId { get; set; }          // = CouncilMember.Id
+    public string? MemberName { get; set; }
+    public string? MemberRole { get; set; }
+    public bool? Attended { get; set; }
+    public string? AbsenceReason { get; set; }
+}
+
+public class SaveAttendanceRequest
+{
+    public List<AttendanceEntryDto> Entries { get; set; } = new();
+}
+
 public class ScheduleMeetingRequest
 {
     public string? Title { get; set; }
     public string Platform { get; set; } = "IN_PERSON";
     public string? MeetingLink { get; set; }
+    public string? Location { get; set; }
     public DateTime ScheduledAt { get; set; }
     public int DurationMinutes { get; set; } = 120;
     public string? Agenda { get; set; }

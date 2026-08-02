@@ -13,11 +13,26 @@ public class AdminController : ControllerBase
 {
     private readonly IClock _clock;
     private readonly IDeadlineReminderScanner _scanner;
+    private readonly IWebHostEnvironment _env;
 
-    public AdminController(IClock clock, IDeadlineReminderScanner scanner)
+    public AdminController(IClock clock, IDeadlineReminderScanner scanner, IWebHostEnvironment env)
     {
         _clock = clock;
         _scanner = scanner;
+        _env = env;
+    }
+
+    /// <summary>
+    /// Tua thời gian là công cụ TEST. Offset lưu ở singleton phía server nên ảnh hưởng
+    /// MỌI người dùng cùng lúc — bật nhầm trên production là toàn hệ thống lệch ngày
+    /// (hạn nộp, nhắc hạn, ngày ký…). Vì vậy chặn cứng theo môi trường, không chỉ theo vai trò.
+    /// Muốn bật ở môi trường staging: đặt biến môi trường ASPNETCORE_ENVIRONMENT=Staging.
+    /// </summary>
+    private void EnsureTimeTravelAllowed()
+    {
+        if (_env.IsProduction())
+            throw new ForbiddenException(
+                "Không được tua thời gian trên môi trường production — đây là công cụ test.");
     }
 
     public class SystemClockResponse
@@ -43,6 +58,7 @@ public class AdminController : ControllerBase
     [HttpPost("system-clock")]
     public IActionResult SetSystemClock([FromBody] SetClockRequest request)
     {
+        EnsureTimeTravelAllowed();
         if (request.OffsetDays < 0)
             throw new ArgumentException("OffsetDays phải >= 0.");
         if (request.OffsetDays > 3650)

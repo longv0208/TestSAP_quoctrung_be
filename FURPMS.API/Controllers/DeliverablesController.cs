@@ -3,6 +3,7 @@ using FURPMS.Application.Common;
 using FURPMS.Application.DTOs.Contract;
 using FURPMS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FURPMS.API.Controllers;
@@ -19,6 +20,7 @@ public class DeliverablesController : ControllerBase
         _service = service;
     }
 
+    [ProducesResponseType(typeof(ApiResponse<DeliverableResponse>), StatusCodes.Status200OK)]
     [HttpPost("{id:int}/submit")]
     public async Task<IActionResult> Submit(int id, [FromBody] SubmitDeliverableRequest request)
     {
@@ -27,6 +29,7 @@ public class DeliverablesController : ControllerBase
         return Ok(ApiResponse<DeliverableResponse>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<DeliverableResponse>), StatusCodes.Status200OK)]
     [HttpPost("{id:int}/evaluate")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Evaluate(int id, [FromBody] EvaluateDeliverableRequest request)

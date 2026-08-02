@@ -16,6 +16,7 @@ public class ProgressReportSummaryDto
     public Guid Id { get; set; }
     public Guid ContractId { get; set; }
     public int ReportRound { get; set; }
+    public string? RoundName { get; set; }   // tên đợt Staff đặt; null → FE hiện "Kỳ {số}"
     public string ReportingPeriodStart { get; set; } = null!;
     public string ReportingPeriodEnd { get; set; } = null!;
     public decimal OverallCompletionPct { get; set; }
@@ -63,6 +64,19 @@ public class CreateProgressReportRequest
     public List<CreateProgressReportItemRequest> Items { get; set; } = new();
 }
 
+/// <summary>Sửa nội dung báo cáo khi còn nháp. Không đụng danh sách hoạt động (Items) và kỳ báo cáo.</summary>
+public class UpdateProgressReportRequest
+{
+    public string CompletedContent { get; set; } = null!;
+    public string? PendingContent { get; set; }
+    public decimal OverallCompletionPct { get; set; }
+    public decimal ExpenditureToDate { get; set; }
+    public string? NextPeriodPlan { get; set; }
+    public string? PiRecommendations { get; set; }
+    /// <summary>Bảng tiến độ theo từng hoạt động (BM06). Gửi lên = thay toàn bộ bảng cũ.</summary>
+    public List<CreateProgressReportItemRequest>? Items { get; set; }
+}
+
 public class EvaluateProgressReportRequest
 {
     public string EvaluationResult { get; set; } = null!;   // SATISFACTORY / UNSATISFACTORY / NEEDS_IMPROVEMENT
@@ -72,7 +86,8 @@ public class EvaluateProgressReportRequest
 // Staff lên lịch báo cáo theo từng đề tài: hạn nộp + lịch họp + link trực tuyến.
 public class ScheduleProgressReportRequest
 {
-    public string? DueDate { get; set; }            // yyyy-MM-dd
+    public string? DueDate { get; set; }            // yyyy-MM-dd — đặt/GIA HẠN hạn nộp
     public string? ScheduledMeetingAt { get; set; } // ISO datetime
     public string? MeetingLink { get; set; }
+    public string? RoundName { get; set; }          // Staff đặt/sửa tên đợt (vd "Giữa kỳ")
 }

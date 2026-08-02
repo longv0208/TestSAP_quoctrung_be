@@ -1,6 +1,7 @@
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Councils;
 using FURPMS.Application.DTOs.ReviewRounds;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.AI;
@@ -17,15 +18,18 @@ public class ReviewRoundService : IReviewRoundService
     private readonly IReviewRepository _review;
     private readonly IProposalRepository _proposals;
     private readonly INotificationRepository _notifications;
+    private readonly IClock _clock;
 
     public ReviewRoundService(
         IReviewRepository review,
         IProposalRepository proposals,
-        INotificationRepository notifications)
+        INotificationRepository notifications,
+        IClock clock)
     {
         _review = review;
         _proposals = proposals;
         _notifications = notifications;
+        _clock = clock;
     }
 
     private async Task<(Guid projectId, int cycleTrackId)> ResolveProjectAsync(Guid proposalId)
@@ -84,8 +88,8 @@ public class ReviewRoundService : IReviewRoundService
             throw new ArgumentException("Dimension must be SCIENCE or FINANCE.");
 
         if (string.IsNullOrWhiteSpace(request.RoundType) ||
-            !new[] { "SCREENING", "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
-            throw new ArgumentException("RoundType must be SCREENING, REVIEW, or ACCEPTANCE.");
+            !new[] { "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
+            throw new ArgumentException("RoundType chỉ nhận REVIEW hoặc ACCEPTANCE (rule #16: chỉ 2 hội đồng).");
 
         var (projectId, cycleTrackId) = await ResolveProjectAsync(proposalId);
 
@@ -146,7 +150,7 @@ public class ReviewRoundService : IReviewRoundService
         }
 
         round.Status = ReviewRoundStatus.Open;
-        round.OpenedAt = DateTime.UtcNow;
+        round.OpenedAt = _clock.UtcNow;
         await _review.SaveChangesAsync();
 
         return MapToResponse(round, null);
@@ -171,7 +175,7 @@ public class ReviewRoundService : IReviewRoundService
         var targetLink = ResolveTargetProjectRound(round, request.ProposalProjectId);
 
         // Dùng chung logic với ApproveMinutesAsync: chốt project_round + tự đóng round nhất quán.
-        ReviewRoundFinalizer.ApplyProjectResult(round, targetLink, request.Result, DateTime.UtcNow);
+        ReviewRoundFinalizer.ApplyProjectResult(round, targetLink, request.Result, _clock.UtcNow);
 
         if (request.Result == ReviewResult.Rejected)
         {

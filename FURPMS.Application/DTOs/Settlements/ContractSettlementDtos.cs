@@ -35,5 +35,6 @@ public class SignSettlementRequest
 
 public class MarkClearedRequest
 {
-    public DateOnly ClearedDate { get; set; }
+    /// <summary>Bỏ trống = lấy ngày hiện tại của SERVER (tôn trọng đồng hồ test), không lấy ngày máy người dùng.</summary>
+    public DateOnly? ClearedDate { get; set; }
 }

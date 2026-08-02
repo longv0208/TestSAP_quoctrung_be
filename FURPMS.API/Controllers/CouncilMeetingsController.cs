@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FURPMS.Application.Common;
 using FURPMS.Application.DTOs.Meetings;
 using FURPMS.Application.Interfaces.Services;
@@ -23,6 +24,17 @@ public class CouncilMeetingsController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var result = await _service.GetAllAsync();
+        return Ok(ApiResponse<IEnumerable<MeetingListDto>>.Ok(result));
+    }
+
+    // GET /api/meetings/my — lịch họp hội đồng CHẤM ĐỀ TÀI CỦA TÔI (PI).
+    // Process_Spec §xét duyệt: "PI trình bày, rời phòng khi họp kín" → PI phải biết họp lúc nào,
+    // ở đâu / link nào. Trước đây chỉ Staff + Reviewer xem được lịch, PI không có màn nào.
+    [HttpGet("api/meetings/my")]
+    public async Task<IActionResult> GetMine()
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _service.GetForPiAsync(userId);
         return Ok(ApiResponse<IEnumerable<MeetingListDto>>.Ok(result));
     }
 
@@ -59,5 +71,23 @@ public class CouncilMeetingsController : ControllerBase
     {
         var result = await _service.EndAsync(id);
         return Ok(ApiResponse<MeetingDto>.Ok(result));
+    }
+
+    // GET /api/meetings/{id}/attendance — điểm danh (theo DS hội đồng)
+    [HttpGet("api/meetings/{id:guid}/attendance")]
+    public async Task<IActionResult> GetAttendance(Guid id)
+    {
+        var result = await _service.GetAttendanceAsync(id);
+        return Ok(ApiResponse<IEnumerable<AttendanceEntryDto>>.Ok(result));
+    }
+
+    // PUT /api/meetings/{id}/attendance — Thư ký/Admin/Staff lưu điểm danh
+    [HttpPut("api/meetings/{id:guid}/attendance")]
+    public async Task<IActionResult> SaveAttendance(Guid id, [FromBody] SaveAttendanceRequest request)
+    {
+        var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var isAdminStaff = User.FindAll(ClaimTypes.Role).Select(c => c.Value).Any(r => r is "Admin" or "Staff");
+        await _service.SaveAttendanceAsync(id, callerId, isAdminStaff, request);
+        return Ok(ApiResponse.Ok("Đã lưu điểm danh."));
     }
 }

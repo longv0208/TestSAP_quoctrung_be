@@ -1,5 +1,7 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.ReviewScoring;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Review;
@@ -12,15 +14,18 @@ public class ReviewScoringService : IReviewScoringService
     private readonly IReviewRepository _review;
     private readonly IMasterDataRepository _masterData;
     private readonly IProposalRepository _proposals;
+    private readonly IClock _clock;
 
     public ReviewScoringService(
         IReviewRepository review,
         IMasterDataRepository masterData,
-        IProposalRepository proposals)
+        IProposalRepository proposals,
+        IClock clock)
     {
         _review = review;
         _masterData = masterData;
         _proposals = proposals;
+        _clock = clock;
     }
 
     // Phase B: council chấm NHÓM đề tài — suy ra project từ assignment
@@ -88,7 +93,8 @@ public class ReviewScoringService : IReviewScoringService
 
         var member = await _review.CouncilMembers
             .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId)
-            ?? throw new UnauthorizedAccessException("You are not a member of this review council.");
+            ?? throw new ForbiddenException("You are not a member of this review council.");
+        AssertConfirmed(member);
 
         var template = await _masterData.RubricTemplates
             .Include(t => t.Criteria)
@@ -125,7 +131,7 @@ public class ReviewScoringService : IReviewScoringService
             existing.TemplateId = request.TemplateId;
             existing.GeneralComments = request.GeneralComments;
             existing.OtherRecommendations = request.OtherRecommendations;
-            existing.SubmittedAt = DateTime.UtcNow;
+            existing.SubmittedAt = _clock.UtcNow;
             existing.IsValidBallot = true;
             score = existing;
         }
@@ -139,7 +145,7 @@ public class ReviewScoringService : IReviewScoringService
                 TemplateId = request.TemplateId,
                 GeneralComments = request.GeneralComments,
                 OtherRecommendations = request.OtherRecommendations,
-                SubmittedAt = DateTime.UtcNow,
+                SubmittedAt = _clock.UtcNow,
                 IsValidBallot = true
             };
             await _review.AddScoreAsync(score);
@@ -216,14 +222,17 @@ public class ReviewScoringService : IReviewScoringService
             throw new InvalidOperationException("Biên bản đã được Chủ tịch khóa, không thể sửa.");
 
         var me = council.Members.FirstOrDefault(m => m.UserId == secretaryUserId)
-            ?? throw new UnauthorizedAccessException("Bạn không thuộc hội đồng này.");
+            ?? throw new ForbiddenException("Bạn không thuộc hội đồng này.");
+        AssertConfirmed(me);
         if (!IsSecretary(me.MemberRole))
-            throw new UnauthorizedAccessException("Chỉ Thư ký hội đồng được soạn biên bản.");
+            throw new ForbiddenException("Chỉ Thư ký hội đồng được soạn biên bản.");
 
         var projectIdM = await ResolveProjectIdAsync(councilId, request.ProjectId);
         var (total, attending, valid, invalid, avg) = await ComputeTallyAsync(council, councilId, projectIdM);
 
         var decision = await _review.Decisions
+            .Include(d => d.QaEntries)
+            .Include(d => d.MemberOpinions)
             .FirstOrDefaultAsync(d => d.CouncilId == councilId && d.ProjectId == projectIdM);
         if (decision != null && decision.FinalizedAt != null)
             throw new InvalidOperationException("Biên bản đã được khóa.");
@@ -245,6 +254,41 @@ public class ReviewScoringService : IReviewScoringService
         decision.SecretaryUserId = secretaryUserId;
         decision.FinalizedAt = null;                 // vẫn là nháp, CHƯA khóa
 
+        // Cách 1 (Q&A): thay TOÀN BỘ danh sách hỏi–đáp mỗi lần lưu nháp (xóa cũ tường minh
+        // để EF không báo "severed" khi FK bắt buộc, rồi thêm mới).
+        if (decision.QaEntries.Count > 0)
+            _review.RemoveQaEntriesRange(decision.QaEntries.ToList());
+        decision.QaEntries.Clear();
+        if (request.QaEntries != null)
+        {
+            var order = 0;
+            foreach (var qa in request.QaEntries.Where(q => !string.IsNullOrWhiteSpace(q.Question)))
+                decision.QaEntries.Add(new CouncilQaEntry
+                {
+                    AskedBy = qa.AskedBy,
+                    Question = qa.Question,
+                    Answer = qa.Answer,
+                    Order = qa.Order != 0 ? qa.Order : order++
+                });
+        }
+
+        // II.1 — ý kiến từng thành viên (chuyên môn / kinh phí): cũng thay TOÀN BỘ.
+        if (decision.MemberOpinions.Count > 0)
+            _review.RemoveMemberOpinionsRange(decision.MemberOpinions.ToList());
+        decision.MemberOpinions.Clear();
+        if (request.MemberOpinions != null)
+        {
+            var oOrder = 0;
+            foreach (var op in request.MemberOpinions.Where(o => !string.IsNullOrWhiteSpace(o.MemberName)))
+                decision.MemberOpinions.Add(new CouncilMemberOpinion
+                {
+                    MemberName = op.MemberName,
+                    AcademicComment = op.AcademicComment,
+                    BudgetComment = op.BudgetComment,
+                    Order = op.Order != 0 ? op.Order : oOrder++
+                });
+        }
+
         await _review.SaveChangesAsync();
         return MapDecision(decision);
     }
@@ -259,12 +303,15 @@ public class ReviewScoringService : IReviewScoringService
             throw new InvalidOperationException("Biên bản đã được khóa.");
 
         var me = council.Members.FirstOrDefault(m => m.UserId == chairUserId)
-            ?? throw new UnauthorizedAccessException("Bạn không thuộc hội đồng này.");
+            ?? throw new ForbiddenException("Bạn không thuộc hội đồng này.");
+        AssertConfirmed(me);
         if (!IsChair(me.MemberRole))
-            throw new UnauthorizedAccessException("Chỉ Chủ tịch hội đồng được duyệt biên bản.");
+            throw new ForbiddenException("Chỉ Chủ tịch hội đồng được duyệt biên bản.");
 
         // Bản nháp đang chờ duyệt (per project) — council 1 đề tài thì chỉ có 1 nháp.
         var drafts = await _review.Decisions
+            .Include(d => d.QaEntries)
+            .Include(d => d.MemberOpinions)
             .Where(d => d.CouncilId == councilId && d.FinalizedAt == null)
             .ToListAsync();
         if (drafts.Count == 0)
@@ -275,9 +322,21 @@ public class ReviewScoringService : IReviewScoringService
         var decision = drafts[0];
 
         decision.ChairUserId = chairUserId;
-        decision.FinalizedAt = DateTime.UtcNow;      // duyệt = khóa
+        decision.FinalizedAt = _clock.UtcNow;      // duyệt = khóa
 
         await MarkDecidedIfAllProjectsFinalizedAsync(council, decision.ProjectId);
+
+        // Vòng NGHIỆM THU khác vòng XÉT DUYỆT: nghiệm thu Đạt → đề tài HOÀN THÀNH (Process_Spec:
+        // ACCEPTANCE → COMPLETED), chưa đạt → quay lại IN_PROGRESS để PI làm tiếp. Trước đây mọi
+        // vòng đều set APPROVED/CANCELLED nên nghiệm thu xong đề tài vẫn "Đã duyệt" — đứt mạch cuối.
+        ReviewRound? round = null;
+        if (council.RoundId.HasValue)
+        {
+            round = await _review.ReviewRounds
+                .Include(r => r.ProjectRounds)
+                .FirstOrDefaultAsync(r => r.Id == council.RoundId.Value);
+        }
+        var isAcceptance = string.Equals(round?.RoundType, "ACCEPTANCE", StringComparison.OrdinalIgnoreCase);
 
         // Chỉ KHI Chủ tịch duyệt mới cập nhật status đề tài (bản hiện hành + project).
         var proposal = await _proposals.Query().IgnoreQueryFilters()
@@ -285,35 +344,41 @@ public class ReviewScoringService : IReviewScoringService
             .FirstOrDefaultAsync(p => p.ProjectId == decision.ProjectId && p.IsCurrent);
         if (proposal != null)
         {
-            proposal.Status = decision.Result switch
+            if (!isAcceptance)
             {
-                ReviewResult.Approved => ProposalStatus.Approved,
-                ReviewResult.Rejected => ProposalStatus.Rejected,
-                ReviewResult.RevisionRequired => ProposalStatus.RevisionRequired,
-                _ => proposal.Status
-            };
-            proposal.UpdatedAt = DateTime.UtcNow;
-            proposal.Project.Status = decision.Result switch
-            {
-                ReviewResult.Approved => ProjectStatus.Approved,
-                ReviewResult.Rejected => ProjectStatus.Cancelled,
-                _ => proposal.Project.Status
-            };
+                proposal.Status = decision.Result switch
+                {
+                    ReviewResult.Approved => ProposalStatus.Approved,
+                    ReviewResult.Rejected => ProposalStatus.Rejected,
+                    ReviewResult.RevisionRequired => ProposalStatus.RevisionRequired,
+                    _ => proposal.Status
+                };
+                proposal.UpdatedAt = DateTime.UtcNow;
+            }
+
+            proposal.Project.Status = isAcceptance
+                ? decision.Result switch
+                {
+                    ReviewResult.Approved => ProjectStatus.Completed,      // nghiệm thu ĐẠT → hoàn thành
+                    ReviewResult.Rejected => ProjectStatus.InProgress,     // chưa đạt → làm tiếp
+                    ReviewResult.RevisionRequired => ProjectStatus.InProgress,
+                    _ => proposal.Project.Status
+                }
+                : decision.Result switch
+                {
+                    ReviewResult.Approved => ProjectStatus.Approved,
+                    ReviewResult.Rejected => ProjectStatus.Cancelled,
+                    _ => proposal.Project.Status
+                };
             proposal.Project.UpdatedAt = DateTime.UtcNow;
         }
 
         // Nối mạch project_round (dùng chung logic với CloseRoundAsync qua ReviewRoundFinalizer):
         // đánh dấu kết quả CỦA ĐỀ TÀI NÀY + tự đóng round khi mọi đề tài đã CHỐT terminal.
         // REVISION_REQUIRED giữ vòng mở (không terminal) để PI sửa & nộp lại — rule #1.
-        if (council.RoundId.HasValue)
-        {
-            var round = await _review.ReviewRounds
-                .Include(r => r.ProjectRounds)
-                .FirstOrDefaultAsync(r => r.Id == council.RoundId.Value);
-            var projectRound = round?.ProjectRounds.FirstOrDefault(pr => pr.ProjectId == decision.ProjectId);
-            if (round != null && projectRound != null)
-                ReviewRoundFinalizer.ApplyProjectResult(round, projectRound, decision.Result, DateTime.UtcNow);
-        }
+        var projectRound = round?.ProjectRounds.FirstOrDefault(pr => pr.ProjectId == decision.ProjectId);
+        if (round != null && projectRound != null)
+            ReviewRoundFinalizer.ApplyProjectResult(round, projectRound, decision.Result, _clock.UtcNow);
 
         await _review.SaveChangesAsync();
         return MapDecision(decision);
@@ -363,9 +428,24 @@ public class ReviewScoringService : IReviewScoringService
     private static bool IsChair(string? role) => RoleIs(role, CouncilMemberRole.Chair) || RoleIs(role, "Chairman");
     private static bool IsSecretary(string? role) => RoleIs(role, CouncilMemberRole.Secretary);
 
+    /// <summary>
+    /// Có tên trong hội đồng là CHƯA đủ — phải đã xác nhận lời mời mới được chấm/soạn/duyệt biên bản.
+    /// Người mới gán (ASSIGNED), chưa trả lời (INVITED), đã từ chối (DECLINED) hay quá hạn (EXPIRED)
+    /// đều không có tư cách tham gia (rule #13: quá hạn/từ chối thì Staff đi tìm người thay).
+    /// </summary>
+    private static void AssertConfirmed(CouncilMember member)
+    {
+        if (!RoleIs(member.Status, CouncilMemberStatus.Confirmed))
+            throw new ForbiddenException(
+                "Bạn chưa xác nhận tham gia hội đồng này (trạng thái: " +
+                $"{member.Status ?? "chưa rõ"}), nên chưa thể chấm điểm hoặc soạn biên bản.");
+    }
+
     public async Task<CouncilDecisionDto?> GetDecisionAsync(Guid councilId)
     {
         var decision = await _review.Decisions
+            .Include(d => d.QaEntries)
+            .Include(d => d.MemberOpinions)
             .FirstOrDefaultAsync(d => d.CouncilId == councilId);
         return decision == null ? null : MapDecision(decision);
     }
@@ -424,7 +504,21 @@ public class ReviewScoringService : IReviewScoringService
         Result = d.Result,
         CouncilComments = d.CouncilComments,
         Recommendations = d.Recommendations,
-        FinalizedAt = d.FinalizedAt
+        FinalizedAt = d.FinalizedAt,
+        QaEntries = d.QaEntries.OrderBy(q => q.Order).Select(q => new QaEntryDto
+        {
+            AskedBy = q.AskedBy,
+            Question = q.Question,
+            Answer = q.Answer,
+            Order = q.Order
+        }).ToList(),
+        MemberOpinions = d.MemberOpinions.OrderBy(o => o.Order).Select(o => new MemberOpinionDto
+        {
+            MemberName = o.MemberName,
+            AcademicComment = o.AcademicComment,
+            BudgetComment = o.BudgetComment,
+            Order = o.Order
+        }).ToList()
     };
 
     private async Task<ReviewScoreDto> BuildScoreDto(

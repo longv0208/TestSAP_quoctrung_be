@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using FURPMS.Application.Common;
 using FURPMS.Application.DTOs.ReviewScoring;
+using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.API.Controllers;
 
@@ -13,10 +15,24 @@ namespace FURPMS.API.Controllers;
 public class ReviewScoringController : ControllerBase
 {
     private readonly IReviewScoringService _scoring;
+    private readonly IReviewRepository _review;
 
-    public ReviewScoringController(IReviewScoringService scoring)
+    public ReviewScoringController(IReviewScoringService scoring, IReviewRepository review)
     {
         _scoring = scoring;
+        _review = review;
+    }
+
+    /// <summary>Admin/Staff xem tự do; ngoài ra phải là thành viên hội đồng (Thư ký cần điểm để lập biên bản).</summary>
+    private async Task EnsureAdminStaffOrMemberAsync(Guid councilId)
+    {
+        var roles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToHashSet();
+        if (roles.Contains("Admin") || roles.Contains("Staff")) return;
+
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var isMember = await _review.CouncilMembers.AnyAsync(m => m.CouncilId == councilId && m.UserId == userId);
+        if (!isMember)
+            throw new ForbiddenException("Bạn không thuộc hội đồng này.");
     }
 
     // GET /api/review-scoring/rubrics
@@ -55,9 +71,9 @@ public class ReviewScoringController : ControllerBase
 
     // GET /api/review-scoring/councils/{councilId}/scores
     [HttpGet("councils/{councilId:guid}/scores")]
-    [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GetCouncilScores(Guid councilId)
     {
+        await EnsureAdminStaffOrMemberAsync(councilId);
         var result = await _scoring.GetCouncilScoresAsync(councilId);
         return Ok(ApiResponse<IEnumerable<ReviewScoreDto>>.Ok(result));
     }

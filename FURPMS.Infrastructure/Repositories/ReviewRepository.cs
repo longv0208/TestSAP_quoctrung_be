@@ -26,13 +26,20 @@ public class ReviewRepository : Repository<ReviewCouncil>, IReviewRepository
     public async Task AddProjectRoundAsync(ProjectRound projectRound) => await _db.ProjectRounds.AddAsync(projectRound);
     public void RemoveProjectRoundsRange(IEnumerable<ProjectRound> projectRounds) => _db.ProjectRounds.RemoveRange(projectRounds);
     public async Task AddProjectAssignmentAsync(CouncilProjectAssignment assignment) => await _db.CouncilProjectAssignments.AddAsync(assignment);
+    public void RemoveProjectAssignmentsRange(IEnumerable<CouncilProjectAssignment> assignments) => _db.CouncilProjectAssignments.RemoveRange(assignments);
     public async Task AddMemberAsync(CouncilMember member) => await _db.CouncilMembers.AddAsync(member);
     public async Task AddScoreAsync(ProposalReviewScore score) => await _db.ProposalReviewScores.AddAsync(score);
     public void AddScoreDetailsRange(IEnumerable<ReviewScoreDetail> details) => _db.ReviewScoreDetails.AddRange(details);
     public void RemoveScoreDetailsRange(IEnumerable<ReviewScoreDetail> details) => _db.ReviewScoreDetails.RemoveRange(details);
     public async Task AddDecisionAsync(CouncilDecision decision) => await _db.CouncilDecisions.AddAsync(decision);
+    public void RemoveQaEntriesRange(IEnumerable<CouncilQaEntry> entries) => _db.CouncilQaEntries.RemoveRange(entries);
+    public void RemoveMemberOpinionsRange(IEnumerable<CouncilMemberOpinion> opinions) => _db.CouncilMemberOpinions.RemoveRange(opinions);
     public async Task AddMeetingAsync(CouncilMeeting meeting) => await _db.CouncilMeetings.AddAsync(meeting);
+    public async Task AddMeetingAttendanceAsync(MeetingAttendance attendance) => await _db.MeetingAttendances.AddAsync(attendance);
     public async Task AddAcceptanceEvaluationAsync(AcceptanceEvaluation eval) => await _db.AcceptanceEvaluations.AddAsync(eval);
     public async Task AddReviewerFeedbackAsync(ReviewerFeedback feedback) => await _db.ReviewerFeedbacks.AddAsync(feedback);
     public void RemoveMember(CouncilMember member) => _db.CouncilMembers.Remove(member);
+    public void RemoveMembersRange(IEnumerable<CouncilMember> members) => _db.CouncilMembers.RemoveRange(members);
+    public void RemoveMeetingsRange(IEnumerable<CouncilMeeting> meetings) => _db.CouncilMeetings.RemoveRange(meetings);
+    public void RemoveAttendancesRange(IEnumerable<MeetingAttendance> attendances) => _db.MeetingAttendances.RemoveRange(attendances);
 }

@@ -23,6 +23,15 @@ public class SubmitDeliverableRequest
     public string? Description { get; set; }
 }
 
+// Staff định nghĩa 1 sản phẩm phải nộp cho hợp đồng (đề cương không có trường sản phẩm cấu trúc → nhập tay).
+public class CreateDeliverableRequest
+{
+    public string ProductName { get; set; } = null!;
+    public int? CategoryId { get; set; }
+    public string? DueDate { get; set; }   // yyyy-MM-dd
+    public string? Description { get; set; }
+}
+
 public class EvaluateDeliverableRequest
 {
     public string AcceptanceStatus { get; set; } = null!;   // PASSED / FAILED

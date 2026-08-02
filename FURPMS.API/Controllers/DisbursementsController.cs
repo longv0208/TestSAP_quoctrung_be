@@ -3,6 +3,7 @@ using FURPMS.Application.Common;
 using FURPMS.Application.DTOs.Contract;
 using FURPMS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FURPMS.API.Controllers;
@@ -19,6 +20,7 @@ public class DisbursementsController : ControllerBase
         _service = service;
     }
 
+    [ProducesResponseType(typeof(ApiResponse<DisbursementResponse>), StatusCodes.Status200OK)]
     [HttpPost("{id:int}/confirm")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Confirm(int id, [FromBody] ConfirmDisbursementRequest request)

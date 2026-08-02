@@ -8,6 +8,9 @@ public interface ICycleRepository : IRepository<ResearchCycle>
     IQueryable<ResearchTrack> Tracks { get; }
     IQueryable<CycleTrack> CycleTracks { get; }
     IQueryable<ResearchOrder> Orders { get; }
+    IQueryable<DeadlineExtension> DeadlineExtensions { get; }
     Task AddCycleTrackAsync(CycleTrack cycleTrack);
+    void RemoveCycleTrack(CycleTrack cycleTrack);
     Task AddOrderAsync(ResearchOrder order);
+    Task AddDeadlineExtensionAsync(DeadlineExtension extension);
 }

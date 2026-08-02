@@ -92,6 +92,7 @@ public class ReviewBoardService : IReviewBoardService
                 RoundType = r.RoundType,
                 Status = r.Status,
                 Result = r.Result,
+                RubricTemplateId = r.RubricTemplateId,
                 CanDelete = canDelete,
                 Projects = r.ProjectRounds.Select(pr => new ReviewBoardProjectRoundDto
                 {
@@ -124,8 +125,8 @@ public class ReviewBoardService : IReviewBoardService
             throw new ArgumentException("Dimension must be SCIENCE or FINANCE.");
 
         if (string.IsNullOrWhiteSpace(request.RoundType) ||
-            !new[] { "SCREENING", "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
-            throw new ArgumentException("RoundType must be SCREENING, REVIEW, or ACCEPTANCE.");
+            !new[] { "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
+            throw new ArgumentException("RoundType chỉ nhận REVIEW hoặc ACCEPTANCE (rule #16: chỉ 2 hội đồng).");
 
         var cycleTrack = await _cycles.CycleTracks
             .FirstOrDefaultAsync(ct => ct.CycleId == cycleId && ct.TrackId == trackId)
@@ -273,8 +274,7 @@ public class ReviewBoardService : IReviewBoardService
 
     public async Task<ReviewBoardCouncilDto> CreateCouncilPackageAsync(Guid roundId, CreateCouncilPackageRequest request, Guid createdBy)
     {
-        if (request.ProjectIds.Count == 0)
-            throw new ArgumentException("Phải chọn ít nhất 1 đề tài cho hội đồng.");
+        // Cho phép tạo hội đồng CHƯA có đề tài (gán sau qua dropdown ở board).
         if (request.Members.Count == 0)
             throw new ArgumentException("Phải gán ít nhất 1 thành viên hội đồng.");
 
@@ -282,6 +282,12 @@ public class ReviewBoardService : IReviewBoardService
         foreach (var m in request.Members)
             if (!validRoles.Contains(m.MemberRole))
                 throw new ArgumentException("MemberRole must be Member, Chair, Secretary, or Opponent.");
+
+        // 1 người chỉ giữ 1 vị trí / hội đồng — không được vừa Chủ tịch vừa Thư ký/Thành viên
+        // (trước đây loop add thẳng nên gán trùng 1 người cho 3 vai vẫn lọt). AddMemberAsync đã chặn
+        // dup, đây chặn nốt luồng tạo hội đồng.
+        if (request.Members.GroupBy(m => m.UserId).Any(g => g.Count() > 1))
+            throw new ArgumentException("Mỗi người chỉ được giữ 1 vị trí trong hội đồng.");
 
         // Rule #12: kết quả chốt qua biên bản Thư ký soạn → Chủ tịch duyệt. Thiếu 1 trong 2 vai trò
         // thì hội đồng KHÔNG bao giờ chốt được → bắt buộc có đủ ngay khi tạo (tránh hội đồng "chết").

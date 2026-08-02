@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Proposals;
 using FURPMS.Application.Interfaces;
@@ -20,6 +21,7 @@ public class ProposalService : IProposalService
     private readonly IUserRepository _users;
     private readonly IClock _clock;
     private readonly IReviewRoundService _reviewRounds;
+    private readonly IReviewRepository _review;
 
     public ProposalService(
         IProposalRepository proposals,
@@ -27,7 +29,8 @@ public class ProposalService : IProposalService
         IMasterDataRepository masterData,
         IUserRepository users,
         IClock clock,
-        IReviewRoundService reviewRounds)
+        IReviewRoundService reviewRounds,
+        IReviewRepository review)
     {
         _proposals = proposals;
         _cycles = cycles;
@@ -35,6 +38,7 @@ public class ProposalService : IProposalService
         _users = users;
         _clock = clock;
         _reviewRounds = reviewRounds;
+        _review = review;
     }
 
     private IQueryable<Proposal> QueryWithProject() => _proposals.Query()
@@ -48,14 +52,17 @@ public class ProposalService : IProposalService
     public async Task<IEnumerable<ProposalSummaryDto>> GetProposalsAsync(
         ProposalQueryParams queryParams,
         Guid requesterId,
-        IEnumerable<string> requesterRoles)
+        IEnumerable<string> requesterRoles,
+        bool ownOnly = false)
     {
         var query = QueryWithProject()
             .Where(p => p.IsCurrent)     // danh sách chỉ hiện bản hiện hành của mỗi project
             .AsQueryable();
 
+        // "Đề cương của tôi" (ownOnly) LUÔN chỉ của người gọi — kể cả khi họ là Admin/Staff
+        // (đa vai: đang "làm PI" thì phải thấy đúng đề cương mình nộp, không phải toàn hệ thống).
         var roleSet = requesterRoles.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (!roleSet.Contains("Admin") && !roleSet.Contains("Staff"))
+        if (ownOnly || (!roleSet.Contains("Admin") && !roleSet.Contains("Staff")))
             query = query.Where(p => p.Project.PiUserId == requesterId && !p.IsDeleted && !p.Project.IsDeleted);
         else
             query = query.Where(p => !p.IsDeleted && !p.Project.IsDeleted);
@@ -80,7 +87,31 @@ public class ProposalService : IProposalService
         return proposals.Select(MapSummary);
     }
 
-    public async Task<ProposalDto> GetProposalByIdAsync(Guid proposalId)
+    // Có kiểm quyền: Staff/Admin xem tất cả; PI xem đề cương của mình; reviewer xem đề cương mà
+    // hội đồng họ tham gia được gán chấm. Còn lại 403 (chống IDOR — trước đây ai đăng nhập cũng đọc được).
+    public async Task<ProposalDto> GetProposalByIdAsync(Guid proposalId, Guid callerId, IEnumerable<string> callerRoles)
+    {
+        var roleSet = callerRoles as ISet<string> ?? callerRoles.ToHashSet();
+        if (!roleSet.Contains("Admin") && !roleSet.Contains("Staff"))
+        {
+            var info = await _proposals.Query().IgnoreQueryFilters()
+                .Where(p => p.Id == proposalId)
+                .Select(p => new { p.Project.PiUserId, p.ProjectId })
+                .FirstOrDefaultAsync()
+                ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+
+            var allowed = info.PiUserId == callerId
+                || await _review.CouncilMembers.AnyAsync(m => m.UserId == callerId
+                    && _review.ProjectAssignments.Any(a => a.CouncilId == m.CouncilId && a.ProjectId == info.ProjectId));
+            if (!allowed)
+                throw new ForbiddenException("Bạn không có quyền xem đề cương này.");
+        }
+
+        return await LoadProposalDetailAsync(proposalId);
+    }
+
+    // Nạp chi tiết (KHÔNG kiểm quyền) — dùng nội bộ sau khi đã tạo/sửa (caller đã là PI hợp lệ).
+    private async Task<ProposalDto> LoadProposalDetailAsync(Guid proposalId)
     {
         var proposal = await QueryWithProject()
             .Include(p => p.Project).ThenInclude(pr => pr.Members)
@@ -119,10 +150,10 @@ public class ProposalService : IProposalService
                 .FirstOrDefaultAsync()
               ?? throw new InvalidOperationException("No open research cycle found. Cannot submit proposal.");
 
+        // Loại đề tài LẤY TỪ ĐỢT (rule #7: 1 đợt = đúng 1 loại) — KHÔNG lấy từ input PI để tránh lệch dữ liệu.
         var researchType = await _masterData.ResearchTypes
-            .FirstOrDefaultAsync(r => r.Id == request.ResearchType)
-            ?? await _masterData.ResearchTypes.FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException("Research type not found.");
+            .FirstOrDefaultAsync(r => r.Id == openCycle.ResearchTypeId)
+            ?? throw new KeyNotFoundException("Research type of the cycle not found.");
 
         var piUser = await _users.GetByIdAsync(piUserId)
             ?? throw new KeyNotFoundException($"User {piUserId} not found.");
@@ -187,7 +218,7 @@ public class ProposalService : IProposalService
         // Persist budget items + tổng kinh phí
         await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems);
 
-        return await GetProposalByIdAsync(proposal.Id);
+        return await LoadProposalDetailAsync(proposal.Id);
     }
 
     // Tìm/tạo cặp (cycle, track) — Review 2 điểm b: 1 đợt chứa nhiều track.
@@ -307,7 +338,7 @@ public class ProposalService : IProposalService
         var project = proposal.Project;
 
         if (project.PiUserId != userId)
-            throw new UnauthorizedAccessException("Only the PI can edit this proposal.");
+            throw new ForbiddenException("Only the PI can edit this proposal.");
 
         // DRAFT: sửa tại chỗ. REVISION_REQUIRED: tạo BẢN MỚI (versioning — Review 2 điểm a).
         if (proposal.Status == ProposalStatus.RevisionRequired && proposal.IsCurrent)
@@ -333,10 +364,11 @@ public class ProposalService : IProposalService
         _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
             ?? throw new KeyNotFoundException($"Track {request.TrackId} not found.");
 
+        // Loại đề tài theo ĐỢT của project (cố định, không đổi khi sửa) — bỏ qua input PI.
+        var cycleTypeId = project.CycleTrack.Cycle?.ResearchTypeId ?? project.ResearchTypeId;
         var researchType = await _masterData.ResearchTypes
-            .FirstOrDefaultAsync(r => r.Id == request.ResearchType)
-            ?? await _masterData.ResearchTypes.FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException("Research type not found.");
+            .FirstOrDefaultAsync(r => r.Id == cycleTypeId)
+            ?? throw new KeyNotFoundException("Research type of the cycle not found.");
 
         // Đổi track → đổi cycle_track trên PROJECT (giữ nguyên cycle).
         if (project.CycleTrack.TrackId != trackId)
@@ -378,7 +410,7 @@ public class ProposalService : IProposalService
         if (request.BudgetItems.Count > 0)
             await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems);
 
-        return await GetProposalByIdAsync(proposalId);
+        return await LoadProposalDetailAsync(proposalId);
     }
 
     // Versioning (Review 2 điểm a): REVISION_REQUIRED → bản cũ giữ lịch sử, tạo v(n+1) làm bản hiện hành.
@@ -435,7 +467,7 @@ public class ProposalService : IProposalService
             await ReplaceProjectMembersAsync(project.Id, request.Members);
         await SyncBudgetItemsAsync(revision.Id, request.BudgetItems);
 
-        return await GetProposalByIdAsync(revision.Id);
+        return await LoadProposalDetailAsync(revision.Id);
     }
 
     private async Task ReplaceProjectMembersAsync(Guid projectId, List<CreateMemberRequest> members)
@@ -469,7 +501,7 @@ public class ProposalService : IProposalService
         var project = proposal.Project;
 
         if (project.PiUserId != userId)
-            throw new UnauthorizedAccessException("Only the PI can submit this proposal.");
+            throw new ForbiddenException("Only the PI can submit this proposal.");
 
         if (proposal.Status != ProposalStatus.Draft)
             throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only DRAFT proposals can be submitted.");
@@ -504,7 +536,7 @@ public class ProposalService : IProposalService
         if (proposal.VersionNo > 1)
             await _reviewRounds.ReopenAfterResubmitAsync(project.Id);
 
-        return await GetProposalByIdAsync(proposalId);
+        return await LoadProposalDetailAsync(proposalId);
     }
 
     public async Task<ProposalDto> WithdrawProposalAsync(Guid proposalId, Guid userId)
@@ -515,7 +547,7 @@ public class ProposalService : IProposalService
             ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
 
         if (proposal.Project.PiUserId != userId)
-            throw new UnauthorizedAccessException("Only the PI can withdraw this proposal.");
+            throw new ForbiddenException("Only the PI can withdraw this proposal.");
 
         if (proposal.Status != ProposalStatus.Submitted)
             throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only SUBMITTED proposals can be withdrawn.");
@@ -527,15 +559,18 @@ public class ProposalService : IProposalService
         proposal.Project.UpdatedAt = DateTime.UtcNow;
         await _proposals.SaveChangesAsync();
 
-        return await GetProposalByIdAsync(proposalId);
+        return await LoadProposalDetailAsync(proposalId);
     }
 
     private static ProposalSummaryDto MapSummary(Proposal p) => new()
     {
         Id = p.Id,
         TitleVI = p.TitleVi,
+        TitleEN = p.TitleEn,
         ResearchType = p.Project?.ResearchType?.Name ?? "—",
         Status = p.Status,
+        CycleName = p.Project?.CycleTrack?.Cycle?.SemesterCode
+                    ?? p.Project?.CycleTrack?.Cycle?.CycleYear.ToString(),
         TrackName = p.Project?.CycleTrack?.Track?.Name ?? "—",
         PrincipalInvestigatorName = p.Project?.PiUser?.FullName ?? "—",
         TotalBudget = p.Budget?.TotalAmount ?? 0m,

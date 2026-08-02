@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Progress;
 using FURPMS.Application.Interfaces.Repositories;
@@ -16,6 +17,53 @@ public class ProgressReportService : IProgressReportService
     {
         _contracts = contracts;
         _proposals = proposals;
+    }
+
+    // QĐ543 Điều 10.1: Ứng dụng 2 kỳ, Cơ bản 1 kỳ. Applied = loại có đặt hàng (RequireOrderingUnit).
+    private static int RequiredRounds(FURPMS.Domain.Entities.MasterData.ResearchType? type) =>
+        type?.RequireOrderingUnit == true ? 2 : 1;
+
+    // Staff sinh sẵn các kỳ báo cáo — chia đều theo mốc hợp đồng; bỏ qua kỳ đã có.
+    // roundCount: Staff tự chọn số kỳ; bỏ trống → mặc định theo loại (Ứng dụng 2 / Cơ bản 1).
+    public async Task<IEnumerable<ProgressReportSummaryDto>> GenerateScheduledRoundsAsync(Guid contractId, int? roundCount = null)
+    {
+        var contract = await _contracts.Query()
+            .Include(c => c.Project).ThenInclude(p => p.ResearchType)
+            .FirstOrDefaultAsync(c => c.Id == contractId)
+            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+
+        if (roundCount is < 1 or > 12)
+            throw new ArgumentException("Số kỳ báo cáo phải từ 1 đến 12.");
+
+        var required = roundCount ?? RequiredRounds(contract.Project.ResearchType);
+        var existing = await _contracts.ProgressReports
+            .Where(r => r.ContractId == contractId)
+            .Select(r => r.ReportRound)
+            .ToListAsync();
+
+        var start = contract.StartDate;
+        var end = contract.EndDate > start ? contract.EndDate : start.AddMonths(6);
+        var totalDays = end.DayNumber - start.DayNumber;
+        var chunk = required > 0 ? totalDays / required : totalDays;
+
+        for (int round = 1; round <= required; round++)
+        {
+            if (existing.Contains(round)) continue;
+            var pStart = start.AddDays(chunk * (round - 1));
+            var pEnd = round == required ? end : start.AddDays(chunk * round);
+            await _contracts.AddProgressReportAsync(new ProgressReport
+            {
+                ContractId = contractId,
+                ReportRound = round,
+                ReportingPeriodStart = pStart,
+                ReportingPeriodEnd = pEnd,
+                DueDate = pEnd,
+                CompletedContent = "",   // NOT NULL — PI điền sau; để rỗng cho kỳ vừa mở
+                Status = ProgressReportStatus.Draft
+            });
+        }
+        await _contracts.SaveChangesAsync();
+        return await GetByContractAsync(contractId);
     }
 
     public async Task<IEnumerable<ProgressReportSummaryDto>> GetByContractAsync(Guid contractId)
@@ -45,11 +93,15 @@ public class ProgressReportService : IProgressReportService
     {
         var contract = await _contracts.Query()
             .Include(c => c.Project).ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
+            .Include(c => c.Project).ThenInclude(p => p.ResearchType)
             .FirstOrDefaultAsync(c => c.Id == contractId)
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
         if (contract.Project.PiUserId != userId)
-            throw new UnauthorizedAccessException("Only the PI of this contract may create progress reports.");
+            throw new ForbiddenException("Only the PI of this contract may create progress reports.");
+
+        // QĐ543 Điều 10.1 gợi ý Ứng dụng 2 / Cơ bản 1 kỳ, NHƯNG không chặn cứng (thầy 29/07:
+        // Staff phải chỉnh được số lần) — chỉ dùng làm mặc định khi sinh kỳ tự động.
 
         if (!DateOnly.TryParse(request.ReportingPeriodStart, out var periodStart))
             throw new ArgumentException("ReportingPeriodStart must be a valid date (yyyy-MM-dd).");
@@ -70,7 +122,7 @@ public class ProgressReportService : IProgressReportService
             ReportRound = nextRound,
             ReportingPeriodStart = periodStart,
             ReportingPeriodEnd = periodEnd,
-            CompletedContent = request.CompletedContent,
+            CompletedContent = request.CompletedContent ?? "",   // NOT NULL
             PendingContent = request.PendingContent,
             OverallCompletionPct = request.OverallCompletionPct,
             ExpenditureToDate = request.ExpenditureToDate,
@@ -109,6 +161,49 @@ public class ProgressReportService : IProgressReportService
         return await GetByIdAsync(report.Id);
     }
 
+    public async Task<ProgressReportDto> UpdateAsync(Guid reportId, UpdateProgressReportRequest request, Guid userId)
+    {
+        var report = await _contracts.ProgressReports
+            .Include(r => r.Contract).ThenInclude(c => c.Project)
+            .FirstOrDefaultAsync(r => r.Id == reportId)
+            ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
+
+        if (report.Contract.Project.PiUserId != userId)
+            throw new ForbiddenException("Only the PI may edit this report.");
+
+        if (report.Status != ProgressReportStatus.Draft)
+            throw new InvalidOperationException($"Report is '{report.Status}'; only DRAFT reports can be edited.");
+
+        if (request.OverallCompletionPct is < 0 or > 100)
+            throw new ArgumentException("OverallCompletionPct must be between 0 and 100.");
+
+        report.CompletedContent = request.CompletedContent ?? "";   // NOT NULL
+        report.PendingContent = request.PendingContent;
+        report.OverallCompletionPct = request.OverallCompletionPct;
+        report.ExpenditureToDate = request.ExpenditureToDate;
+        report.NextPeriodPlan = request.NextPeriodPlan;
+        report.PiRecommendations = request.PiRecommendations;
+
+        // Bảng tiến độ theo hoạt động (BM06): gửi lên thì THAY toàn bộ bảng cũ.
+        if (request.Items != null)
+        {
+            var old = await _contracts.ProgressReportItems.Where(i => i.ReportId == report.Id).ToListAsync();
+            _contracts.RemoveProgressReportItemsRange(old);
+            _contracts.AddProgressReportItemsRange(request.Items.Select(i => new ProgressReportItem
+            {
+                ReportId = report.Id,
+                ActivityId = i.ActivityId,
+                CompletionRate = i.CompletionRate,
+                CompletionStatus = string.IsNullOrWhiteSpace(i.CompletionStatus) ? "IN_PROGRESS" : i.CompletionStatus,
+                EvidenceDescription = i.EvidenceDescription,
+                Notes = i.Notes
+            }));
+        }
+
+        await _contracts.SaveChangesAsync();
+        return await GetByIdAsync(report.Id);
+    }
+
     public async Task<ProgressReportDto> SubmitAsync(Guid reportId, Guid userId)
     {
         var report = await _contracts.ProgressReports
@@ -117,7 +212,7 @@ public class ProgressReportService : IProgressReportService
             ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
 
         if (report.Contract.Project.PiUserId != userId)
-            throw new UnauthorizedAccessException("Only the PI may submit this report.");
+            throw new ForbiddenException("Only the PI may submit this report.");
 
         if (report.Status != ProgressReportStatus.Draft)
             throw new InvalidOperationException($"Report is '{report.Status}'; only DRAFT reports can be submitted.");
@@ -130,9 +225,18 @@ public class ProgressReportService : IProgressReportService
         return await GetByIdAsync(reportId);
     }
 
+    public async Task<bool> IsPiOfReportAsync(Guid reportId, Guid userId)
+    {
+        return await _contracts.ProgressReports
+            .Include(r => r.Contract).ThenInclude(c => c.Project)
+            .AnyAsync(r => r.Id == reportId && r.Contract.Project.PiUserId == userId);
+    }
+
     public async Task<ProgressReportDto> EvaluateAsync(Guid reportId, EvaluateProgressReportRequest request, Guid staffId)
     {
-        var validResults = new[] { "SATISFACTORY", "UNSATISFACTORY", "NEEDS_IMPROVEMENT" };
+        // QĐ543 Điều 10 / BM06: kết quả đánh giá tiến độ = Đạt / Không đạt / Có điều kiện.
+        // (Trước đây BE nhận SATISFACTORY/… còn FE gửi APPROVED/… → Staff bấm đánh giá luôn 400.)
+        var validResults = new[] { "PASS", "FAIL", "CONDITIONAL" };
         if (!validResults.Contains(request.EvaluationResult))
             throw new ArgumentException($"EvaluationResult must be one of: {string.Join(", ", validResults)}.");
 
@@ -172,6 +276,8 @@ public class ProgressReportService : IProgressReportService
             report.ScheduledMeetingAt = at.ToUniversalTime();
         }
         report.MeetingLink = request.MeetingLink;
+        if (request.RoundName != null)
+            report.RoundName = string.IsNullOrWhiteSpace(request.RoundName) ? null : request.RoundName.Trim();
         report.UpdatedAt = DateTime.UtcNow;
         await _contracts.SaveChangesAsync();
 
@@ -183,6 +289,7 @@ public class ProgressReportService : IProgressReportService
         Id = r.Id,
         ContractId = r.ContractId,
         ReportRound = r.ReportRound,
+        RoundName = r.RoundName,
         ReportingPeriodStart = r.ReportingPeriodStart.ToString("yyyy-MM-dd"),
         ReportingPeriodEnd = r.ReportingPeriodEnd.ToString("yyyy-MM-dd"),
         OverallCompletionPct = r.OverallCompletionPct,
@@ -200,6 +307,7 @@ public class ProgressReportService : IProgressReportService
         Id = r.Id,
         ContractId = r.ContractId,
         ReportRound = r.ReportRound,
+        RoundName = r.RoundName,
         ReportingPeriodStart = r.ReportingPeriodStart.ToString("yyyy-MM-dd"),
         ReportingPeriodEnd = r.ReportingPeriodEnd.ToString("yyyy-MM-dd"),
         CompletedContent = r.CompletedContent,

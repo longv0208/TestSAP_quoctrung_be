@@ -1,5 +1,6 @@
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Contract;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Contracts;
@@ -11,11 +12,17 @@ public class DisbursementService : IDisbursementService
 {
     private readonly IContractRepository _contracts;
     private readonly IMasterDataRepository _masterData;
+    private readonly IClock _clock;
+    private readonly ISystemSettingService _settings;
 
-    public DisbursementService(IContractRepository contracts, IMasterDataRepository masterData)
+    public DisbursementService(IContractRepository contracts, IMasterDataRepository masterData,
+        IClock clock,
+        ISystemSettingService settings)
     {
         _contracts = contracts;
         _masterData = masterData;
+        _clock = clock;
+        _settings = settings;
     }
 
     public async Task<IEnumerable<DisbursementResponse>> GetByContractAsync(Guid contractId)
@@ -65,11 +72,11 @@ public class DisbursementService : IDisbursementService
         if (d.Status == DisbursementStatus.Disbursed)
             throw new InvalidOperationException("Disbursement already confirmed.");
 
-        d.ActualAmount = request.ActualAmount;
-        d.BankReference = request.BankReference;
+        if (request.ActualAmount.HasValue) d.ActualAmount = request.ActualAmount;   // optional, không bắt buộc
+        if (!string.IsNullOrWhiteSpace(request.BankReference)) d.BankReference = request.BankReference;
         d.Notes = request.Notes;
         d.Status = DisbursementStatus.Disbursed;
-        d.DisbursedAt = DateTime.UtcNow;
+        d.DisbursedAt = _clock.UtcNow;
         d.ProcessedBy = processedBy;
 
         await _contracts.SaveChangesAsync();
@@ -78,7 +85,10 @@ public class DisbursementService : IDisbursementService
 
     private async Task<List<ContractDisbursement>> GenerateWholeAsync(Domain.Entities.Contracts.Contract contract)
     {
-        const int count = 3;
+        var count = Math.Max(
+            await _settings.GetIntAsync(SystemSettingKeys.DisbursementWholeTranches,
+                                        SystemSettingKeys.DefaultDisbursementWholeTranches),
+            SystemSettingKeys.MinDisbursementWholeTranches);
         var templates = await _masterData.DisbursementTemplates
             .Where(t => t.ResearchTypeId == contract.Project.ResearchTypeId && t.IsActive)
             .OrderBy(t => t.RoundNumber)

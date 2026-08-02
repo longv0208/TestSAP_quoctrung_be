@@ -18,4 +18,29 @@ public interface IProposalDocumentService
     Task<(Stream Stream, string ContentType, string FileName)> DownloadAsync(Guid proposalId, Guid documentId);
 
     Task DeleteAsync(Guid proposalId, Guid documentId);
+
+    // Minh chứng giải ngân (rule tuần 10): Staff upload file hợp đồng/chứng từ gắn 1 đợt giải ngân.
+    // Dùng chung entity Document (polymorphic EntityType="Disbursement").
+    Task<ProposalDocumentDto> UploadForDisbursementAsync(
+        int disbursementId, Stream content, string fileName, string contentType, long length, Guid uploadedBy);
+    Task<IEnumerable<ProposalDocumentDto>> ListForDisbursementAsync(int disbursementId);
+    Task<(Stream Stream, string ContentType, string FileName)> DownloadEvidenceAsync(Guid documentId);
+
+    // BM06 — file báo cáo tiến độ: PI upload PDF; Staff phải xem được file rồi mới đánh giá Đạt/Không đạt.
+    Task<ProposalDocumentDto> UploadForProgressReportAsync(
+        Guid reportId, Stream content, string fileName, string contentType, long length, Guid uploadedBy);
+    Task<IEnumerable<ProposalDocumentDto>> ListForProgressReportAsync(Guid reportId);
+    Task<(Stream Stream, string ContentType, string FileName)> DownloadProgressReportDocAsync(Guid documentId);
+
+    // BM09 — file báo cáo tổng kết: PI upload PDF thay vì dán URL (góp ý thầy 29/07).
+    Task<ProposalDocumentDto> UploadForFinalReportAsync(
+        Guid contractId, Stream content, string fileName, string contentType, long length, Guid uploadedBy);
+    Task<IEnumerable<ProposalDocumentDto>> ListForFinalReportAsync(Guid contractId);
+    Task<(Stream Stream, string ContentType, string FileName)> DownloadFinalReportDocAsync(Guid documentId);
+
+    // BM05 — hồ sơ hợp đồng: bản Word đã ký/scan upload lên (Document polymorphic EntityType="Contract").
+    Task<ProposalDocumentDto> UploadForContractAsync(
+        Guid contractId, Stream content, string fileName, string contentType, long length, Guid uploadedBy);
+    Task<IEnumerable<ProposalDocumentDto>> ListForContractAsync(Guid contractId);
+    Task<(Stream Stream, string ContentType, string FileName)> DownloadContractDocAsync(Guid documentId);
 }

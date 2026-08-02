@@ -18,9 +18,12 @@ public class ReviewerFeedbackController : ControllerBase
     public ReviewerFeedbackController(IReviewRepository review) => _review = review;
 
     [HttpGet]
-    [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GetAll(Guid councilId)
     {
+        // Admin/Staff xem được mọi hội đồng; ngoài ra phải là THÀNH VIÊN hội đồng đó
+        // (Thư ký cần điểm/feedback để lập biên bản — trước đây bị chặn 403 oan).
+        await EnsureAdminStaffOrMemberAsync(councilId);
+
         var list = await _review.ReviewerFeedbacks
             .Include(f => f.ReviewerMember).ThenInclude(m => m.User)
             .Where(f => f.CouncilId == councilId)
@@ -85,6 +88,18 @@ public class ReviewerFeedbackController : ControllerBase
             OverallAssessment = feedback.OverallAssessment,
             SubmittedAt = feedback.SubmittedAt,
         }));
+    }
+
+    /// <summary>Admin/Staff qua tự do; còn lại phải là thành viên hội đồng mới được xem.</summary>
+    private async Task EnsureAdminStaffOrMemberAsync(Guid councilId)
+    {
+        var roles = User.FindAll(ClaimTypes.Role).Select(r => r.Value).ToHashSet();
+        if (roles.Contains("Admin") || roles.Contains("Staff")) return;
+
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var isMember = await _review.CouncilMembers.AnyAsync(m => m.CouncilId == councilId && m.UserId == userId);
+        if (!isMember)
+            throw new ForbiddenException("Bạn không thuộc hội đồng này.");
     }
 }
 

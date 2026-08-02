@@ -4,6 +4,7 @@ using FURPMS.Application.DTOs.Contract;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -36,15 +37,21 @@ public class ContractsController : ControllerBase
 
     // ── Contracts ────────────────────────────────────────────────────────────
 
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<ContractListResponse>>), StatusCodes.Status200OK)]
     [HttpGet]
-    public async Task<IActionResult> GetList()
+    public async Task<IActionResult> GetList([FromQuery] bool mine = false)
     {
         var (userId, roles) = GetCaller();
-        Guid? piFilter = (roles.Contains("Admin") || roles.Contains("Staff")) ? null : userId;
+        // mine=true → "HĐ của tôi" LUÔN chỉ của người gọi (kể cả tài khoản đa vai đang "làm PI").
+        // Các trang PI (báo cáo tiến độ/sản phẩm/tổng kết) dùng mine=true để không lôi HĐ người khác.
+        Guid? piFilter = mine
+            ? userId
+            : ((roles.Contains("Admin") || roles.Contains("Staff")) ? null : userId);
         var result = await _contracts.GetListAsync(piFilter);
         return Ok(ApiResponse<IEnumerable<ContractListResponse>>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<ContractDetailResponse>), StatusCodes.Status200OK)]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -53,6 +60,7 @@ public class ContractsController : ControllerBase
         return Ok(ApiResponse<ContractDetailResponse>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<ContractDetailResponse>), StatusCodes.Status200OK)]
     [HttpPost]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Create([FromBody] CreateContractRequest request)
@@ -62,6 +70,7 @@ public class ContractsController : ControllerBase
         return Ok(ApiResponse<ContractDetailResponse>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<ContractDetailResponse>), StatusCodes.Status200OK)]
     [HttpPost("{id:guid}/sign")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Sign(Guid id)
@@ -73,6 +82,7 @@ public class ContractsController : ControllerBase
 
     // ── Disbursements ─────────────────────────────────────────────────────────
 
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<DisbursementResponse>>), StatusCodes.Status200OK)]
     [HttpGet("{contractId:guid}/disbursements")]
     public async Task<IActionResult> GetDisbursements(Guid contractId)
     {
@@ -81,6 +91,7 @@ public class ContractsController : ControllerBase
         return Ok(ApiResponse<IEnumerable<DisbursementResponse>>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<DisbursementResponse>>), StatusCodes.Status200OK)]
     [HttpPost("{contractId:guid}/disbursements/generate")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GenerateDisbursements(Guid contractId)
@@ -91,6 +102,7 @@ public class ContractsController : ControllerBase
 
     // ── Deliverables ──────────────────────────────────────────────────────────
 
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<DeliverableResponse>>), StatusCodes.Status200OK)]
     [HttpGet("{contractId:guid}/deliverables")]
     public async Task<IActionResult> GetDeliverables(Guid contractId)
     {
@@ -99,8 +111,20 @@ public class ContractsController : ControllerBase
         return Ok(ApiResponse<IEnumerable<DeliverableResponse>>.Ok(result));
     }
 
+    // Staff thêm 1 sản phẩm phải nộp cho hợp đồng (đề cương không có trường sản phẩm cấu trúc → nhập tay).
+    [ProducesResponseType(typeof(ApiResponse<DeliverableResponse>), StatusCodes.Status200OK)]
+    [HttpPost("{contractId:guid}/deliverables")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> CreateDeliverable(Guid contractId, [FromBody] CreateDeliverableRequest request)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _deliverables.CreateAsync(contractId, request, userId);
+        return Ok(ApiResponse<DeliverableResponse>.Ok(result, "Đã thêm sản phẩm."));
+    }
+
     // ── Amendments ────────────────────────────────────────────────────────────
 
+    [ProducesResponseType(typeof(ApiResponse<IEnumerable<AmendmentListResponse>>), StatusCodes.Status200OK)]
     [HttpGet("{contractId:guid}/amendments")]
     public async Task<IActionResult> GetAmendments(Guid contractId)
     {
@@ -109,6 +133,7 @@ public class ContractsController : ControllerBase
         return Ok(ApiResponse<IEnumerable<AmendmentListResponse>>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<AmendmentDetailResponse>), StatusCodes.Status200OK)]
     [HttpPost("{contractId:guid}/amendments")]
     public async Task<IActionResult> CreateAmendment(Guid contractId, [FromBody] CreateAmendmentRequest request)
     {

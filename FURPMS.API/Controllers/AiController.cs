@@ -31,7 +31,8 @@ public class AiController : ControllerBase
     public async Task<IActionResult> Generate(Guid proposalId)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var result = await _ai.GenerateAsync(proposalId, userId);
+        var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToList();
+        var result = await _ai.GenerateAsync(proposalId, userId, roles);
         return Ok(ApiResponse<AiSummaryDto>.Ok(result));
     }
 

@@ -13,4 +13,24 @@ public class CouncilDecisionDto
     public string? CouncilComments { get; set; }
     public string? Recommendations { get; set; }
     public DateTime? FinalizedAt { get; set; }
+    public List<QaEntryDto> QaEntries { get; set; } = new();
+    public List<MemberOpinionDto> MemberOpinions { get; set; } = new();
+}
+
+// BM04/BM12 mục II.1 — 1 lượt hỏi–đáp trong biên bản (cách ghi Q&A).
+public class QaEntryDto
+{
+    public string? AskedBy { get; set; }
+    public string Question { get; set; } = null!;
+    public string? Answer { get; set; }
+    public int Order { get; set; }
+}
+
+// BM04/BM12 mục II.1 — ý kiến 1 thành viên (2 cột chuyên môn / kinh phí).
+public class MemberOpinionDto
+{
+    public string MemberName { get; set; } = null!;
+    public string? AcademicComment { get; set; }
+    public string? BudgetComment { get; set; }
+    public int Order { get; set; }
 }

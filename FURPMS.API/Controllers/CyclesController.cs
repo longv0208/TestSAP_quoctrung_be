@@ -105,6 +105,23 @@ public class CyclesController : ControllerBase
         return Ok(ApiResponse<CycleDto>.Ok(result));
     }
 
+    // Gia hạn deadline đợt (rule tuần 10) — ghi log, không ghi đè ngày gốc.
+    [HttpPost("{id:int}/extend-deadline")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> ExtendDeadline(int id, [FromBody] ExtendDeadlineRequest request)
+    {
+        var callerId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _cycles.ExtendCycleDeadlineAsync(id, request, callerId);
+        return Ok(ApiResponse<DeadlineExtensionDto>.Ok(result, "Đã gia hạn deadline đợt."));
+    }
+
+    [HttpGet("{id:int}/deadline-extensions")]
+    public async Task<IActionResult> GetDeadlineExtensions(int id)
+    {
+        var result = await _cycles.GetCycleDeadlineExtensionsAsync(id);
+        return Ok(ApiResponse<IEnumerable<DeadlineExtensionDto>>.Ok(result));
+    }
+
     [HttpPost("{id:int}/close")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Close(int id)
@@ -142,6 +159,24 @@ public class CyclesController : ControllerBase
     {
         var result = await _cycles.CreateTrackForCycleAsync(id, request);
         return Ok(ApiResponse<TrackDto>.Ok(result));
+    }
+
+    // Gắn 1 lĩnh vực CÓ SẴN vào đợt (đợt tự chọn lĩnh vực nó mở).
+    [HttpPost("{cycleId:int}/tracks/{trackId:int}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> AttachTrackToCycle(int cycleId, int trackId)
+    {
+        await _cycles.AttachTrackToCycleAsync(cycleId, trackId);
+        return Ok(ApiResponse.Ok("Đã gắn lĩnh vực vào đợt."));
+    }
+
+    // Gỡ lĩnh vực khỏi đợt (chỉ khi chưa có đề tài trong lĩnh vực đó của đợt).
+    [HttpDelete("{cycleId:int}/tracks/{trackId:int}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> DetachTrackFromCycle(int cycleId, int trackId)
+    {
+        await _cycles.DetachTrackFromCycleAsync(cycleId, trackId);
+        return Ok(ApiResponse.Ok("Đã gỡ lĩnh vực khỏi đợt."));
     }
 
     [HttpPut("tracks/{id:int}")]

@@ -1,5 +1,6 @@
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Contract;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.AI;
@@ -12,15 +13,18 @@ public class DeliverableService : IDeliverableService
     private readonly IContractRepository _contracts;
     private readonly IUserRepository _users;
     private readonly INotificationRepository _notifications;
+    private readonly IClock _clock;
 
     public DeliverableService(
         IContractRepository contracts,
         IUserRepository users,
-        INotificationRepository notifications)
+        INotificationRepository notifications,
+        IClock clock)
     {
         _contracts = contracts;
         _users = users;
         _notifications = notifications;
+        _clock = clock;
     }
 
     public async Task<IEnumerable<DeliverableResponse>> GetByContractAsync(Guid contractId)
@@ -37,6 +41,44 @@ public class DeliverableService : IDeliverableService
         return items.Select(Map);
     }
 
+    // Staff thêm 1 sản phẩm phải nộp cho hợp đồng (đề cương không có trường sản phẩm cấu trúc).
+    public async Task<DeliverableResponse> CreateAsync(Guid contractId, CreateDeliverableRequest request, Guid createdBy)
+    {
+        var contract = await _contracts.Query().FirstOrDefaultAsync(c => c.Id == contractId)
+            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+        if (string.IsNullOrWhiteSpace(request.ProductName))
+            throw new ArgumentException("Tên sản phẩm là bắt buộc.");
+
+        DateOnly? due = null;
+        if (!string.IsNullOrWhiteSpace(request.DueDate))
+        {
+            if (!DateOnly.TryParse(request.DueDate, out var d))
+                throw new ArgumentException("DueDate phải là ngày hợp lệ (yyyy-MM-dd).");
+            due = d;
+        }
+
+        var maxSeq = await _contracts.Deliverables
+            .Where(d => d.ContractId == contractId)
+            .Select(d => (int?)d.Sequence).MaxAsync() ?? 0;
+
+        var deliverable = new Domain.Entities.Projects.ProjectDeliverable
+        {
+            ProjectId = contract.ProjectId,
+            ContractId = contractId,
+            ProductName = request.ProductName.Trim(),
+            CategoryId = request.CategoryId,
+            Description = request.Description,
+            DueDate = due,
+            Sequence = maxSeq + 1
+        };
+        _contracts.AddDeliverable(deliverable);
+        await _contracts.SaveChangesAsync();
+
+        var saved = await _contracts.Deliverables.Include(d => d.Category)
+            .FirstOrDefaultAsync(d => d.Id == deliverable.Id);
+        return Map(saved ?? deliverable);
+    }
+
     public async Task<DeliverableResponse> SubmitAsync(
         int deliverableId, SubmitDeliverableRequest request, Guid submittedBy)
     {
@@ -47,7 +89,7 @@ public class DeliverableService : IDeliverableService
 
         d.FileUrl = request.FileUrl;
         d.Description = request.Description ?? d.Description;
-        d.SubmittedAt = DateTime.UtcNow;
+        d.SubmittedAt = _clock.UtcNow;
         d.AcceptanceStatus = AcceptanceStatus.Pending;
         await _contracts.SaveChangesAsync();
 
@@ -84,7 +126,7 @@ public class DeliverableService : IDeliverableService
                 .FirstOrDefaultAsync(d => d.DeliverableId == deliverableId);
             if (tranche != null)
             {
-                tranche.ConditionMetAt = DateTime.UtcNow;
+                tranche.ConditionMetAt = _clock.UtcNow;
                 tranche.ConditionMetBy = evaluatedBy;
             }
 

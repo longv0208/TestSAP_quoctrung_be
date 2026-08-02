@@ -1,5 +1,6 @@
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Contract;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Contracts;
@@ -13,16 +14,24 @@ public class ContractService : IContractService
 {
     private readonly IContractRepository _contracts;
     private readonly IProposalRepository _proposals;
+    private readonly IClock _clock;
+    private readonly ISystemSettingService _settings;
 
-    public ContractService(IContractRepository contracts, IProposalRepository proposals)
+    public ContractService(IContractRepository contracts, IProposalRepository proposals,
+        IClock clock,
+        ISystemSettingService settings)
     {
         _contracts = contracts;
         _proposals = proposals;
+        _clock = clock;
+        _settings = settings;
     }
 
     private IQueryable<Contract> QueryWithProject() => _contracts.Query()
         .Include(c => c.Project)
-            .ThenInclude(p => p.Proposals.Where(x => x.IsCurrent));
+            .ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
+        .Include(c => c.Project)
+            .ThenInclude(p => p.PiUser);
 
     public async Task<IEnumerable<ContractListResponse>> GetListAsync(Guid? piUserId = null)
     {
@@ -58,6 +67,10 @@ public class ContractService : IContractService
         var project = proposal.Project;
         var totalAmount = proposal.Budget?.TotalAmount ?? 0m;
 
+        var sideA = await _settings.GetStringAsync(
+            SystemSettingKeys.ContractSideARepresentative,
+            SystemSettingKeys.DefaultContractSideARepresentative);
+
         var contract = new Contract
         {
             ProjectId = project.Id,
@@ -68,7 +81,7 @@ public class ContractService : IContractService
             EndDate = request.EndDate,
             OriginalEndDate = request.EndDate,
             MaxExtensionMonths = request.MaxExtensionMonths,
-            SideARepresentative = request.SideARepresentative ?? "Nguyễn Kim Ánh",
+            SideARepresentative = request.SideARepresentative ?? sideA,
             EcontractUrl = request.EcontractUrl,
             Status = ContractStatus.PendingSignature,
             CreatedBy = createdBy
@@ -103,7 +116,7 @@ public class ContractService : IContractService
                 $"Cannot sign contract: current status is '{contract.Status}'.");
 
         contract.Status = ContractStatus.Active;
-        contract.SignedAt = DateTime.UtcNow;
+        contract.SignedAt = _clock.UtcNow;
         contract.UpdatedAt = DateTime.UtcNow;
 
         // Ký hợp đồng → project sang giai đoạn thực hiện.
@@ -122,6 +135,7 @@ public class ContractService : IContractService
         ProposalId = c.Project?.Proposals.FirstOrDefault()?.Id ?? Guid.Empty,
         ProposalCode = c.Project?.ProjectCode,
         ProposalTitle = c.Project?.TitleVi,
+        PiName = c.Project?.PiUser?.FullName,
         Status = c.Status,
         TotalAmount = c.TotalAmount,
         StartDate = c.StartDate,

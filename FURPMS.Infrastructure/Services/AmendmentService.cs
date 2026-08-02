@@ -1,5 +1,6 @@
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Contract;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Progress;
@@ -11,11 +12,14 @@ public class AmendmentService : IAmendmentService
 {
     private readonly IContractRepository _contracts;
     private readonly IMasterDataRepository _masterData;
+    private readonly IClock _clock;
 
-    public AmendmentService(IContractRepository contracts, IMasterDataRepository masterData)
+    public AmendmentService(IContractRepository contracts, IMasterDataRepository masterData,
+        IClock clock)
     {
         _contracts = contracts;
         _masterData = masterData;
+        _clock = clock;
     }
 
     public async Task<IEnumerable<AmendmentListResponse>> GetByContractAsync(Guid contractId)
@@ -83,7 +87,7 @@ public class AmendmentService : IAmendmentService
 
         amendment.Status = AmendmentStatus.Approved;
         amendment.ReviewedBy = reviewedBy;
-        amendment.ReviewedAt = DateTime.UtcNow;
+        amendment.ReviewedAt = _clock.UtcNow;
         amendment.ReviewerComments = request.ReviewerComments;
 
         if (amendment.Category?.Code == "EXTENSION")
@@ -106,7 +110,7 @@ public class AmendmentService : IAmendmentService
 
         amendment.Status = AmendmentStatus.Rejected;
         amendment.ReviewedBy = reviewedBy;
-        amendment.ReviewedAt = DateTime.UtcNow;
+        amendment.ReviewedAt = _clock.UtcNow;
         amendment.ReviewerComments = request.ReviewerComments;
 
         await _contracts.SaveChangesAsync();

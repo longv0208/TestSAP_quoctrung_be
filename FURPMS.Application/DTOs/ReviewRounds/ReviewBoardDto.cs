@@ -26,6 +26,7 @@ public class ReviewBoardRoundDto
     public string RoundType { get; set; } = null!;
     public string Status { get; set; } = null!;
     public string? Result { get; set; }
+    public int? RubricTemplateId { get; set; }   // bộ tiêu chí gắn RIÊNG cho vòng này (null = theo đợt/lĩnh vực)
     public bool CanDelete { get; set; }
     public List<ReviewBoardProjectRoundDto> Projects { get; set; } = new();
     public List<ReviewBoardCouncilDto> Councils { get; set; } = new();

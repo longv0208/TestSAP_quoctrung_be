@@ -15,12 +15,14 @@ public class MasterDataRepository : IMasterDataRepository
     public IQueryable<PersonnelRoleType> PersonnelRoleTypes => _db.PersonnelRoleTypes;
     public IQueryable<BudgetExpenseCategory> BudgetExpenseCategories => _db.BudgetExpenseCategories;
     public IQueryable<SystemFinancialConfig> SystemFinancialConfigs => _db.SystemFinancialConfigs;
+    public IQueryable<SystemSetting> SystemSettings => _db.SystemSettings;
     public IQueryable<AmendmentCategory> AmendmentCategories => _db.AmendmentCategories;
     public IQueryable<DisbursementTemplate> DisbursementTemplates => _db.DisbursementTemplates;
     public IQueryable<ResearchType> ResearchTypes => _db.ResearchTypes;
     public IQueryable<OrganizationalUnit> OrganizationalUnits => _db.OrganizationalUnits;
     public IQueryable<RubricTemplate> RubricTemplates => _db.RubricTemplates;
     public IQueryable<RubricCriterion> RubricCriteria => _db.RubricCriteria;
+    public IQueryable<RubricTemplateScope> RubricTemplateScopes => _db.RubricTemplateScopes;
     public IQueryable<ProductCategory> ProductCategories => _db.ProductCategories;
     public IQueryable<AcademicProfile> AcademicProfiles => _db.AcademicProfiles;
 

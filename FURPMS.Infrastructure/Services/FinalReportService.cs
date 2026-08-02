@@ -1,5 +1,7 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Progress;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Progress;
@@ -10,10 +12,13 @@ namespace FURPMS.Infrastructure.Services;
 public class FinalReportService : IFinalReportService
 {
     private readonly IContractRepository _contracts;
+    private readonly IClock _clock;
 
-    public FinalReportService(IContractRepository contracts)
+    public FinalReportService(IContractRepository contracts,
+        IClock clock)
     {
         _contracts = contracts;
+        _clock = clock;
     }
 
     public async Task<FinalReportDto?> GetByContractAsync(Guid contractId)
@@ -37,7 +42,7 @@ public class FinalReportService : IFinalReportService
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
         if (contract.Project.PiUserId != userId)
-            throw new UnauthorizedAccessException("Only the PI may submit the final report.");
+            throw new ForbiddenException("Only the PI may submit the final report.");
 
         var existing = await _contracts.FinalReports
             .FirstOrDefaultAsync(r => r.ProjectId == contract.ProjectId);
@@ -51,7 +56,7 @@ public class FinalReportService : IFinalReportService
             existing.ReportFileUrl = request.ReportFileUrl;
             existing.SummaryFileUrl = request.SummaryFileUrl;
             existing.Language = request.Language;
-            existing.FinalSubmittedAt = DateTime.UtcNow;
+            existing.FinalSubmittedAt = _clock.UtcNow;
             existing.Status = FinalReportStatus.Submitted;
             await _contracts.SaveChangesAsync();
             return Map(existing);
@@ -66,7 +71,7 @@ public class FinalReportService : IFinalReportService
             ReportFileUrl = request.ReportFileUrl,
             SummaryFileUrl = request.SummaryFileUrl,
             Language = request.Language,
-            SubmittedAt = DateTime.UtcNow,
+            SubmittedAt = _clock.UtcNow,
             Status = FinalReportStatus.Submitted
         };
 
@@ -89,7 +94,7 @@ public class FinalReportService : IFinalReportService
 
         report.Status = FinalReportStatus.RevisionRequired;
         report.RevisionNotes = request.RevisionNotes;
-        report.RevisionRequestedAt = DateTime.UtcNow;
+        report.RevisionRequestedAt = _clock.UtcNow;
         await _contracts.SaveChangesAsync();
         return Map(report);
     }
@@ -104,7 +109,7 @@ public class FinalReportService : IFinalReportService
             throw new InvalidOperationException($"Report is '{report.Status}'; only SUBMITTED reports can be accepted.");
 
         report.Status = FinalReportStatus.Accepted;
-        report.ArchivalDeadline = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(3));
+        report.ArchivalDeadline = DateOnly.FromDateTime(_clock.UtcNow.AddMonths(3));
         await _contracts.SaveChangesAsync();
         return Map(report);
     }
@@ -119,7 +124,7 @@ public class FinalReportService : IFinalReportService
             throw new InvalidOperationException($"Report is '{report.Status}'; only ACCEPTED reports can be archived.");
 
         report.Status = FinalReportStatus.Archived;
-        report.ArchivedAt = DateTime.UtcNow;
+        report.ArchivedAt = _clock.UtcNow;
         await _contracts.SaveChangesAsync();
         return Map(report);
     }

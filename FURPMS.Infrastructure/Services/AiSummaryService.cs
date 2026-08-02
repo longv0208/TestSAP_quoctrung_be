@@ -31,9 +31,9 @@ public class AiSummaryService : IAiSummaryService
         return output == null ? null : Map(output);
     }
 
-    public async Task<AiSummaryDto> GenerateAsync(Guid proposalId, Guid userId)
+    public async Task<AiSummaryDto> GenerateAsync(Guid proposalId, Guid userId, IEnumerable<string> roles)
     {
-        var p = await _proposals.GetProposalByIdAsync(proposalId); // ném 404 nếu không có
+        var p = await _proposals.GetProposalByIdAsync(proposalId, userId, roles); // 404 nếu không có, 403 nếu không có quyền
         var summary = await _gemini.GenerateTextAsync(BuildPrompt(p));
 
         // Vô hiệu hoá bản tóm tắt cũ

@@ -1,4 +1,5 @@
 using FURPMS.Application.DTOs.Settlements;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Contracts;
@@ -10,11 +11,14 @@ public class ContractSettlementService : IContractSettlementService
 {
     private readonly IContractRepository _contracts;
     private readonly IUserRepository _users;
+    private readonly IClock _clock;
 
-    public ContractSettlementService(IContractRepository contracts, IUserRepository users)
+    public ContractSettlementService(IContractRepository contracts, IUserRepository users,
+        IClock clock)
     {
         _contracts = contracts;
         _users = users;
+        _clock = clock;
     }
 
     public async Task<SettlementDto?> GetByContractAsync(Guid contractId)
@@ -70,31 +74,31 @@ public class ContractSettlementService : IContractSettlementService
             ?? throw new KeyNotFoundException("Signee user not found.");
 
         settlement.SideASigneeId = request.SideASigneeId;
-        settlement.SettlementSignedAt = DateTime.UtcNow;
+        settlement.SettlementSignedAt = _clock.UtcNow;
         settlement.SideASignee = signee;
 
         await _contracts.SaveChangesAsync();
         return ToDto(settlement);
     }
 
-    public async Task<SettlementDto> MarkAccountingClearedAsync(int settlementId, DateOnly clearedDate)
+    public async Task<SettlementDto> MarkAccountingClearedAsync(int settlementId, DateOnly? clearedDate)
     {
         var settlement = await _contracts.Settlements
             .FirstOrDefaultAsync(s => s.Id == settlementId)
             ?? throw new KeyNotFoundException("Settlement not found.");
 
-        settlement.AccountingClearedAt = clearedDate;
+        settlement.AccountingClearedAt = clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow);
         await _contracts.SaveChangesAsync();
         return ToDto(settlement);
     }
 
-    public async Task<SettlementDto> MarkAssetsClearedAsync(int settlementId, DateOnly clearedDate)
+    public async Task<SettlementDto> MarkAssetsClearedAsync(int settlementId, DateOnly? clearedDate)
     {
         var settlement = await _contracts.Settlements
             .FirstOrDefaultAsync(s => s.Id == settlementId)
             ?? throw new KeyNotFoundException("Settlement not found.");
 
-        settlement.AssetsClearedAt = clearedDate;
+        settlement.AssetsClearedAt = clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow);
         await _contracts.SaveChangesAsync();
         return ToDto(settlement);
     }

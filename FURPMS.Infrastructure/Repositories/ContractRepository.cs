@@ -25,6 +25,7 @@ public class ContractRepository : Repository<Contract>, IContractRepository
     public void AddDeliverable(ProjectDeliverable deliverable) => _db.ProjectDeliverables.Add(deliverable);
     public async Task AddProgressReportAsync(ProgressReport report) => await _db.ProgressReports.AddAsync(report);
     public void AddProgressReportItemsRange(IEnumerable<ProgressReportItem> items) => _db.ProgressReportItems.AddRange(items);
+    public void RemoveProgressReportItemsRange(IEnumerable<ProgressReportItem> items) => _db.ProgressReportItems.RemoveRange(items);
     public async Task AddFinalReportAsync(FinalReport report) => await _db.FinalReports.AddAsync(report);
     public async Task AddSettlementAsync(ContractSettlement settlement) => await _db.ContractSettlements.AddAsync(settlement);
 }

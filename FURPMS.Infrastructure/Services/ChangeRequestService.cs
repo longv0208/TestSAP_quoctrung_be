@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.ChangeRequests;
 using FURPMS.Application.Interfaces.Repositories;
@@ -42,7 +43,7 @@ public class ChangeRequestService : IChangeRequestService
 
         var project = proposal.Project;
         if (project.PiUserId != requestedBy)
-            throw new UnauthorizedAccessException("Only the PI can create a change request for this project.");
+            throw new ForbiddenException("Only the PI can create a change request for this project.");
 
         if (project.Status is ProjectStatus.Completed or ProjectStatus.Cancelled or ProjectStatus.Terminated)
             throw new InvalidOperationException($"Đề tài đã ở trạng thái '{project.Status}' — không thể gửi yêu cầu thay đổi.");

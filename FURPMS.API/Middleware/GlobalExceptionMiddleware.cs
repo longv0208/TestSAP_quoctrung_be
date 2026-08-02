@@ -34,7 +34,9 @@ public class GlobalExceptionMiddleware
 
         var (statusCode, message) = exception switch
         {
+            // 401 = chưa/hết đăng nhập (FE sẽ đăng xuất). 403 = đã đăng nhập nhưng không đủ quyền.
             UnauthorizedAccessException => (HttpStatusCode.Unauthorized, exception.Message),
+            ForbiddenException => (HttpStatusCode.Forbidden, exception.Message),
             KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),
             ArgumentException => (HttpStatusCode.BadRequest, exception.Message),
             InvalidOperationException => (HttpStatusCode.Conflict, exception.Message),

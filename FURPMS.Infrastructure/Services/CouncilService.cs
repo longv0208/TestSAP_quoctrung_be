@@ -1,6 +1,8 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Councils;
 using FURPMS.Application.Interfaces.Repositories;
+using FURPMS.Domain.Entities.AI;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Review;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +13,20 @@ public class CouncilService : ICouncilService
 {
     private readonly IReviewRepository _review;
     private readonly IProposalRepository _proposals;
+    private readonly ISystemSettingService _settings;
+    private readonly INotificationRepository _notifications;
+    private readonly IEmailService _email;
 
-    public CouncilService(IReviewRepository review, IProposalRepository proposals)
+    public CouncilService(IReviewRepository review, IProposalRepository proposals,
+        ISystemSettingService settings,
+        INotificationRepository notifications,
+        IEmailService email)
     {
         _review = review;
         _proposals = proposals;
+        _settings = settings;
+        _notifications = notifications;
+        _email = email;
     }
 
     public async Task<CouncilResponse> CreateCouncilAsync(CreateCouncilRequest request, Guid createdBy)
@@ -104,7 +115,19 @@ public class CouncilService : ICouncilService
             .FirstOrDefaultAsync(c => c.Id == councilId)
             ?? throw new KeyNotFoundException($"Council {councilId} not found.");
 
-        var deadline = confirmDeadline ?? DateTime.UtcNow.AddDays(7);
+        // Gate (rule tuần 10): đủ Chủ tịch + Thư ký + đã có LỊCH HỌP (ngày/giờ + địa điểm/link) mới cho gửi.
+        bool HasRole(params string[] roles) => council.Members.Any(m =>
+            m.MemberRole != null && roles.Any(r => m.MemberRole.Trim().Equals(r, StringComparison.OrdinalIgnoreCase)));
+        if (!HasRole("Chair", "Chairman"))
+            throw new InvalidOperationException("Chưa có Chủ tịch hội đồng — không thể gửi thư mời.");
+        if (!HasRole("Secretary"))
+            throw new InvalidOperationException("Chưa có Thư ký hội đồng — không thể gửi thư mời.");
+        if (!await _review.Meetings.AnyAsync(mt => mt.CouncilId == councilId))
+            throw new InvalidOperationException("Chưa có lịch họp — đặt ngày/giờ + địa điểm trước khi gửi thư mời.");
+
+        var inviteDays = await _settings.GetIntAsync(
+            SystemSettingKeys.CouncilInviteDeadlineDays, SystemSettingKeys.DefaultCouncilInviteDeadlineDays);
+        var deadline = confirmDeadline ?? DateTime.UtcNow.AddDays(inviteDays);
 
         // Chỉ gửi cho người CHƯA gửi (ASSIGNED hoặc chưa có InvitationSentAt), bỏ người đã từ chối.
         var pending = council.Members
@@ -121,6 +144,40 @@ public class CouncilService : ICouncilService
         }
 
         await _review.SaveChangesAsync();
+
+        // Báo cho người được mời — trước đây nút "Gửi thư mời" chỉ đổi trạng thái trong DB,
+        // không ai được thông báo nên reviewer phải tự mò vào trang Lời mời mới biết.
+        var invitedUserIds = pending.Select(m => m.UserId).ToList();
+        var invitedUsers = await _review.CouncilMembers
+            .Where(m => invitedUserIds.Contains(m.UserId))
+            .Include(m => m.User)
+            .Select(m => new { m.UserId, m.User!.Email, m.User.FullName })
+            .Distinct()
+            .ToListAsync();
+
+        const string title = "Thư mời tham gia hội đồng đánh giá";
+        var body = $"Bạn được mời tham gia một hội đồng đánh giá đề tài. " +
+                   $"Vui lòng xác nhận hoặc từ chối trước {deadline:dd/MM/yyyy}.";
+
+        foreach (var u in invitedUsers)
+        {
+            await _notifications.AddAsync(new Notification
+            {
+                UserId = u.UserId,
+                NotificationType = "COUNCIL_INVITATION",
+                Title = title,
+                Body = body,
+                ActionUrl = "/invitations",
+                RelatedEntityType = "ReviewCouncil",
+                RelatedEntityId = councilId.ToString(),
+                Priority = "HIGH"
+            });
+
+            if (!string.IsNullOrWhiteSpace(u.Email))
+                await _email.SendAsync(u.Email, title, body, "COUNCIL_INVITATION", u.UserId);
+        }
+        await _notifications.SaveChangesAsync();
+
         return pending.Count;
     }
 
@@ -130,6 +187,17 @@ public class CouncilService : ICouncilService
             .Where(m => m.UserId == userId)
             .Include(m => m.Council)
                 .ThenInclude(c => c.Round)
+            .Include(m => m.Council)
+                .ThenInclude(c => c.Meetings)
+            .Include(m => m.Council)
+                .ThenInclude(c => c.ProjectAssignments)
+                    .ThenInclude(a => a.Project)
+                        .ThenInclude(p => p.PiUser)
+            .Include(m => m.Council)
+                .ThenInclude(c => c.ProjectAssignments)
+                    .ThenInclude(a => a.Project)
+                        .ThenInclude(p => p.CycleTrack)
+                            .ThenInclude(ct => ct.Track)
             .Include(m => m.Council)
                 .ThenInclude(c => c.ProjectAssignments)
                     .ThenInclude(a => a.Project)
@@ -151,8 +219,15 @@ public class CouncilService : ICouncilService
                 Status = m.Status,
                 // FE điều hướng /api/proposals/{id} → phải là id BẢN ĐỀ CƯƠNG hiện hành, không phải projectId
                 ProposalId = currentProposal?.Id ?? Guid.Empty,
+                // projectId để FE truyền cho SaveMinutes (biên bản neo theo PROJECT, không phải proposal).
+                // Thiếu field này khiến FE truyền nhầm proposalId → "Đề tài không thuộc phạm vi chấm".
+                ProjectId = firstProject?.Id ?? Guid.Empty,
                 ProposalTitleVI = firstProject?.TitleVi ?? string.Empty,
-                ProposalStatus = firstProject?.Status ?? string.Empty
+                ProposalStatus = firstProject?.Status ?? string.Empty,
+                PiName = firstProject?.PiUser?.FullName,
+                TrackName = firstProject?.CycleTrack?.Track?.Name,
+                CreatedAt = m.Council.CreatedAt,
+                NextMeetingAt = m.Council.Meetings.OrderBy(mt => mt.ScheduledAt).Select(mt => (DateTime?)mt.ScheduledAt).FirstOrDefault()
             };
         });
     }
@@ -165,7 +240,7 @@ public class CouncilService : ICouncilService
             ?? throw new KeyNotFoundException($"Council membership {memberId} not found.");
 
         if (member.UserId != userId)
-            throw new UnauthorizedAccessException("You can only respond to your own invitations.");
+            throw new ForbiddenException("You can only respond to your own invitations.");
 
         if (member.Status == CouncilMemberStatus.Declined)
             throw new InvalidOperationException("Bạn đã từ chối lời mời này.");
@@ -194,6 +269,24 @@ public class CouncilService : ICouncilService
         return MapMember(member);
     }
 
+    // Staff/Admin bấm "Xác nhận thay" — reviewer đã đồng ý ngoài hệ thống (điện thoại/email),
+    // hoặc tiện demo. Chuyển ASSIGNED/INVITED → CONFIRMED, không cần đăng nhập tài khoản reviewer.
+    public async Task<CouncilMemberResponse> ConfirmMemberOnBehalfAsync(Guid memberId)
+    {
+        var member = await _review.CouncilMembers
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.Id == memberId)
+            ?? throw new KeyNotFoundException($"Council membership {memberId} not found.");
+
+        if (member.Status == CouncilMemberStatus.Declined)
+            throw new InvalidOperationException("Thành viên đã từ chối lời mời — không thể xác nhận thay.");
+
+        member.Status = CouncilMemberStatus.Confirmed;
+        member.ConfirmedAt = DateTime.UtcNow;
+        await _review.SaveChangesAsync();
+        return MapMember(member);
+    }
+
     public async Task<IEnumerable<CouncilMemberResponse>> GetMembersAsync(Guid councilId)
     {
         _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
@@ -207,6 +300,33 @@ public class CouncilService : ICouncilService
         return members.Select(MapMember);
     }
 
+    // Xóa hội đồng — chỉ khi CHƯA có việc chấm (không phiếu/biên bản/nghiệm thu); con NoAction nên gỡ tay.
+    public async Task DeleteCouncilAsync(Guid councilId)
+    {
+        var council = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        if (await _review.ReviewScores.AnyAsync(s => s.CouncilId == councilId))
+            throw new InvalidOperationException("Hội đồng đã có phiếu chấm — không thể xóa.");
+        if (await _review.Decisions.AnyAsync(d => d.CouncilId == councilId))
+            throw new InvalidOperationException("Hội đồng đã có biên bản — không thể xóa.");
+        if (await _review.AcceptanceEvaluations.AnyAsync(a => a.CouncilId == councilId))
+            throw new InvalidOperationException("Hội đồng đã có đánh giá nghiệm thu — không thể xóa.");
+
+        var meetings = await _review.Meetings.Where(m => m.CouncilId == councilId).ToListAsync();
+        var meetingIds = meetings.Select(m => m.Id).ToList();
+        var attendances = await _review.MeetingAttendances.Where(a => meetingIds.Contains(a.MeetingId)).ToListAsync();
+        var members = await _review.CouncilMembers.Where(m => m.CouncilId == councilId).ToListAsync();
+        var assignments = await _review.ProjectAssignments.Where(a => a.CouncilId == councilId).ToListAsync();
+
+        _review.RemoveAttendancesRange(attendances);
+        _review.RemoveMeetingsRange(meetings);
+        _review.RemoveMembersRange(members);
+        _review.RemoveProjectAssignmentsRange(assignments);
+        _review.Remove(council);
+        await _review.SaveChangesAsync();
+    }
+
     public async Task RemoveMemberAsync(Guid memberId)
     {
         var member = await _review.CouncilMembers
@@ -214,6 +334,69 @@ public class CouncilService : ICouncilService
             ?? throw new KeyNotFoundException($"Council member {memberId} not found.");
 
         _review.RemoveMember(member);
+        await _review.SaveChangesAsync();
+    }
+
+    // Gán 1 đề tài vào hội đồng có sẵn (dropdown ở màn Hội đồng & Chấm).
+    // Mỗi đề tài ↔ 1 hội đồng trong CÙNG vòng → gỡ khỏi hội đồng khác của vòng trước (nếu chưa chấm), rồi gán.
+    public async Task AssignProjectToCouncilAsync(Guid councilId, Guid projectId)
+    {
+        var council = await _review.Query()
+            .Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        if (council.RoundId == null)
+            throw new InvalidOperationException("Hội đồng không gắn với vòng chấm nào.");
+
+        // Đề tài phải đang THAM GIA vòng của hội đồng này (project_round).
+        var joined = await _review.ProjectRounds
+            .AnyAsync(pr => pr.RoundId == council.RoundId.Value && pr.ProjectId == projectId);
+        if (!joined)
+            throw new ArgumentException("Đề tài chưa tham gia vòng chấm của hội đồng này.");
+
+        // COI (rule #5): thành viên hội đồng không được là PI/thành viên của đề tài.
+        var memberUserIds = council.Members.Select(m => m.UserId).ToList();
+        await ReviewShared.AssertNoCoiAsync(_proposals, new[] { projectId }, memberUserIds);
+
+        // Gỡ khỏi các hội đồng KHÁC của cùng vòng (đảm bảo 1 đề tài chỉ 1 hội đồng/vòng).
+        var otherCouncilIds = await _review.Query()
+            .Where(c => c.RoundId == council.RoundId.Value && c.Id != councilId)
+            .Select(c => c.Id)
+            .ToListAsync();
+        if (otherCouncilIds.Count > 0)
+        {
+            var scoredElsewhere = await _review.ReviewScores
+                .AnyAsync(s => s.ProjectId == projectId && otherCouncilIds.Contains(s.CouncilId));
+            if (scoredElsewhere)
+                throw new InvalidOperationException("Đề tài đã được chấm ở hội đồng khác trong vòng này — không thể chuyển.");
+
+            var oldAssignments = await _review.ProjectAssignments
+                .Where(a => a.ProjectId == projectId && otherCouncilIds.Contains(a.CouncilId))
+                .ToListAsync();
+            if (oldAssignments.Count > 0)
+                _review.RemoveProjectAssignmentsRange(oldAssignments);
+        }
+
+        var already = await _review.ProjectAssignments
+            .AnyAsync(a => a.CouncilId == councilId && a.ProjectId == projectId);
+        if (!already)
+            await _review.AddProjectAssignmentAsync(new CouncilProjectAssignment { CouncilId = councilId, ProjectId = projectId });
+
+        await _review.SaveChangesAsync();
+    }
+
+    public async Task RemoveProjectFromCouncilAsync(Guid councilId, Guid projectId)
+    {
+        var assignment = await _review.ProjectAssignments
+            .FirstOrDefaultAsync(a => a.CouncilId == councilId && a.ProjectId == projectId)
+            ?? throw new KeyNotFoundException("Đề tài không được gán cho hội đồng này.");
+
+        var scored = await _review.ReviewScores.AnyAsync(s => s.CouncilId == councilId && s.ProjectId == projectId);
+        if (scored)
+            throw new InvalidOperationException("Đề tài đã được chấm ở hội đồng này — không thể gỡ.");
+
+        _review.RemoveProjectAssignmentsRange(new[] { assignment });
         await _review.SaveChangesAsync();
     }
 
@@ -233,4 +416,108 @@ public class CouncilService : ICouncilService
     };
 
     private static CouncilMemberResponse MapMember(CouncilMember m) => ReviewShared.MapMember(m);
+
+    public async Task<IEnumerable<ScheduleConflictDto>> GetScheduleConflictsAsync(Guid councilId)
+    {
+        // Khoảng thời gian họp của chính hội đồng này (chưa họp thì không có gì để đối chiếu).
+        var myMeetings = await _review.Meetings
+            .Where(m => m.CouncilId == councilId)
+            .Select(m => new { m.ScheduledAt, m.DurationMinutes })
+            .ToListAsync();
+        if (myMeetings.Count == 0)
+            return Enumerable.Empty<ScheduleConflictDto>();
+
+        // Thành viên của hội đồng này (userId + tên).
+        var myMembers = await _review.CouncilMembers
+            .Where(cm => cm.CouncilId == councilId)
+            .Select(cm => new { cm.UserId, Name = cm.User.FullName })
+            .ToListAsync();
+        var myUserIds = myMembers.Select(m => m.UserId).ToHashSet();
+        if (myUserIds.Count == 0)
+            return Enumerable.Empty<ScheduleConflictDto>();
+
+        // Lịch họp của các hội đồng KHÁC kèm danh sách userId thành viên của hội đồng đó.
+        var otherMeetings = await _review.Meetings
+            .Where(m => m.CouncilId != councilId)
+            .Select(m => new
+            {
+                m.CouncilId,
+                m.ScheduledAt,
+                m.DurationMinutes,
+                CouncilType = m.Council.CouncilType,
+                MemberUserIds = m.Council.Members.Select(x => x.UserId).ToList()
+            })
+            .ToListAsync();
+
+        static bool Overlap(DateTime a, int da, DateTime b, int db) =>
+            a < b.AddMinutes(db) && b < a.AddMinutes(da);
+
+        var conflicts = new List<ScheduleConflictDto>();
+        foreach (var om in otherMeetings)
+        {
+            var sharedUserIds = om.MemberUserIds.Where(myUserIds.Contains).Distinct();
+            foreach (var uid in sharedUserIds)
+            {
+                var clash = myMeetings.FirstOrDefault(mm =>
+                    Overlap(mm.ScheduledAt, mm.DurationMinutes, om.ScheduledAt, om.DurationMinutes));
+                if (clash == null) continue;
+                conflicts.Add(new ScheduleConflictDto
+                {
+                    MemberUserId = uid,
+                    MemberName = myMembers.First(m => m.UserId == uid).Name,
+                    OtherCouncilId = om.CouncilId,
+                    OtherCouncilType = om.CouncilType,
+                    ThisMeetingAt = clash.ScheduledAt,
+                    OtherMeetingAt = om.ScheduledAt
+                });
+            }
+        }
+        return conflicts;
+    }
+
+    // ── Slot theo đề tài (rule tuần 10) ──────────────────────────────────────
+    public async Task<IEnumerable<CouncilSlotDto>> GetCouncilSlotsAsync(Guid councilId)
+    {
+        var council = await _review.Query()
+            .Include(c => c.ProjectAssignments).ThenInclude(a => a.Project)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        return council.ProjectAssignments
+            .OrderBy(a => a.SlotOrder ?? int.MaxValue)
+            .ThenBy(a => a.SlotStartAt ?? DateTime.MaxValue)
+            .Select(a => new CouncilSlotDto
+            {
+                ProjectId = a.ProjectId,
+                ProjectTitle = a.Project.TitleVi,
+                MeetingId = a.MeetingId,
+                SlotStartAt = a.SlotStartAt,
+                SlotDurationMinutes = a.SlotDurationMinutes,
+                SlotOrder = a.SlotOrder
+            })
+            .ToList();
+    }
+
+    public async Task SaveCouncilSlotsAsync(Guid councilId, SaveSlotsRequest request)
+    {
+        var council = await _review.Query()
+            .Include(c => c.ProjectAssignments)
+            .Include(c => c.Meetings)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        // Slot con thuộc buổi họp sớm nhất của hội đồng (thường 1 buổi cho vòng xét duyệt).
+        var meetingId = council.Meetings.OrderBy(m => m.ScheduledAt).Select(m => (Guid?)m.Id).FirstOrDefault();
+        var byProject = council.ProjectAssignments.ToDictionary(a => a.ProjectId);
+
+        foreach (var e in request.Entries)
+        {
+            if (!byProject.TryGetValue(e.ProjectId, out var a)) continue;
+            a.MeetingId = meetingId;
+            a.SlotStartAt = e.SlotStartAt;
+            a.SlotDurationMinutes = e.SlotDurationMinutes;
+            a.SlotOrder = e.SlotOrder;
+        }
+        await _review.SaveChangesAsync();
+    }
 }

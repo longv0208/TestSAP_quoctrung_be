@@ -5,6 +5,8 @@ namespace FURPMS.Application.Interfaces.Services;
 public interface IDeliverableService
 {
     Task<IEnumerable<DeliverableResponse>> GetByContractAsync(Guid contractId);
+    /// <summary>Staff thêm 1 sản phẩm phải nộp cho hợp đồng.</summary>
+    Task<DeliverableResponse> CreateAsync(Guid contractId, CreateDeliverableRequest request, Guid createdBy);
     Task<DeliverableResponse> SubmitAsync(int deliverableId, SubmitDeliverableRequest request, Guid submittedBy);
     Task<DeliverableResponse> EvaluateAsync(int deliverableId, EvaluateDeliverableRequest request, Guid evaluatedBy);
 }

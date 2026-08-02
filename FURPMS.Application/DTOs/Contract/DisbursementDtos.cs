@@ -17,9 +17,11 @@ public class DisbursementResponse
     public int? DeliverableId { get; set; }
 }
 
+// Rule tuần 10: hệ thống KHÔNG quản tiền — "xác nhận" = đánh dấu đã giải ngân (kèm ghi chú/minh chứng).
+// ActualAmount/BankReference giữ optional để tương thích dữ liệu cũ, KHÔNG bắt buộc nhập.
 public class ConfirmDisbursementRequest
 {
-    public decimal ActualAmount { get; set; }
-    public string BankReference { get; set; } = null!;
+    public decimal? ActualAmount { get; set; }
+    public string? BankReference { get; set; }
     public string? Notes { get; set; }
 }

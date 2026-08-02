@@ -3,6 +3,7 @@ using FURPMS.Application.Common;
 using FURPMS.Application.DTOs.Contract;
 using FURPMS.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace FURPMS.API.Controllers;
@@ -19,6 +20,7 @@ public class AmendmentsController : ControllerBase
         _service = service;
     }
 
+    [ProducesResponseType(typeof(ApiResponse<AmendmentDetailResponse>), StatusCodes.Status200OK)]
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -26,6 +28,7 @@ public class AmendmentsController : ControllerBase
         return Ok(ApiResponse<AmendmentDetailResponse>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<AmendmentDetailResponse>), StatusCodes.Status200OK)]
     [HttpPost("{id:guid}/approve")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Approve(Guid id, [FromBody] ReviewAmendmentRequest request)
@@ -35,6 +38,7 @@ public class AmendmentsController : ControllerBase
         return Ok(ApiResponse<AmendmentDetailResponse>.Ok(result));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<AmendmentDetailResponse>), StatusCodes.Status200OK)]
     [HttpPost("{id:guid}/reject")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> Reject(Guid id, [FromBody] ReviewAmendmentRequest request)

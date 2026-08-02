@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Mail;
+using FURPMS.Application.Constants;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Application.Settings;
@@ -11,12 +12,17 @@ namespace FURPMS.Infrastructure.Services;
 public class SmtpEmailService : IEmailService
 {
     private readonly INotificationRepository _notifications;
-    private readonly EmailSettings _settings;
+    private readonly EmailSettings _email;
+    private readonly ISystemSettingService _sysSettings;
 
-    public SmtpEmailService(INotificationRepository notifications, IOptions<EmailSettings> settings)
+    public SmtpEmailService(
+        INotificationRepository notifications,
+        IOptions<EmailSettings> settings,
+        ISystemSettingService sysSettings)
     {
         _notifications = notifications;
-        _settings = settings.Value;
+        _email = settings.Value;
+        _sysSettings = sysSettings;
     }
 
     public async Task SendAsync(
@@ -26,20 +32,31 @@ public class SmtpEmailService : IEmailService
         string emailType,
         Guid? recipientUserId = null)
     {
+        // Admin có thể tắt gửi mail để demo/thử nghiệm mà không làm phiền người thật.
+        // Vẫn ghi log là SKIPPED để biết lẽ ra đã gửi cho ai.
+        var emailEnabled = await _sysSettings.GetBoolAsync(
+            SystemSettingKeys.EmailEnabled, SystemSettingKeys.DefaultEmailEnabled);
+
         var status = "SENT";
         string? errorMessage = null;
 
+        if (!emailEnabled)
+        {
+            status = "SKIPPED";
+            errorMessage = "Gửi email đang tắt trong cấu hình hệ thống.";
+        }
+        else
         try
         {
-            using var client = new SmtpClient(_settings.SmtpServer, _settings.SmtpPort)
+            using var client = new SmtpClient(_email.SmtpServer, _email.SmtpPort)
             {
-                Credentials = new NetworkCredential(_settings.SmtpUsername, _settings.SmtpPassword),
+                Credentials = new NetworkCredential(_email.SmtpUsername, _email.SmtpPassword),
                 EnableSsl = true
             };
 
             var message = new MailMessage
             {
-                From = new MailAddress(_settings.FromEmail, _settings.FromName),
+                From = new MailAddress(_email.FromEmail, _email.FromName),
                 Subject = subject,
                 Body = body,
                 IsBodyHtml = true

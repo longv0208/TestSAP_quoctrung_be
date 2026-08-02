@@ -39,8 +39,12 @@ public class ProposalSummaryDto
 {
     public Guid Id { get; set; }
     public string TitleVI { get; set; } = null!;
+    public string? TitleEN { get; set; }
     public string ResearchType { get; set; } = null!;  // "Applied" | "Basic"
     public string Status { get; set; } = null!;
+    // Tên đợt + lĩnh vực để FE danh sách hiển thị thẳng (cột Cycle / Research Field),
+    // khỏi phải tự resolve từ ID.
+    public string? CycleName { get; set; }
     public string TrackName { get; set; } = null!;
     public string PrincipalInvestigatorName { get; set; } = null!;
     public decimal TotalBudget { get; set; }
@@ -55,10 +59,8 @@ public class ProposalDto : ProposalSummaryDto
     public string? ProjectStatus { get; set; }
     public int VersionNo { get; set; } = 1;
     public string CycleId { get; set; } = null!;
-    public string CycleName { get; set; } = null!;
     public string TrackId { get; set; } = null!;
     public int ResearchTypeId { get; set; }
-    public string? TitleEN { get; set; }
     public int DurationMonths { get; set; }
     public string Objectives { get; set; } = null!;
     public string? Methodology { get; set; }

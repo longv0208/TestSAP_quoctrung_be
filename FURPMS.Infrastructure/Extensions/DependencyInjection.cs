@@ -53,6 +53,7 @@ public static class DependencyInjection
         services.AddScoped<IPersonnelRoleTypeService, PersonnelRoleTypeService>();
         services.AddScoped<IBudgetExpenseCategoryService, BudgetExpenseCategoryService>();
         services.AddScoped<ISystemFinancialConfigService, SystemFinancialConfigService>();
+        services.AddScoped<ISystemSettingService, SystemSettingService>();
         services.AddScoped<IProposalBudgetService, ProposalBudgetService>();
         services.AddScoped<ITeamMemberService, TeamMemberService>();
         services.AddScoped<IChangeRequestService, ChangeRequestService>();

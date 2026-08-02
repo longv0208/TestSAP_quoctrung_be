@@ -16,12 +16,23 @@ public class AcceptanceEvaluationsController : ControllerBase
 
     public AcceptanceEvaluationsController(IAcceptanceEvaluationService service) => _service = service;
 
+    // Tổng hợp mọi phiếu của hội đồng — Staff/Admin xem; thành viên hội đồng xem để lập biên bản.
     [HttpGet]
-    [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GetAll(Guid councilId)
     {
-        var list = await _service.GetByCouncilAsync(councilId);
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var isStaffOrAdmin = User.IsInRole("Admin") || User.IsInRole("Staff");
+        var list = await _service.GetByCouncilAsync(councilId, userId, isStaffOrAdmin);
         return Ok(ApiResponse<IReadOnlyList<AcceptanceEvaluationDto>>.Ok(list));
+    }
+
+    // Phiếu của CHÍNH tôi (null nếu chưa chấm) — form chấm nghiệm thu của reviewer dùng endpoint này.
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMy(Guid councilId)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var dto = await _service.GetMyAsync(councilId, userId);
+        return Ok(ApiResponse<AcceptanceEvaluationDto?>.Ok(dto));
     }
 
     [HttpPost]

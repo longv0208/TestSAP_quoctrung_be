@@ -44,7 +44,8 @@ public class ProposalsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var result = await _proposals.GetProposalByIdAsync(id);
+        var (callerId, roles) = GetCaller();
+        var result = await _proposals.GetProposalByIdAsync(id, callerId, roles);
         return Ok(ApiResponse<ProposalDto>.Ok(result));
     }
 
@@ -60,7 +61,8 @@ public class ProposalsController : ControllerBase
     public async Task<IActionResult> GetMy()
     {
         var (callerId, roles) = GetCaller();
-        var result = await _proposals.GetProposalsAsync(new ProposalQueryParams(), callerId, roles);
+        // "Đề cương của tôi" LUÔN chỉ của người gọi — kể cả Admin/Staff (đa vai đang làm PI).
+        var result = await _proposals.GetProposalsAsync(new ProposalQueryParams(), callerId, roles, ownOnly: true);
         return Ok(ApiResponse<IEnumerable<ProposalSummaryDto>>.Ok(result));
     }
 

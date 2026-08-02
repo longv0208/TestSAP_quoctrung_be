@@ -455,6 +455,52 @@ public class DocumentExportService : IDocumentExportService
 
     // ── OpenXml helpers ─────────────────────────────────────────────────────
 
+    // ── Contract (.docx) — BM05 ─────────────────────────────────────────────
+    public async Task<(byte[] Content, string FileName)> ExportContractDocAsync(Guid contractId)
+    {
+        var c = await _contracts.Query()
+            .Include(x => x.Project).ThenInclude(p => p.PiUser)
+            .Include(x => x.Project).ThenInclude(p => p.HostingUnit)
+            .FirstOrDefaultAsync(x => x.Id == contractId)
+            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+
+        using var ms = new MemoryStream();
+        using (var docx = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document))
+        {
+            var mainPart = docx.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body());
+            var body = mainPart.Document.Body!;
+
+            AppendParagraph(body, "TRƯỜNG ĐẠI HỌC FPT", bold: true, fontSize: 12);
+            AppendParagraph(body, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
+            AppendParagraph(body, "Độc lập - Tự do - Hạnh phúc");
+            AppendParagraph(body, "");
+            AppendHeading(body, "HỢP ĐỒNG THỰC HIỆN ĐỀ TÀI NGHIÊN CỨU KHOA HỌC", 16, bold: true, justify: JustificationValues.Center);
+            AppendParagraph(body, $"Số: {c.ContractNumber}");
+            AppendParagraph(body, "");
+
+            var t = CreateTable(body, new[] { "Mục", "Nội dung" }, new[] { 2600, 6400 });
+            AddTableRow(t, "Tên đề tài", c.Project?.TitleVi ?? c.ScopeTitle ?? "—", bold0: true);
+            AddTableRow(t, "Chủ nhiệm đề tài", c.Project?.PiUser?.FullName ?? "—", bold0: true);
+            AddTableRow(t, "Đơn vị chủ trì", c.Project?.HostingUnit?.Name ?? "—", bold0: true);
+            AddTableRow(t, "Thời gian thực hiện", $"{c.StartDate:dd/MM/yyyy} – {c.EndDate:dd/MM/yyyy}", bold0: true);
+            AddTableRow(t, "Tổng kinh phí", c.TotalAmount > 0 ? $"{c.TotalAmount:N0} VNĐ" : "—", bold0: true);
+            AddTableRow(t, "Đại diện Bên A", c.SideARepresentative ?? "—", bold0: true);
+
+            AppendParagraph(body, "");
+            AppendParagraph(body, "Hai bên cam kết thực hiện đúng các điều khoản của Hợp đồng và Quy định quản lý đề tài NCKH (QĐ 543/QĐ-ĐHFPT).");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "");
+
+            var sign = CreateTable(body, new[] { "ĐẠI DIỆN BÊN A", "CHỦ NHIỆM ĐỀ TÀI (BÊN B)" }, new[] { 4500, 4500 });
+            AddTableRow(sign, "(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)");
+            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (c.Project?.PiUser?.FullName ?? ""));
+        }
+
+        var code = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
+        return (ms.ToArray(), $"HopDong_{code}.docx");
+    }
+
     private static void AppendParagraph(Body body, string text, bool bold = false, int fontSize = 11)
     {
         var para = new Paragraph();

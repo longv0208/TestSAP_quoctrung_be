@@ -46,7 +46,9 @@ public class CycleDto
     public int ResearchTypeId { get; set; }
     public string ResearchTypeName { get; set; } = null!;
     public string SubmissionStartDate { get; set; } = null!;
-    public string SubmissionDeadline { get; set; } = null!;
+    public string SubmissionDeadline { get; set; } = null!;   // HẠN HIỆU LỰC (sau gia hạn nếu có)
+    public string? OriginalDeadline { get; set; }              // hạn gốc — chỉ set khi đã gia hạn
+    public int ExtensionCount { get; set; }                    // số lần gia hạn (0 = chưa gia hạn)
     public decimal FundingCap { get; set; }
     public string? Description { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -75,9 +77,27 @@ public class UpdateTrackRequest
 {
     public string? Name { get; set; }
     public string? Description { get; set; }
+    public string? OwnerId { get; set; }   // đổi người phụ trách ngay trong form Sửa (null = bỏ gán)
 }
 
 public class AssignTrackOwnerRequest
 {
     public string? OwnerId { get; set; }
+}
+
+// Gia hạn deadline đợt (rule tuần 10) — ghi log, không ghi đè ngày gốc.
+public class ExtendDeadlineRequest
+{
+    public string NewDeadline { get; set; } = null!;  // yyyy-MM-dd
+    public string? Reason { get; set; }
+}
+
+public class DeadlineExtensionDto
+{
+    public Guid Id { get; set; }
+    public string OldDeadline { get; set; } = null!;
+    public string NewDeadline { get; set; } = null!;
+    public string? Reason { get; set; }
+    public string? CreatedByName { get; set; }
+    public DateTime CreatedAt { get; set; }
 }

@@ -9,12 +9,14 @@ public interface IMasterDataRepository
     IQueryable<PersonnelRoleType> PersonnelRoleTypes { get; }
     IQueryable<BudgetExpenseCategory> BudgetExpenseCategories { get; }
     IQueryable<SystemFinancialConfig> SystemFinancialConfigs { get; }
+    IQueryable<SystemSetting> SystemSettings { get; }
     IQueryable<AmendmentCategory> AmendmentCategories { get; }
     IQueryable<DisbursementTemplate> DisbursementTemplates { get; }
     IQueryable<ResearchType> ResearchTypes { get; }
     IQueryable<OrganizationalUnit> OrganizationalUnits { get; }
     IQueryable<RubricTemplate> RubricTemplates { get; }
     IQueryable<RubricCriterion> RubricCriteria { get; }
+    IQueryable<RubricTemplateScope> RubricTemplateScopes { get; }   // bộ tiêu chí ↔ (đợt + lĩnh vực)
     IQueryable<ProductCategory> ProductCategories { get; }
     IQueryable<AcademicProfile> AcademicProfiles { get; }
     void Add<T>(T entity) where T : class;
