@@ -42,13 +42,15 @@ return Ok(ApiResponse.Ok("Operation completed."));
 
 // Error (thrown exception → GlobalExceptionMiddleware)
 throw new KeyNotFoundException("Resource not found.");
-throw new UnauthorizedAccessException("Invalid credentials.");
+throw new UnauthorizedAccessException("Invalid credentials.");   // 401 — CHƯA đăng nhập
+throw new ForbiddenException("Only the PI can edit this proposal."); // 403 — có đăng nhập, thiếu quyền
 throw new ArgumentException("Validation message.");
 throw new InvalidOperationException("Conflict message.");
 ```
 
 HTTP status codes come from `GlobalExceptionMiddleware`:
-- `UnauthorizedAccessException` → 401
+- `UnauthorizedAccessException` → 401 (**chỉ dùng cho lỗi xác thực** — FE thấy 401 là đăng xuất người dùng)
+- `ForbiddenException` → 403 (thiếu quyền với tài nguyên: không phải PI, không phải Thư ký hội đồng…)
 - `KeyNotFoundException` → 404
 - `ArgumentException` → 400
 - `InvalidOperationException` → 409
@@ -83,7 +85,9 @@ dotnet ef migrations add <Name> --project FURPMS.Infrastructure --startup-projec
 # App auto-runs db.Database.EnsureCreated() + seeder on startup (Program.cs)
 ```
 
-One migration per phase. Hiện hành (Project-centric): `PhaseA_ProjectCentric` → `PhaseB_ReviewMN` → `PhaseC_ChangeRequests`.
+One migration per phase. Hiện hành (Project-centric): `PhaseA_ProjectCentric` → `PhaseB_ReviewMN` → `PhaseC_ChangeRequests` → `PhaseD_SystemSettings`.
+
+> Lưu ý: `dotnet ef migrations add` build TRƯỚC khi sinh file → phải `dotnet build` lại trước khi `dotnet run --no-build`, nếu không app báo "database is already up to date" mà bảng mới không có.
 
 ## DatabaseSeeder
 
@@ -161,21 +165,29 @@ FURPMS.API/
 ### Nguyên tắc chung (từ advisor)
 14. Bám sát **QĐ 543/QĐ-ĐHFPT**. Phân tích theo **Quy trình → từng giai đoạn** (ai tham gia / sản phẩm đầu ra / văn bản liên quan).
 
+### Chốt buổi họp tuần 10 — thầy Đức (nguồn: ghi âm tuần 10). Plan: `.claude/plans/audit-task-do-pure-treehouse.md`
+15. **Tài chính = "minh chứng", hệ thống KHÔNG quản tiền.** Kế toán chi tiền ngoài hệ thống. Hệ thống chỉ theo dõi **mốc giải ngân** (gate theo tiến độ/nghiệm thu) + cho Staff **upload file HĐ/chứng từ làm minh chứng** + "đánh dấu đã giải ngân" (không nhập số tiền). **→ Rule #2, #3, #6 (giải ngân/FINANCE cũ) SUPERSEDED.** Scope thực thi = **strip+ẩn** (giữ bảng, ngừng tính tiền, ẩn nav/UI tiền), không migration bỏ entity. (Đã làm: `disbursement/{id}/evidence`, ẩn nav financial-config/budget-categories, confirm→optional amount.)
+16. **Chỉ 2 hội đồng:** Xét duyệt đề cương + Nghiệm thu. Báo cáo tiến độ giữa kỳ = **Staff duyệt trực tiếp, KHÔNG hội đồng**. Bỏ dimension FINANCE. (Round type dùng REVIEW + ACCEPTANCE.)
+17. **Lịch họp:** Staff phải setup **đủ (thành viên + ngày/giờ + địa điểm/link)** trước khi hiện nút "Gửi thư mời". Offline có **địa điểm** (`council_meeting.location`), online có link. Khung giờ tổng + **slot con** theo từng đề tài. **Cảnh báo trùng lịch** giảng viên (2 hội đồng giao giờ — `GET /councils/{id}/schedule-conflicts`). Thay người/đổi lịch **bất kỳ lúc nào** (không đóng băng HĐ). (Đã làm: location + conflict + **điểm danh** + **gate gửi mời** + **slot theo đề tài** `PUT /councils/{id}/slots`.)
+18. **Biên bản (BM04/BM12):** auto-prefill DS hội đồng; điểm danh tick+lý do; **2 phong cách** ghi: Hỏi–Đáp (`council_qa_entry`) *hoặc* viết tự do; **ý kiến từng TV** 2 cột chuyên môn/kinh phí (`council_member_opinion`); Thư ký soạn → Chủ tịch chốt = khóa (giữ rule #12). ("Về kinh phí" ở đây = ý kiến định tính, KHÔNG mâu thuẫn #15.)
+19. **Gia hạn deadline = LOG, không ghi đè** (chủ yếu cấp ĐỢT `research_cycle.submission_deadline`). Bảng `deadline_extension`; deadline hiệu lực = bản mới nhất, gốc giữ nguyên. (Đã làm.)
+20. **Nộp đề cương: upload+AI là TÙY CHỌN** (không ép; nhập tay ngang hàng — giữ rule #10). **Loại đề tài suy từ ĐỢT** (rule #7), PI không chọn.
+21. **Tự sinh Word hợp đồng (BM05):** bốc dữ liệu (CN/đề tài/kinh phí) → xuất .docx (`GET /contracts/{id}/export-word`) đem ký ngoài → upload bản ký làm minh chứng (Document polymorphic EntityType="Contract"). (Word gen đã làm.)
+22. **Trực quan hóa vòng đời đề tài:** timeline mốc + ngày (ký HĐ, giải ngân từng đợt) + click mở minh chứng. (Đã làm: tab "Tiến trình" ở chi tiết hợp đồng.)
+23. **Đa vai (multi-role):** login email+mật khẩu; đổi vai ở **dropdown header** (chỉ hiện vai user thực có). (Đã làm.)
+
 ---
-*(Rule 1–6 — review round, giải ngân, COI, PARTIAL/WHOLE — giữ nguyên bên dưới)*
+*(Rule 1–6 — review round, giải ngân, COI, PARTIAL/WHOLE. ⚠️ #2/#3/#6 SUPERSEDED bởi #15/#16 — giữ lại để tra cứu lịch sử.)*
 
 1. Round close result REJECTED → proposal.status = REJECTED (kết thúc luôn).
    Round close result REVISION_REQUIRED → proposal.status = REVISION_REQUIRED;
    PI sửa và resubmit → round đó reopen (status OPEN), giữ score cũ.
-2. FINANCE round chỉ được open khi prerequisite SCIENCE round status = PASSED.
-   Nếu chưa PASSED → trả 409.
-3. Tiền KHÔNG BAO GIỜ tự giải ngân. Khi deliverable PASSED:
-   set disbursement.condition_met_at + notify Staff. Staff xác nhận tay.
+2. ⚠️SUPERSEDED (#16 — bỏ FINANCE round). ~~FINANCE round chỉ được open khi prerequisite SCIENCE round status = PASSED.~~
+3. ⚠️SUPERSEDED (#15 — không quản tiền). ~~Tiền KHÔNG BAO GIỜ tự giải ngân...~~ (giữ cơ chế condition_met_at + minh chứng, bỏ phần số tiền).
 4. Reviewer từ chối (DECLINED) → notify Staff, Staff gán người thay.
 5. COI: thành viên trong proposal_team_members không được làm council_member
    của chính proposal đó. Validate khi add, trả 400 nếu vi phạm.
-6. PARTIAL → 1 đợt giải ngân per mốc nghiệm thu.
-   WHOLE → tối thiểu 3 đợt (đầu/giữa/cuối). Tỷ lệ % config được, không hard-code.
+6. ⚠️SUPERSEDED phần %/tiền (#15). ~~PARTIAL → 1 đợt/mốc; WHOLE ≥3 đợt; tỷ lệ %...~~ (giữ khái niệm mốc/đợt giải ngân, bỏ tính % tiền).
 
 ---
 

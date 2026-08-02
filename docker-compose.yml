@@ -1,11 +1,15 @@
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: furpms-db-1
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "Furpms@Strong123"
+    # Host 1435 (không phải 1433) → khớp "Server=localhost,1435" trong appsettings.json.
+    # Cố ý né cổng SQL mặc định 1433: nhiều máy đã cài sẵn SQL Server ở 1433 → clone về
+    # bị đụng cổng / "Login failed for user 'sa'" (nối nhầm SQL local). 1435 tránh hẳn.
     ports:
-      - "1434:1433"
+      - "1435:1433"
     volumes:
       - mssql_data:/var/opt/mssql
 
