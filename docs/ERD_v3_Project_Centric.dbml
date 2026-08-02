@@ -2,7 +2,8 @@
 // FURPMS — ERD v3 PROJECT-CENTRIC (theo biên bản Review 2, 03/07/2026)
 // ✅ ĐÃ ÁP DỤNG VÀO DB THẬT: Phase A (PhaseA_ProjectCentric) + Phase B
 // (PhaseB_ReviewMN) + Phase C (PhaseC_ChangeRequests, 09/07/2026: bảng
-// proposal_change_request) — đây giờ là schema HIỆN HÀNH (~57 bảng).
+// proposal_change_request) + Phase D (PhaseD_SystemSettings, 20/07/2026: bảng
+// system_settings) — đây giờ là schema HIỆN HÀNH (~58 bảng).
 // Phân tích: DB_Redesign_v3_PostReview2.md. Đây LÀ schema hiện hành (đã áp Phase A/B).
 //
 // Thay đổi chính so với hiện trạng:
@@ -66,6 +67,18 @@ Table system_financial_config {
   value decimal
   effective_date date
   is_active bool
+}
+
+// Cấu hình vận hành key-value do Admin chỉnh trong app (giới hạn upload…).
+// Khác system_financial_config: bảng kia chỉ chứa hệ số tài chính có hiệu lực theo ngày.
+Table system_settings {
+  id int [pk, increment]
+  key varchar [unique]
+  value varchar
+  recommended_value varchar
+  description varchar
+  updated_at datetime
+  updated_by uuid
 }
 
 Table budget_expense_category {
@@ -413,11 +426,25 @@ Table council_member {
   status varchar
 }
 
+// Log gia hạn deadline (rule tuần 10) — ghi log, không ghi đè ngày gốc. PhaseI. Chủ yếu TargetType="CYCLE".
+Table deadline_extension {
+  id guid [pk]
+  target_type varchar [note: 'CYCLE | PROJECT | CONTRACT']
+  target_id varchar
+  old_deadline date
+  new_deadline date
+  reason varchar
+  created_by guid
+  created_at datetime
+  indexes { (target_type, target_id) }
+}
+
 Table council_meeting {
   id guid [pk]
   council_id guid
   platform varchar [note: 'IN_PERSON / GOOGLE_MEET / TEAMS']
   meeting_link varchar
+  location varchar [note: 'địa điểm khi họp trực tiếp (PhaseH, tuần 10)']
   calendar_event_id varchar
   scheduled_at datetime
   status varchar
@@ -473,6 +500,26 @@ Table council_decision {
   indexes {
     (council_id, project_id) [unique]
   }
+}
+
+// BM04/BM12 II.1 — biên bản dạng Hỏi–Đáp; xóa theo biên bản (cascade). Thêm PhaseF (tuần 10).
+Table council_qa_entry {
+  id int [pk, increment]
+  decision_id int [note: 'FK council_decision, cascade']
+  asked_by varchar [note: 'tên/vai người hỏi (Thư ký gõ)']
+  question varchar
+  answer varchar
+  order int
+}
+
+// BM04/BM12 II.1 — ý kiến từng thành viên (chuyên môn / kinh phí); cascade. Thêm PhaseG (tuần 10).
+Table council_member_opinion {
+  id int [pk, increment]
+  decision_id int [note: 'FK council_decision, cascade']
+  member_name varchar [note: 'prefill từ roster hội đồng']
+  academic_comment varchar [note: 'Về chuyên môn']
+  budget_comment varchar [note: 'Về kinh phí (ý kiến định tính, không phải tính tiền)']
+  order int
 }
 
 Table reviewer_feedback {

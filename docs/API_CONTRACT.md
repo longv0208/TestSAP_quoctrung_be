@@ -58,13 +58,16 @@ Backend ném exception, `GlobalExceptionMiddleware` map sang status:
 
 | Exception | HTTP | Ý nghĩa |
 |---|---|---|
-| `UnauthorizedAccessException` | 401 | Sai thông tin / không đủ quyền với tài nguyên |
+| `UnauthorizedAccessException` | 401 | **Chưa/hết đăng nhập** (sai mật khẩu, tài khoản khoá) |
+| `ForbiddenException` | 403 | Đã đăng nhập nhưng **không đủ quyền** với tài nguyên (không phải PI của đề tài, không phải Thư ký hội đồng…) |
 | `ArgumentException` | 400 | Dữ liệu vào không hợp lệ |
 | `KeyNotFoundException` | 404 | Không tìm thấy |
 | `InvalidOperationException` | 409 | Xung đột trạng thái (vd: sửa đề xuất đã nộp) |
 | khác | 500 | Lỗi không lường trước |
 
-Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ liệu JSON), **401** nếu thiếu/không hợp lệ token.
+Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ liệu JSON), **401** nếu thiếu/không hợp lệ token, **403** nếu sai role ở `[Authorize(Roles=…)]`.
+
+> ⚠️ **Đổi từ 20/07/2026:** trước đây lỗi phân quyền cũng trả 401, khiến FE tưởng hết phiên và **tự đăng xuất người dùng** khi họ bấm vào chức năng không thuộc quyền mình. Nay đã tách: **401 = đăng nhập lại**, **403 = báo lỗi tại chỗ, đừng logout**. FE phải xử lý 403 riêng, không gộp chung với 401.
 
 ### 2.3. Vai trò (roles)
 4 vai trò, khớp với `Role.Name` trong DB: **`Admin`**, **`Staff`**, **`Faculty`**, **`ReviewCommittee`**.
@@ -165,16 +168,23 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | PUT | `/api/cycles/{id}` | Admin, Staff | Sửa đợt |
 | POST | `/api/cycles/{id}/open` | Admin, Staff | Mở đợt (→ `OPEN`) |
 | POST | `/api/cycles/{id}/close` | Admin, Staff | Đóng đợt (→ `CLOSED`) |
+| POST | `/api/cycles/{id}/extend-deadline` | Admin, Staff | **Gia hạn deadline đợt** (rule tuần 10) `{ newDeadline: "yyyy-MM-dd", reason? }` — ghi log, **KHÔNG ghi đè** `SubmissionDeadline` gốc; phải sau deadline hiện tại (else 400) |
+| GET | `/api/cycles/{id}/deadline-extensions` | * | Lịch sử gia hạn (mới nhất trước) — deadline hiệu lực = `newDeadline` bản đầu list |
+
+> Response cycle (`GET /api/cycles`, `GET /api/cycles/{id}`) nay trả **`submissionDeadline` = hạn HIỆU LỰC** (sau gia hạn), kèm **`originalDeadline`** (hạn gốc, chỉ khi đã gia hạn) + **`extensionCount`**. Trước đây luôn trả hạn gốc → FE hiện hạn cũ sau khi gia hạn.
 | GET | `/api/cycles/tracks` | * | **Toàn bộ** lĩnh vực (dropdown khi PI nộp đề tài) |
 | POST | `/api/cycles/tracks` | Admin, Staff | Tạo lĩnh vực toàn cục (không gắn đợt) |
 | GET | `/api/cycles/{id}/tracks` | * | Lĩnh vực **đã gắn vào đợt** `{id}` (bảng nối `cycle_track`) |
 | POST | `/api/cycles/{id}/tracks` | Admin, Staff | Tạo lĩnh vực **và gắn vào đợt** `{id}` (nếu chưa gắn) |
-| PUT | `/api/cycles/tracks/{id}` | Admin, Staff | Sửa lĩnh vực |
+| POST | `/api/cycles/{cycleId}/tracks/{trackId}` | Admin, Staff | **Gắn** lĩnh vực toàn cục có sẵn vào đợt (409 nếu đã gắn) |
+| DELETE | `/api/cycles/{cycleId}/tracks/{trackId}` | Admin, Staff | **Gỡ** lĩnh vực khỏi đợt (409 nếu đã có đề tài dùng lĩnh vực đó trong đợt) |
+| PUT | `/api/cycles/tracks/{id}` | Admin, Staff | Sửa lĩnh vực (tên/mô tả/chủ; đổi tên trùng → 409) |
 | PATCH | `/api/cycles/tracks/{id}/owner` | Admin, Staff | Gán chủ lĩnh vực (FE hiện ẩn tính năng này) |
 | PATCH | `/api/cycles/tracks/{id}/deactivate` | Admin, Staff | Vô hiệu lĩnh vực |
 
 > ⚠️ Đợt nộp phải ở trạng thái `OPEN` thì PI mới tạo được đề xuất. FE lấy đợt đang mở bằng cách `GET /api/cycles` rồi lọc `status == "Open"`.
 > **Đợt vs Lĩnh vực (Phase B):** 1 đợt chứa nhiều lĩnh vực qua `cycle_track`. Màn "Đợt & Lĩnh vực" dùng `GET/POST /api/cycles/{id}/tracks` (theo đợt); dropdown nộp đề tài dùng `GET /api/cycles/tracks` (toàn cục).
+> **Lĩnh vực dùng lại nhiều đợt (rule #6):** lĩnh vực là **master data toàn cục** — tạo 1 lần (`POST /api/cycles/tracks`), rồi mỗi đợt **tự gắn/gỡ** (`POST`/`DELETE /api/cycles/{cycleId}/tracks/{trackId}`) để kiểm soát đợt nào mở lĩnh vực nào. Đợt 1 mở AI+IT, đợt 2 chỉ mở AI (gỡ IT) — PI chỉ chọn được lĩnh vực **đã gắn** vào đợt đang nộp. Không gỡ được nếu trong đợt đã có đề tài dùng lĩnh vực đó.
 
 ### Các lookup khác (đều CRUD theo cùng mẫu: GET list / GET {id} / POST / PUT; ghi/sửa = Admin)
 | Resource | Base path | Đọc | Ghi |
@@ -185,6 +195,31 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | Product categories | `/api/product-categories` (`?activeOnly=`) | * | Admin |
 | Organizational units | `/api/organizational-units` | * | Admin |
 | Rubric criteria | `/api/rubric-criteria` (`?roundType=`) | * | Admin (có DELETE) |
+| Amendment categories | `/api/amendment-categories` (`?activeOnly=`) | * | — (chỉ đọc, seed sẵn) |
+
+### Cấu hình vận hành — `/api/system-settings`
+Key-value do Admin chỉnh trong app, có hiệu lực ngay (không cần restart). Khác `/api/financial-configs` — bảng kia chỉ chứa hệ số tài chính.
+
+| Method | Path | Quyền | Mô tả |
+|---|---|---|---|
+| GET | `/api/system-settings` | Admin | Danh sách cấu hình: `{ id, key, value, recommendedValue, description, updatedAt }` |
+| GET | `/api/system-settings/upload-policy` | mọi user đăng nhập | Giới hạn upload đã giải mã sẵn — FE validate trước khi gửi file |
+| PUT | `/api/system-settings/{key}` | Admin | Body `{ "value": "25" }` → 400 nếu ngoài khoảng cho phép |
+
+`upload-policy` trả:
+```json
+{ "maxFileSizeMb": 10, "recommendedMaxFileSizeMb": 10, "minAllowedMb": 1, "maxAllowedMb": 100,
+  "allowedExtensions": [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".png", ".jpg", ".jpeg"] }
+```
+
+Key hiện có:
+
+| Key | Mặc định / khuyến cáo | Ràng buộc |
+|---|---|---|
+| `UPLOAD_MAX_FILE_SIZE_MB` | `10` | số nguyên 1–100; ngoài khoảng → 400 |
+| `UPLOAD_ALLOWED_EXTENSIONS` | `.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg` | danh sách ngăn bằng dấu phẩy, tối thiểu 1 mục |
+
+> Upload tài liệu (§6 "Tài liệu đề xuất") đọc chính sách này mỗi lần gọi. Giá trị hỏng/thiếu trong DB → rơi về mức khuyến cáo.
 
 ---
 
@@ -193,8 +228,8 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
 | GET | `/api/proposals` | * (Admin/Staff xem hết; còn lại chỉ của mình) | Danh sách (filter `?cycleId&trackId&status&type&search`) |
-| GET | `/api/proposals/my` | * | Đề xuất của tôi |
-| GET | `/api/proposals/{id}` | * | Chi tiết (kèm members, budgetItems) |
+| GET | `/api/proposals/my` | * | **Đề cương của tôi** — LUÔN chỉ của người gọi (`PiUserId == caller`), **kể cả Admin/Staff** (đa vai đang "làm PI"). Khác `/api/proposals` (Admin/Staff xem hết). |
+| GET | `/api/proposals/{id}` | Staff/Admin · PI chủ đề cương · thành viên hội đồng được gán chấm | Chi tiết (kèm members, budgetItems). **Kiểm quyền (chống IDOR):** người ngoài 3 nhóm này → **403** (trước đây ai đăng nhập cũng đọc được). |
 | POST | `/api/proposals` | * | Tạo (trạng thái `DRAFT`) |
 | PUT | `/api/proposals/{id}` | chủ nhiệm (PI) | Sửa khi `DRAFT`; khi `REVISION_REQUIRED` → **tạo bản version mới** (v2, v3…) giữ lịch sử |
 | POST | `/api/proposals/{id}/submit` | PI | Nộp duyệt (`DRAFT` → `SUBMITTED`; project → `UNDER_REVIEW`) |
@@ -253,7 +288,12 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 `type`: 1=ExtendTime · 2=ContentChange · 3=PersonnelChange · 4=BudgetChange · 5=Suspend. Response trả `type`/`status` dạng **tên** (`ExtendTime` / `Pending` / `Approved` / `Rejected`).
 
 ### Tài liệu đề xuất — `/api/proposals/{proposalId}/documents`, `/api/documents`
-> ✅ **Đã có BE** (trước đây bị đánh dấu 404 — nay implement). Lưu file gốc (Word/PDF/Excel/ảnh, ≤10MB) + metadata; đây là attachment cho cả 2 đường nộp (nhập tay / upload+AI).
+> ✅ **Đã có BE.** Attachment cho cả 2 đường nộp (nhập tay / upload+AI). Theo **QĐ 543 Điều 6.4**, hồ sơ đăng ký gồm **đề cương (BM01) + lý lịch khoa học (BM02)** → đây là chỗ nộp BM02 và bản đề cương gốc.
+>
+> **Lưu trữ & giới hạn (đã enforce ở BE):**
+> - File nằm trên **đĩa server**: `App_Data/uploads/proposals/{proposalId}/…` (đổi qua config `DocumentStorage:RootPath`). **DB chỉ lưu metadata** (tên gốc, dung lượng, MIME, blob name, người upload, cờ mật).
+> - **Dung lượng & định dạng do Admin cấu hình** trong `/api/system-settings` (§5) — mặc định **10 MB/file** và `.pdf .doc .docx .xls .xlsx .png .jpg .jpeg`; vượt/sai đuôi trả **400**. FE nên gọi `GET /api/system-settings/upload-policy` để chặn sớm và hiện đúng mức giới hạn.
+> - ⚠️ **Khi deploy Render/container: đĩa là ephemeral** — redeploy sẽ **mất file đã upload**. Muốn giữ lâu dài phải gắn volume hoặc chuyển sang blob storage (S3/Azure).
 
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
@@ -329,6 +369,7 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 ```
 - `memberRole` ∈ `Chair | Secretary | Opponent | Member`.
 - **Bắt buộc có ít nhất 1 `Chair` và 1 `Secretary`** (thiếu → `400`). Vì kết quả chốt qua biên bản Thư ký soạn → Chủ tịch duyệt (rule #12); thiếu 1 trong 2 thì hội đồng không bao giờ chốt được.
+- **1 người chỉ giữ 1 vị trí / hội đồng** — `members` trùng `userId` (vd cùng người vừa Chair vừa Secretary) → `400`.
 - **COI (rule #5)** kiểm cho **từng member × từng đề tài** TRƯỚC khi ghi: PI/thành viên đề tài không được là ủy viên → `400`, **không tạo hội đồng nửa vời**.
 - Thành viên tạo ở trạng thái `ASSIGNED` (chưa gửi thư mời) — gửi mời qua `POST /api/councils/{councilId}/send-invitations` (§8.3, rule #13).
 - Thay ủy viên bị `DECLINED` (rule #4): dùng `DELETE /api/council-members/{memberId}` rồi `POST /api/councils/{councilId}/members` (§8.3) — không phải tạo lại hội đồng.
@@ -386,13 +427,22 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
-| GET | `/api/councils/my-memberships` | Authenticated | Hội đồng mà tôi tham gia |
+| GET | `/api/councils/my-memberships` | Authenticated | Hội đồng mà tôi tham gia. `MyMembershipDto` **enrich (tuần 10)**: thêm `piName`, `trackName`, `createdAt`, `nextMeetingAt` (FE tìm kiếm/sắp xếp + hiện PI/lĩnh vực/ngày họp) |
 | POST | `/api/councils` | Staff, Admin | Lập 1 hội đồng cho 1 đề tài trong round |
 | GET | `/api/councils/{councilId}/members` | Authenticated | Thành viên hội đồng |
+| DELETE | `/api/councils/{councilId}` | Staff, Admin | **Xóa hội đồng** — chỉ khi **chưa có phiếu chấm / biên bản / nghiệm thu** (có → 409). Tự gỡ thành viên + lịch họp + điểm danh + gán đề tài. |
 | POST | `/api/councils/{councilId}/members` | Staff, Admin | Thêm thành viên `{ userId, memberRole, isExternal }` (COI rule #5) |
-| POST | `/api/councils/{councilId}/send-invitations` | Staff, Admin | **Gửi thư mời đồng loạt** cho member `ASSIGNED` (rule #13) `{ confirmDeadline? }` |
-| PATCH | `/api/council-members/{memberId}/respond` | Thành viên | Chấp nhận/từ chối lời mời `{ accept, declineReason? }` |
+| POST | `/api/councils/{councilId}/send-invitations` | Staff, Admin | **Gửi thư mời đồng loạt** cho member `ASSIGNED` (rule #13) `{ confirmDeadline? }`. **Gate (rule tuần 10):** phải đủ **Chủ tịch + Thư ký + đã có lịch họp** — thiếu → **409** |
+| GET | `/api/councils/{councilId}/schedule-conflicts` | Staff, Admin | **Cảnh báo trùng lịch** (rule tuần 10): TV hội đồng này còn dự hội đồng khác họp **giao giờ**. Trả `[{ memberUserId, memberName, otherCouncilId, otherCouncilType?, thisMeetingAt, otherMeetingAt }]` (rỗng = không trùng). |
+| GET | `/api/councils/{councilId}/slots` | Staff, Admin | **Lịch chấm theo đề tài** (rule tuần 10): slot con từng đề tài trong buổi họp. Trả `[{ projectId, projectTitle, meetingId?, slotStartAt?, slotDurationMinutes?, slotOrder? }]` |
+| PUT | `/api/councils/{councilId}/slots` | Staff, Admin | Gán slot: `{ entries: [{ projectId, slotStartAt?, slotDurationMinutes?, slotOrder? }] }` — meetingId auto = buổi họp sớm nhất của hội đồng |
+| POST | `/api/councils/{councilId}/projects` | Staff, Admin | **Gán 1 đề tài vào hội đồng có sẵn** `{ projectId }` (dropdown ở màn Hội đồng & Chấm). Đề tài phải đã tham gia round + COI rule #5. Mỗi đề tài ↔ 1 hội đồng/round → tự gỡ khỏi hội đồng khác của round. |
+| DELETE | `/api/councils/{councilId}/projects/{projectId}` | Staff, Admin | Gỡ đề tài khỏi hội đồng (chỉ khi chưa có điểm) |
+| PATCH | `/api/council-members/{memberId}/respond` | Thành viên | Chấp nhận/từ chối lời mời `{ accept, declineReason? }` — **chỉ chính chủ** (không phải → 403) |
+| POST | `/api/council-members/{memberId}/confirm-on-behalf` | Staff, Admin | **Xác nhận thay** (reviewer đồng ý ngoài hệ thống / tiện demo): → `CONFIRMED`. Đã `DECLINED` → 409 |
 | DELETE | `/api/council-members/{memberId}` | Staff, Admin | Xoá thành viên |
+
+> Ghi chú: `POST /api/rounds/{roundId}/councils` (tạo hội đồng trọn gói) nay cho phép `projectIds` **rỗng** → tạo hội đồng chỉ có thành viên, gán đề tài sau qua 2 endpoint trên. FE mới (màn "Hội đồng & Chấm") lập hội đồng trước rồi dropdown-gán đề tài.
 
 **CreateCouncilRequest**: `{ proposalId, roundId, councilType, establishmentDecisionNo?, establishedAt?, meetingDeadline?, minMembersRequired=3, maxMembersAllowed=5 }`
 **CouncilMemberResponse**: `{ id, councilId, userId, reviewerName, reviewerEmail, memberRole, isExternal, status, invitationSentAt?, confirmedAt?, declinedAt? }` — `status` ∈ `ASSIGNED | INVITED | CONFIRMED | DECLINED | EXPIRED`.
@@ -402,12 +452,16 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
 | GET | `/api/meetings` | Admin, Staff | Toàn bộ lịch họp |
+| GET | `/api/meetings/my` | * (PI) | **Lịch họp hội đồng chấm đề tài của tôi** — PI **trình bày trước hội đồng** (Process_Spec) nên cần biết ngày/giờ + địa điểm hoặc link. Trước đây chỉ Staff/Reviewer xem được |
 | GET | `/api/councils/{councilId}/meetings` | Authenticated | Lịch họp của hội đồng |
 | POST | `/api/councils/{councilId}/meetings` | Admin, Staff | Tạo lịch họp |
 | POST | `/api/meetings/{id}/start` | Admin, Staff | Bắt đầu họp |
 | POST | `/api/meetings/{id}/end` | Admin, Staff | Kết thúc họp |
 
-**ScheduleMeetingRequest**: `{ title?, platform="IN_PERSON", meetingLink?, scheduledAt, durationMinutes=120, agenda? }`
+**ScheduleMeetingRequest**: `{ title?, platform="IN_PERSON", meetingLink?, location?, scheduledAt, durationMinutes=120, agenda? }`
+
+| GET | `/api/meetings/{id}/attendance` | * (thành viên HĐ) | **Điểm danh** (rule tuần 10) — list theo DS hội đồng: `[{ memberId, memberName, memberRole, attended?, absenceReason? }]` |
+| PUT | `/api/meetings/{id}/attendance` | Thư ký / Admin, Staff | Lưu điểm danh `{ entries: [{ memberId, attended, absenceReason? }] }` — upsert `MeetingAttendance`; lý do chỉ giữ khi vắng | — `platform` ∈ `IN_PERSON | GOOGLE_MEET | TEAMS | ZOOM`. **Offline (`IN_PERSON`) bắt buộc `location`** (thiếu → 400); online thì bỏ `location`, giữ `meetingLink`. `MeetingDto` trả thêm `location`.
 
 ### 8.5 Chấm điểm, biên bản & quyết định — `/api/review-scoring`
 
@@ -417,15 +471,15 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | GET | `/api/review-scoring/rubrics/{id}` | Authenticated | Chi tiết 1 rubric |
 | POST | `/api/review-scoring/councils/{councilId}/scores` | Thành viên | Nộp/sửa phiếu chấm của mình |
 | GET | `/api/review-scoring/councils/{councilId}/scores/my` | Authenticated | Phiếu của tôi (null nếu chưa chấm) |
-| GET | `/api/review-scoring/councils/{councilId}/scores` | Admin, Staff | Tất cả phiếu (tham khảo) |
+| GET | `/api/review-scoring/councils/{councilId}/scores` | Admin, Staff, **thành viên hội đồng** | Tất cả phiếu (tham khảo) — Thư ký cần để lập biên bản |
 | POST | `/api/review-scoring/councils/{councilId}/minutes` | Thư ký | **Soạn/sửa biên bản (nháp)** — chưa khóa, chưa đổi status |
 | POST | `/api/review-scoring/councils/{councilId}/minutes/approve` | Chủ tịch | **Duyệt = khóa biên bản** + cập nhật status |
 | GET | `/api/review-scoring/councils/{councilId}/decision` | Authenticated | Xem quyết định/biên bản |
 | ~~POST~~ | ~~`/api/review-scoring/councils/{councilId}/decision`~~ | — | **NGỪNG DÙNG** → luôn trả `409`. Dùng luồng biên bản (minutes) bên dưới |
 
 **SubmitScoreRequest**: `{ templateId, projectId?, generalComments?, otherRecommendations?, scoreDetails: [ { criterionId, givenScore, comments? } ] }`
-**SaveMinutesRequest**: `{ projectId?, result, councilComments?, recommendations? }` — `result` ∈ `APPROVED | REJECTED | REVISION_REQUIRED`.
-**CouncilDecisionDto**: `{ id, councilId, totalMembers, attendingMembers, validBallots, invalidBallots, averageScore?, result, councilComments?, recommendations?, finalizedAt? }` — `finalizedAt=null` ⇒ còn nháp.
+**SaveMinutesRequest**: `{ projectId?, result, councilComments?, recommendations?, qaEntries?, memberOpinions? }` — `result` ∈ `APPROVED | REJECTED | REVISION_REQUIRED`. `qaEntries` = biên bản dạng **Hỏi–Đáp** (BM04/BM12 II.1), mỗi phần tử `{ askedBy?, question, answer?, order }`. `memberOpinions` = **ý kiến từng TV** (BM04 II.1), mỗi phần tử `{ memberName, academicComment?, budgetComment?, order }` (chuyên môn / kinh phí). Cả `qaEntries` và `memberOpinions` gửi lại **thay TOÀN BỘ** danh sách cũ (rỗng = xóa hết). `councilComments` = cách ghi tự do — Thư ký chọn phong cách.
+**CouncilDecisionDto**: `{ …, finalizedAt?, qaEntries[], memberOpinions[] }` — `finalizedAt=null` ⇒ còn nháp; `qaEntries`/`memberOpinions` khóa cùng biên bản khi Chủ tịch duyệt.
 
 **Luồng chuẩn (rule #12) — kết quả = QUYẾT ĐỊNH Chủ tịch, không tự đếm phiếu:**
 1. Thành viên chấm điểm (`POST .../scores`) — hệ thống hiển thị điểm/phiếu **chỉ để tham khảo**.
@@ -447,7 +501,7 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
-| GET | `/api/councils/{councilId}/feedback` | Admin, Staff | Xem tổng hợp phản hồi |
+| GET | `/api/councils/{councilId}/feedback` | Admin, Staff, **thành viên hội đồng** | Xem tổng hợp phản hồi |
 | POST | `/api/councils/{councilId}/feedback` | Thành viên | Gửi phản hồi |
 
 **SubmitReviewerFeedbackRequest**: `{ urgencyScore?, scientificContributionScore?, practicalSignificanceScore?, actualVsExpectedScore?, overallAssessment?, otherComments? }` (điểm thang 1–5)
@@ -456,8 +510,11 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
-| GET | `/api/councils/{councilId}/acceptance` | Admin, Staff | Đánh giá nghiệm thu |
-| POST | `/api/councils/{councilId}/acceptance` | Thành viên | Nộp đánh giá (`{ result: "PASS"|"FAIL", failReason? }`) |
+| GET | `/api/councils/{councilId}/acceptance` | Admin, Staff, **thành viên hội đồng** | Tất cả phiếu nghiệm thu (tổng hợp — Thư ký lập biên bản cần xem). Người ngoài hội đồng → **403**. *Trước đây khóa cứng `Admin,Staff` → reviewer 403, không chấm được.* |
+| GET | `/api/councils/{councilId}/acceptance/my` | Thành viên hội đồng | **Phiếu của CHÍNH tôi** (null nếu chưa chấm) — form chấm nghiệm thu dùng endpoint này |
+| POST | `/api/councils/{councilId}/acceptance` | Thành viên | Nộp **hoặc CẬP NHẬT** đánh giá của mình (`{ result: "PASS"|"FAIL", failReason? }`). Biên bản đã Chủ tịch chốt → **409** (rule #12). *Trước đây nộp lần 2 luôn 409 "already submitted" dù UI ghi "Cập nhật".* |
+
+> **Nghiệm thu chốt vòng đời đề tài:** Chủ tịch duyệt biên bản vòng **ACCEPTANCE** → project `COMPLETED` (Đạt) hoặc quay lại `IN_PROGRESS` (chưa đạt) — khác vòng REVIEW (`APPROVED`/`CANCELLED`). Trước đây mọi vòng đều set APPROVED nên nghiệm thu xong đề tài vẫn "Đã duyệt" → **đứt mạch cuối**.
 
 > **An ninh (§8.1):** `GET .../review-board` (trả danh tính ủy viên toàn lĩnh vực) đã siết `[Authorize(Roles="Admin,Staff")]` — reviewer xem phần của mình qua `/api/councils/my-memberships` (§8.3), không qua board.
 
@@ -468,13 +525,17 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 ### Contracts — `/api/contracts`
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
-| GET | `/api/contracts` | * | Danh sách hợp đồng |
+| GET | `/api/contracts` | * | Danh sách hợp đồng. Staff/Admin xem hết; PI xem của mình. **`?mine=true`** → LUÔN chỉ HĐ mình là PI (kể cả tài khoản đa vai Staff/Admin đang "làm PI") — dùng cho trang PI (báo cáo tiến độ/sản phẩm/tổng kết). |
 | GET | `/api/contracts/{id}` | * | Chi tiết |
 | POST | `/api/contracts` | Admin, Staff | Tạo hợp đồng |
 | POST | `/api/contracts/{id}/sign` | Admin, Staff | Ký |
+| GET | `/api/contracts/{id}/export-word` | Admin, Staff | **BM05 — tự sinh Word hợp đồng** (rule tuần 10): bốc CN/đề tài/kinh phí/thời gian → `.docx` để ký ngoài |
+| GET/POST | `/api/contracts/{id}/documents` | Admin, Staff | **Hồ sơ hợp đồng đã ký**: list / upload (multipart `file`) bản ký — Document polymorphic EntityType="Contract" |
+| GET | `/api/contracts/{id}/documents/{documentId}/download` | Admin, Staff | Tải/mở bản hợp đồng đã ký (Bearer) |
 | GET | `/api/contracts/{contractId}/disbursements` | * | Đợt giải ngân |
 | POST | `/api/contracts/{contractId}/disbursements/generate` | Admin, Staff | Sinh lịch giải ngân |
 | GET | `/api/contracts/{contractId}/deliverables` | * | Sản phẩm phải nộp |
+| POST | `/api/contracts/{contractId}/deliverables` | Admin, Staff | **Staff thêm 1 sản phẩm** cho hợp đồng `{ productName, categoryId?, dueDate?, description? }` (đề cương không có trường sản phẩm cấu trúc → nhập tay; PI sau đó nộp file). |
 | GET | `/api/contracts/{contractId}/amendments` | * | Điều chỉnh hợp đồng |
 | POST | `/api/contracts/{contractId}/amendments` | * | Tạo yêu cầu điều chỉnh |
 
@@ -482,7 +543,10 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 **CreateAmendmentRequest**: `{ categoryId, changeDescription, justification, changePercentage?, oldValue?, newValue?, requiresRectorApproval, reviewerComments? }`
 
 ### Giải ngân — `/api/disbursements`
-| POST | `/api/disbursements/{id}/confirm` | Admin, Staff | Xác nhận đã chi (`{ actualAmount, bankReference, notes? }`) |
+| POST | `/api/disbursements/{id}/confirm` | Admin, Staff | **Đánh dấu đã giải ngân** (rule tuần 10 — không quản tiền): `{ actualAmount?, bankReference?, notes? }` — **tất cả optional**, chỉ đổi status→DISBURSED + `disbursedAt` |
+| GET | `/api/disbursements/{id}/evidence` | Admin, Staff | **Minh chứng giải ngân** (rule tuần 10) — list file HĐ/chứng từ của đợt |
+| POST | `/api/disbursements/{id}/evidence` | Admin, Staff | Upload minh chứng (multipart `file`) — tái dùng `Document` polymorphic (EntityType="Disbursement"); siết dung lượng/đuôi theo `system_settings` |
+| GET | `/api/disbursements/{id}/evidence/{documentId}/download` | Admin, Staff | Tải/mở file minh chứng (cần Bearer) |
 
 ### Sản phẩm — `/api/deliverables`
 | POST | `/api/deliverables/{id}/submit` | * (PI) | Nộp sản phẩm (`{ fileUrl, description?, acceptanceStatus, qualityAssessment? }`) |
@@ -496,16 +560,39 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 ### Báo cáo tiến độ — `/api/progress-reports`
 | GET | `/api/progress-reports?contractId=` | * | Theo hợp đồng |
 | GET | `/api/progress-reports/{id}` | * | Chi tiết |
-| POST | `/api/progress-reports` | * (PI) | Tạo |
+| POST | `/api/progress-reports/generate?contractId=&roundCount=` | Admin, Staff | **Sinh sẵn các kỳ báo cáo** — chia đều theo mốc hợp đồng, bỏ qua kỳ đã có. **`roundCount` (1–12) để Staff tự chọn số kỳ**; bỏ trống → mặc định theo loại (QĐ543 Điều 10.1: Ứng dụng 2 / Cơ bản 1). ⚠️ **Tuần 12: không còn fix cứng số kỳ** (thầy 29/07). |
+| POST | `/api/progress-reports` | * (PI) | Tạo 1 kỳ. *(Tuần 12 bỏ chặn cứng theo loại — Staff/PI thêm kỳ được.)* Luồng chuẩn: Staff `generate` → PI điền. |
+| PUT | `/api/progress-reports/{id}` | * (PI) | **Sửa nội dung khi còn DRAFT** (nộp rồi → 409) — `UpdateProgressReportRequest` |
 | POST | `/api/progress-reports/{id}/submit` | * (PI) | Nộp |
-| PATCH | `/api/progress-reports/{id}/schedule` | Admin, Staff | Đặt lịch báo cáo (`dueDate`/`meetingLink`) |
-| POST | `/api/progress-reports/{id}/evaluate` | Admin, Staff | Đánh giá |
+| PATCH | `/api/progress-reports/{id}/schedule` | Admin, Staff | Đặt lịch báo cáo `{ dueDate?, scheduledMeetingAt?, meetingLink?, roundName? }`. **`dueDate` đặt lại = GIA HẠN** hạn nộp (thầy 29/07: đánh giá trúng ngày cuối thì gia hạn được). **`roundName`** = tên đợt Staff đặt (vd "Giữa kỳ"); null → FE hiện "Kỳ {số}". |
+| POST | `/api/progress-reports/{id}/evaluate` | Admin, Staff | Đánh giá — `evaluationResult` ∈ **`PASS` / `FAIL` / `CONDITIONAL`** (QĐ543 Điều 10/BM06: Đạt / Không đạt / Có điều kiện). ⚠️ **Đổi tuần 12:** trước BE nhận `SATISFACTORY/…` còn FE gửi `APPROVED/…` → Staff bấm đánh giá **luôn 400**, không chấm được. |
+| GET | `/api/progress-reports/{id}/documents` | * | **File báo cáo (BM06)** PI đã nộp |
+| POST | `/api/progress-reports/{id}/documents` | PI của đề tài (hoặc Admin/Staff) | **PI upload file PDF/Word** báo cáo (multipart `file`). Người khác → 403 |
+| GET | `/api/progress-reports/{id}/documents/{documentId}/download` | * | Tải/mở file báo cáo — **Staff phải xem file rồi mới đánh giá được** (FE khóa nút khi chưa có file) |
+
+### Bộ tiêu chí chấm — `/api/rubric-templates`
+> **"Bộ tiêu chí"** = `RubricTemplate` + các `RubricCriterion` bên trong (thầy 29/07: tiêu chí chia theo **loại đề tài** + **lĩnh vực**, phải linh hoạt). 1 bộ **dùng lại cho nhiều đợt**.
+> **Thứ tự ưu tiên khi chấm:** ① bộ gắn RIÊNG cho vòng → ② bộ theo (đợt + lĩnh vực + loại vòng) → ③ bộ mặc định chung.
+> **Ràng buộc:** mỗi **(đợt + lĩnh vực + LOẠI VÒNG)** chỉ 1 bộ — nhưng cùng lĩnh vực vẫn có bộ riêng cho **Xét duyệt** và bộ riêng cho **Nghiệm thu** (tiêu chí khác hẳn).
+
+| Method | Endpoint | Quyền | Mô tả |
+|---|---|---|---|
+| GET | `/api/rubric-templates` | * | Danh sách bộ + tiêu chí + phạm vi đã gắn |
+| GET | `/api/rubric-templates/resolve?cycleId=&trackId=&templateType=` | * | **Bộ áp dụng** cho (đợt, lĩnh vực, loại vòng). Không có bộ riêng → trả **bộ mặc định** (bộ chưa gắn phạm vi nào) nên không bao giờ kẹt không chấm được |
+| GET | `/api/rubric-templates/for-council/{councilId}` | * | **Bộ áp dụng cho 1 hội đồng** — BE tự suy (đợt, lĩnh vực, loại vòng) từ hội đồng → form chấm điểm chỉ cần councilId. Fallback bộ mặc định |
+| PATCH | `/api/rubric-templates/rounds/{roundId}` | Admin, Staff | **Gắn/gỡ bộ tiêu chí RIÊNG cho 1 vòng** `{ templateId }`. 1 bộ gắn được nhiều vòng; mỗi vòng dùng bộ khác nhau. `null` → bỏ gắn riêng, quay về bộ theo (đợt+lĩnh vực) |
+| PATCH | `/api/rubric-templates/{id}` | Admin, Staff | Đổi `name` / `appliesBasic` / `appliesApplied` / `isActive`. Bỏ tick cả 2 loại → **400** |
+| PUT | `/api/rubric-templates/{id}/scopes` | Admin, Staff | Lưu danh sách `{ entries: [{ cycleId, trackId }] }`. Trùng bộ khác **cùng loại vòng** → **409** kèm tên bộ đang giữ |
+| POST | `/api/rubric-templates/{id}/duplicate` | Admin, Staff | **Sao chép bộ** (kèm tiêu chí) → tên `Sao chép "<tên gốc>"`. **KHÔNG copy phạm vi** (vì mỗi lĩnh vực chỉ 1 bộ → copy sẽ đụng ngay) |
 
 ### Báo cáo tổng kết — `/api/final-reports`
 > Nghiệm thu cuối nay là **của ĐỀ TÀI** (1 `final_report` / project), không phải từng hợp đồng — route vẫn nhận `contractId` (resolve → project). `FinalReportDto` trả `projectId`.
 
 | GET | `/api/final-reports/{contractId}` | * | Theo hợp đồng (→ báo cáo cuối của đề tài) |
 | POST | `/api/final-reports/{contractId}/submit` | * (PI) | Nộp báo cáo cuối (project → `ACCEPTANCE`) |
+| GET | `/api/final-reports/{contractId}/documents` | * | **File báo cáo tổng kết (BM09)** đã upload |
+| POST | `/api/final-reports/{contractId}/documents` | * | **Upload file PDF/Word** (multipart `file`) → trả `downloadUrl` để nộp kèm. ⚠️ **Tuần 12:** thay ô dán URL bằng upload file thật (thầy 29/07) |
+| GET | `/api/final-reports/{contractId}/documents/{documentId}/download` | * | Tải/mở file |
 | POST | `/api/final-reports/{id}/request-revision` | Admin, Staff | Yêu cầu sửa |
 | POST | `/api/final-reports/{id}/accept` | Admin, Staff | Chấp nhận |
 | POST | `/api/final-reports/{id}/archive` | Admin, Staff | Lưu trữ |
@@ -521,10 +608,18 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 
 ## 10. Thống kê, thông báo, dev tools
 
-### Analytics — `/api/analytics` (Admin, Staff)
-| GET | `/api/analytics/overview` | Tổng quan |
-| GET | `/api/analytics/by-track?cycleId=` | Theo track |
-| GET | `/api/analytics/funnel?cycleId=` | Phễu trạng thái |
+### Analytics — `/api/analytics`
+| Method | Path | Quyền | Mô tả |
+|---|---|---|---|
+| GET | `/api/analytics/overview` | Admin, Staff | Tổng quan |
+| GET | `/api/analytics/by-track?cycleId=` | Admin, Staff | Theo track |
+| GET | `/api/analytics/funnel?cycleId=` | Admin, Staff | Phễu trạng thái |
+| GET | `/api/analytics/dashboard/staff` | Admin, Staff | Dashboard Staff: `{ kpis[], reviewProgress[], councilPerformance[], activity[] }` |
+| GET | `/api/analytics/dashboard/faculty` | Faculty, Admin | Dashboard PI (theo user đăng nhập): `{ kpis[], proposalStatus[], upcomingDeadlines[], aiSuggestions[], activity[] }` |
+| GET | `/api/analytics/dashboard/reviewer` | ReviewCommittee, Admin | Dashboard reviewer (theo user đăng nhập): `{ kpis[], reviewCompletionTrend[], reviewDecisions[], activity[] }` |
+
+- `KpiDatum`: `{ id, label, value, format?, deltaLabel? }` · `ActivityItem`: `{ id, message, actor, timestamp, type }` với `type` ∈ `proposal|review|council|meeting|contract|system`.
+- 3 endpoint dashboard thêm 15/07 theo yêu cầu FE mới (trước đó FE phải mock). Lưu ý authz: nhiều `[Authorize]` là **AND** — controller giữ `[Authorize]` chung, role đặt ở từng endpoint.
 
 ### Notifications — `/api/notifications`
 | GET | `/api/notifications` | * | Thông báo của tôi |

@@ -28,7 +28,7 @@
 
 | Hạng mục | Công cụ |
 |---|---|
-| **Source control** | **GitHub** — BE repo `FURPMS_BE`, FE repo `Fefurpmsv0`, Mobile repo riêng |
+| **Source control** | **GitHub** — BE repo `FURPMS_BE`, FE repo `FURPMS-Web`, Mobile repo riêng |
 | **CI (tự động)** | **GitHub Actions** — BE: `dotnet restore/build/test` (Release, EF InMemory, không cần SQL); FE: `npm ci` + ESLint + `tsc --noEmit` + `vite build`. Chạy mỗi push & PR |
 | **Đóng gói** | **Docker** (multi-stage .NET 8) cho BE deploy |
 | **Quy trình** | Branch + Pull Request → review → merge; add Collaborator (không fork trong nội bộ team) |

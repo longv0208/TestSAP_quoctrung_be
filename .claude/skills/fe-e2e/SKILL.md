@@ -6,8 +6,8 @@ description: Boot FURPMS BE (.NET, port 5068) + FE (Vite, port 5173) rồi lái 
 # FURPMS — chạy app + E2E browser test
 
 ## Đường dẫn & port
-- BE: `d:\Downloads\doc\9 đồ án\FURPMS\FURPMS_BE` → `dotnet run --project FURPMS.API` → http://localhost:5068 (tự Migrate + seed khi boot; cần SQL Server docker `localhost:1433`, sa / `Furpms@Strong123`).
-- FE: `d:\Downloads\doc\9 đồ án\FURPMS\Fefurpmsv0` → `npm run dev` → http://localhost:5173 (VITE_API_URL mặc định trỏ 5068).
+- BE: `d:\Downloads\doc\9 đồ án\FURPMS\FURPMS_BE` → `dotnet run --project FURPMS.API` → http://localhost:5068 (tự Migrate + seed khi boot; cần SQL Server docker **`localhost:1435`**, sa / `Furpms@Strong123` — `docker compose up -d` trong FURPMS_BE).
+- FE: **`d:\Downloads\doc\9 đồ án\core\FURPMS-Web`** → `npm run dev` → http://localhost:5173 (`.env` trỏ `VITE_API_BASE_URL=http://localhost:5068/api`; chưa có `.env` thì `cp .env.example .env`).
 - Playwright đã có trong devDependencies của FE; Chromium headless đã tải về `%LOCALAPPDATA%\ms-playwright`. Nếu thiếu: `npx playwright install chromium`.
 
 ## Boot (background, poll port — đừng sleep chay)
@@ -31,7 +31,7 @@ Tắt: `taskkill //F //IM FURPMS.API.exe; taskkill //F //IM dotnet.exe; taskkill
 | Reviewer 1–3 | reviewer{1,2,3}.demo@furpms.edu.vn | Reviewer@123456 |
 
 ## Script driver (ESM — PHẢI đặt trong thư mục FE để resolve node_modules)
-Đặt file vào `Fefurpmsv0/.e2e/*.mjs` (đã gitignore). Khung chuẩn:
+Đặt file vào `core/FURPMS-Web/.e2e/*.mjs` (gitignore). Khung chuẩn:
 ```js
 import { chromium } from 'playwright'
 const browser = await chromium.launch({ args: ['--no-sandbox'] })
@@ -48,7 +48,7 @@ await page.fill('input[type="password"]', 'Admin@123456')
 await page.click('button[type="submit"]'); await page.waitForTimeout(2500)
 await page.screenshot({ path: '.e2e/shots/x.png' })
 ```
-Chạy: `cd Fefurpmsv0 && node .e2e/ten-script.mjs` → **đọc screenshot bằng Read tool** để nhìn UI thật.
+Chạy: `cd "core/FURPMS-Web" && node .e2e/ten-script.mjs` → **đọc screenshot bằng Read tool** để nhìn UI thật.
 
 ## Đặc thù UI đã dò được (đỡ mò lại)
 - Nút login/điều hướng đều tiếng Việt: PI có "Điền dữ liệu mẫu" (fill form mẫu), wizard 5 bước nút "Tiếp", cuối là "Lưu nháp"; nộp từ workspace = nút "Nộp duyệt" (có dialog xác nhận CV — bấm nút xác nhận trong dialog).

@@ -1,6 +1,10 @@
 # FURPMS — Mục lục tài liệu & Việc còn lại
 
-> Điểm vào cho thư mục `docs/`. Cập nhật: 2026-07-03.
+> 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `core/FURPMS-Web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
+>
+> 📋 **Rà soát hệ thống + backlog (thừa / chưa ổn / ý tưởng để sau):** **`SYSTEM_REVIEW.md`** — chốt lại đánh giá để không quên (IDOR endpoint con, đa vai, sản phẩm/kỳ báo cáo tự tạo, rich text, lịch/thông báo…). Cập nhật tuần 11.
+
+> Điểm vào cho thư mục `docs/`. Cập nhật: 2026-07-24.
 > Lưu ý: KHÔNG đổi tên / di chuyển các file (CLAUDE.md + docs khác đang tham chiếu path) — file này để tra cứu + theo dõi việc dở.
 
 ---
@@ -42,6 +46,16 @@
 - ⚠️ **Follow-up còn lại** (xem `PROGRESS.md`): (a) **P1** — config Gemini/SMTP key để demo trọn (hạ tầng, không phải code); (b) track mồ côi "a.i" (id=2, chưa gắn cycle).
 - 🧊 **FE đóng băng:** FE hiện tại (`ReviewBoard.tsx`…) **giữ nguyên, không sửa tiếp** — sẽ có FE mới do thành viên khác làm. `API_CONTRACT.md` là bản giao kèo để FE mới code khớp BE.
 
+### B4. Tích hợp FE MỚI (FURPMS-Web của Dũng) ↔ BE local (15/07/2026)
+- **FE mới** ở `d:\...\core\FURPMS-Web` (React 19 + Vite + React Query + radix, mock-first bằng MSW). Đã đối chiếu **toàn bộ endpoint FE gọi vs BE**: khớp route + envelope `ApiResponse` + enum (họ tự "khám nghiệm sống" BE: INVITED/CONFIRMED, SCIENCE/FINANCE...).
+- ✅ **Sửa trong repo FE (tối thiểu):** (1) `main.tsx` — cờ `VITE_USE_MOCK_API` trước đây bị bỏ qua (dev luôn mock) → giờ mock chỉ bật khi cờ =true; (2) tạo `.env` trỏ `http://localhost:5068/api` + mock=false; (3) `.gitignore` thêm `.env`.
+- ✅ **BE thêm 3 endpoint dashboard** `GET /api/analytics/dashboard/{staff|faculty|reviewer}` (FE đang phải mock vì BE thiếu — lệch sống duy nhất phát hiện được). Kèm fix authz: nhiều `[Authorize]` là AND → hạ class-level xuống `[Authorize]`, role đặt per-endpoint (trước đó Faculty/Reviewer bị 403).
+- ✅ **Smoke test headless (Playwright script) 4 role × ~25 trang qua BE local thật (mock OFF): 0 API ≥400, 0 console error.** Login admin/staff/pi/reviewer đều OK, dashboard 3 role render dữ liệu thật.
+- ⚠️ **FE mới còn thiếu (việc của FE, BE đã sẵn):** luồng biên bản Thư ký→Chủ tịch (minutes) — hiện chỉ có scores + `rounds/close` legacy; màn Review Board cấp track (§8.1); các mảng contracts/deliverables/disbursements/progress/final-reports/change-requests/documents chưa có service. Endpoint FE gọi mà BE **cố tình chưa làm**: `/ai/search`, `/ai/similarity-check`, `/ai/suggest-reviewers`, `/integrations/google-meet/generate` (mock-only, cần Gemini key hoặc để mock).
+- Lưu ý vận hành: DB dev = **SQL Server Docker** (`furpms-db-1`, port 1433) — Docker Desktop tắt là BE 500/không start (lỗi 10061). Port 5173 do container `furpms-frontend-1` (FE cũ đóng docker) chiếm → FE mới dev chạy 5174 (CORS BE = AllowAnyOrigin nên OK).
+- ✅ **Fix seed (16/07):** loại đề tài APPLIED trước seed nhầm `RequireOrderingUnit=false` → sai rule #8 (Applied phải đi theo danh mục đặt hàng). Đã sửa giá trị mới + thêm `FixAppliedOrderingUnitFlagAsync` chạy mỗi lần khởi động (idempotent) để DB cũ tự đúng. FE dựa cờ này phân biệt 2 luồng nộp (đặt hàng vs tự đề xuất). 54/54 test.
+- 🎨 **FE mới — cải thiện wizard nộp proposal (repo FURPMS-Web của Dũng, 16/07):** validation đảo đúng chiều BE (bắt buộc titleVI + objectives, không phải titleEN); Funding Method thành Select WHOLE/PARTIAL; copy 2 loại đề tài đúng nghiệp vụ; Step 2 ghi rõ "optional"; Step 3 chia section; **Research Field scope theo đợt** (`GET /cycles/{id}/tracks`) nên hết lòi track mồ côi; thêm nút "Fill with sample data" + trang **Settings** (toggle bật/tắt, zustand persist). Cài skill `frontend-design` (Anthropic) để làm. Đã verify sống bằng Playwright + build xanh.
+
 ### C2. E2E browser test (07/07/2026)
 - ✅ **Đã test UI (Playwright + Chrome headless):** login 4 role · PI **tạo đề tài mới qua UI** (điền mẫu → wizard 5 bước → lưu nháp → tạo project thật) · PI nộp (DRAFT→SUBMITTED) · thấy order mặc định "Nghiên cứu tự do" (điểm d) · reviewer nhận phân công + mở đề tài (chỗ từng bug projectId — nay HTTP 200) + chấm **86/100** · staff mở chi tiết → panel **Vòng phản biện (2)** hiển thị đúng: SCIENCE "Đã duyệt/Đạt", FINANCE có reviewer1 badge **Accepted** (gán+mời+nhận round-trip OK) · thống kê 3 đề tài đúng.
 - ✅ **Bug tìm được + đã fix:** `RoundMeetings.tsx` fallback `councilId ?? roundId` → vòng chưa lập hội đồng gọi `/api/councils/{roundId}/meetings` → **404**. Fix: chỉ fetch khi có `councilId` (vòng chưa có hội đồng thì không có lịch họp). tsc xanh.
@@ -49,7 +63,7 @@
 - ✅ **GIẢI NGÂN FULL-UI (08/07):** staff "Tạo lịch giải ngân" HD-2026-003 → tự sinh **3 đợt 33/33/34%** (WHOLE ≥3 — rule #6, đều PENDING) · HD-2026-002 (PARTIAL): **PI nộp sản phẩm** (URL file) → **Staff đánh giá PASSED** → điều kiện đợt 3 tự đạt → nút "Xác nhận giải ngân" CHỈ hiện ở đợt đó (rule #3 — tiền không tự chuyển) → confirm với mã NH → **DISBURSED 90M**. Chuỗi nghiệm thu→giải ngân trọn vẹn qua UI.
 - ✅ **3 bug fix trong đợt MCP:** (1) BE `AddRoundMemberAsync` bổ sung `Secretary` vào whitelist (trước gán Thư ký 400); (2) FE `ROLE_LABEL` thêm `Secretary: 'Thư ký'`; (3) FE nút "Đánh giá" sản phẩm đòi `!acceptanceStatus` nhưng BE set `PENDING` khi PI nộp → **staff không bao giờ thấy nút** — sửa thành `PENDING` cũng hiện (`ContractManagement.tsx`).
 - ✅ **UX nhỏ đã fix gián tiếp (xem B3):** sau khi gán người đầu, "Gửi thư mời" từng bị disabled tới khi reload (state FE cũ không cập nhật `councilId`) — màn `ReviewBoard.tsx` mới refetch toàn bộ board sau mỗi thao tác nên không còn tái hiện.
-- Skill tái sử dụng: `.claude/skills/fe-e2e/SKILL.md` + Playwright MCP (scope user). Screenshot cũ: `Fefurpmsv0/.e2e/shots/` (gitignore).
+- Skill tái sử dụng: `.claude/skills/fe-e2e/SKILL.md` + Playwright MCP (scope user). Script/screenshot đặt ở `core/FURPMS-Web/.e2e/` (gitignore).
 
 ### C. Vận hành / môi trường
 - **Docker BE**: restart để nạp fix mới nhất (ResearchType create Code-optional, track chống trùng mã, appsettings.json có lại connection dev) — `docker compose restart backend`.
@@ -84,6 +98,9 @@
 | `Process_Spec_v2.md` | Quy trình nghiệp vụ chi tiết theo giai đoạn. |
 | `API_CONTRACT.md` | Hợp đồng API (endpoint + payload) — **8 nhóm chức năng**. |
 | `PROGRESS.md` | **Tiến độ BE theo nhóm chức năng (% + còn thiếu + việc nên làm tiếp).** |
+| `FE_PROGRESS.md` | **Đánh giá FE MỚI (FURPMS-Web) — % theo nhóm + việc cần làm theo luồng chính (P0: biên bản; P1: hợp đồng/báo cáo) + bug đã biết.** Đưa Dũng đọc. |
+| `QD543_Compliance.md` | **Đối chiếu QĐ 543 ↔ tính năng**: 13 biểu mẫu map vào thực thể/API nào, map field BM04 → `CouncilDecision` (dùng khi làm UI biên bản), điều khoản nào chưa đáp ứng. |
+| `QD_543_..._clean.docx` | **Văn bản gốc** (22 Điều + PL01 13 biểu mẫu + PL02 thù lao). Nguồn sự thật nghiệp vụ. |
 | `FURPMS_DB_Change_Spec_v1.4.md` | Spec thay đổi DB. |
 
 ### Chuẩn bị Review 2 (mới nhất)
@@ -101,7 +118,7 @@
 | File | Nội dung |
 |---|---|
 | `DB_ANALYTIC_REPORT.md` | Phân tích kiến trúc DB (10 domain · ~56 bảng · mô tả cột). Cho mục "Database". |
-| `../../Fefurpmsv0/DATABASE_DESIGN.md` | Schema chi tiết (CREATE TABLE SQL + quan hệ + enum). |
+| `ERD_v3_Project_Centric.dbml` | Sơ đồ DB hiện hành (nguồn chuẩn duy nhất). *(Bản `DATABASE_DESIGN.md` ở repo FE cũ đuôi `v0` đã bỏ — mô tả schema v0 lỗi thời.)* |
 
 ### Hướng dẫn
 | File | Nội dung |

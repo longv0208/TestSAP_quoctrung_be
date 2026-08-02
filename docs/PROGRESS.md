@@ -7,12 +7,12 @@
 | # | Nhóm chức năng | Controller chính | % | Còn thiếu / ghi chú |
 |---|---|---|:--:|---|
 | 1 | **Auth & Người dùng** | Auth, Users, AcademicProfiles | 95% | refresh-token / rate-limit / email-verify (không bắt buộc cho đồ án) |
-| 2 | **Cấu hình / Master data** | Cycles+ResearchTypes+Tracks, 6 lookup | 95% | "gắn track có sẵn vào đợt"; track mồ côi "a.i" |
-| 3 | **Đề xuất & nội dung** | Proposals, Budget, Contents, TeamMembers, Documents, Export, ChangeRequests, AI-summary | 90% | — |
+| 2 | **Cấu hình / Master data** | Cycles+ResearchTypes+Tracks (**lĩnh vực toàn cục + gắn/gỡ theo đợt, rule #6, 22/07**), 6 lookup, **system_settings (Admin chỉnh giới hạn upload, 20/07)** | 98% | xóa đợt (chưa có endpoint DELETE /cycles/{id}) |
+| 3 | **Đề xuất & nội dung** | Proposals, Budget, Contents, TeamMembers, Documents, Export, ChangeRequests, AI-summary | 92% | upload siết theo cấu hình Admin: mặc định ≤10MB + whitelist đuôi file (18/07, chuyển sang `system_settings` 20/07) |
 | 4 | **Đặt hàng NC (Applied)** | ResearchOrders | 70% | multi-winner (đã chốt để sau — epic tương lai) |
-| 5 | **Phản biện, Hội đồng & Chấm** | ReviewBoard, Rounds, Councils, Meetings, Scoring, Feedback, Acceptance | 88% | AI gợi ý chấm (cần Gemini key); rubric-per-round UI |
-| 6 | **Hợp đồng & sau HĐ** | Contracts, Disbursements, Deliverables, Amendments, ProgressReports, FinalReports, Settlements | 85% | — (đã E2E giải ngân) |
-| 7 | **Thống kê / Thông báo / Dev-tools** | Analytics, Notifications, Admin, Documents | 90% | — |
+| 5 | **Phản biện, Hội đồng & Chấm** | ReviewBoard, Rounds, Councils, Meetings, Scoring, Feedback, Acceptance | 92% | **tuần 10:** UI biên bản (roster/Q&A/ý kiến TV), lịch họp offline+địa điểm, cảnh báo trùng lịch. Backlog: slot theo đề tài, gate gửi mời, điểm danh |
+| 6 | **Hợp đồng & sau HĐ** | Contracts, Disbursements, Deliverables, Amendments, ProgressReports, FinalReports, Settlements | 90% | **tuần 10:** tài chính=minh chứng (không quản tiền), timeline mốc hợp đồng, minh chứng giải ngân, tự sinh Word HĐ, gia hạn deadline log |
+| 7 | **Thống kê / Thông báo / Dev-tools** | Analytics (+3 dashboard theo role 15/07), Notifications, Admin, Documents | 92% | — |
 | 8 | **Hạ tầng nền** | Middleware, JWT, Email/SMTP, DeadlineReminder, Gemini, Seeder | 85% | Email/Gemini cần config key thật để chạy đầy đủ |
 
 **Tổng thể ≈ 85–90%** cho phạm vi capstone. Lõi (đề xuất → xét duyệt → hợp đồng → giải ngân → nghiệm thu) chạy thông end-to-end.
