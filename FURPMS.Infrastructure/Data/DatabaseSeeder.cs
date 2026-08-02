@@ -27,6 +27,8 @@ public class DatabaseSeeder
         await SeedBudgetExpenseCategoriesAsync();
         await SeedAmendmentCategoriesAsync();
         await SeedSystemFinancialConfigsAsync();
+        await SeedSystemSettingsAsync();
+        await FixAppliedOrderingUnitFlagAsync();
         await SeedDemoProposalAsync();
         await EnsureDemoCycleOpenAsync();
         await SeedDemoAccountsAsync();
@@ -376,6 +378,71 @@ public class DatabaseSeeder
         }
     }
 
+    private async Task SeedSystemSettingsAsync()
+    {
+        var defaults = new[]
+        {
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.UploadMaxFileSizeMb,
+                Value = SystemSettingKeys.RecommendedMaxFileSizeMb.ToString(),
+                RecommendedValue = SystemSettingKeys.RecommendedMaxFileSizeMb.ToString(),
+                Description = $"Dung lượng tối đa mỗi file tài liệu đính kèm (MB). " +
+                              $"Cho phép {SystemSettingKeys.MinAllowedFileSizeMb}–{SystemSettingKeys.MaxAllowedFileSizeMb} MB, " +
+                              $"khuyến cáo {SystemSettingKeys.RecommendedMaxFileSizeMb} MB."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.UploadAllowedExtensions,
+                Value = SystemSettingKeys.DefaultAllowedExtensions,
+                RecommendedValue = SystemSettingKeys.DefaultAllowedExtensions,
+                Description = "Các định dạng file được phép tải lên, phân tách bằng dấu phẩy."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.CouncilInviteDeadlineDays,
+                Value = SystemSettingKeys.DefaultCouncilInviteDeadlineDays.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultCouncilInviteDeadlineDays.ToString(),
+                Description = "Số ngày reviewer được phép xác nhận/từ chối lời mời trước khi quá hạn (1–60)."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.DeadlineReminderDays,
+                Value = SystemSettingKeys.DefaultDeadlineReminderDays,
+                RecommendedValue = SystemSettingKeys.DefaultDeadlineReminderDays,
+                Description = "Nhắc PI trước hạn nộp sản phẩm bao nhiêu ngày, cách nhau bằng dấu phẩy (vd: 30,14,7)."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.EmailEnabled,
+                Value = SystemSettingKeys.DefaultEmailEnabled.ToString().ToLowerInvariant(),
+                RecommendedValue = SystemSettingKeys.DefaultEmailEnabled.ToString().ToLowerInvariant(),
+                Description = "Tắt để chạy demo mà không gửi email thật ra ngoài. Thông báo trong ứng dụng vẫn hoạt động."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.DisbursementWholeTranches,
+                Value = SystemSettingKeys.DefaultDisbursementWholeTranches.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultDisbursementWholeTranches.ToString(),
+                Description = "Số đợt giải ngân cho đề tài cấp trọn gói. QĐ 543 yêu cầu tối thiểu 3 (đầu/giữa/cuối)."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.ContractSideARepresentative,
+                Value = SystemSettingKeys.DefaultContractSideARepresentative,
+                RecommendedValue = SystemSettingKeys.DefaultContractSideARepresentative,
+                Description = "Người đại diện Bên A ký hợp đồng, dùng khi tạo hợp đồng không ghi rõ."
+            }
+        };
+
+        var existing = await _db.SystemSettings.Select(s => s.Key).ToListAsync();
+        var missing = defaults.Where(d => !existing.Contains(d.Key)).ToList();
+        if (missing.Count == 0) return;
+
+        _db.SystemSettings.AddRange(missing);
+        await _db.SaveChangesAsync();
+    }
+
     // ── Helpers (project-centric) ────────────────────────────────────────────
 
     private async Task<OrganizationalUnit> GetOrCreateDemoUnitAsync()
@@ -430,6 +497,16 @@ public class DatabaseSeeder
         return order;
     }
 
+    // Rule #8: APPLIED phải có RequireOrderingUnit=true (đăng ký theo danh mục đặt hàng).
+    // DB cũ từng seed nhầm false — luôn rà và sửa (idempotent, chạy mỗi lần khởi động).
+    private async Task FixAppliedOrderingUnitFlagAsync()
+    {
+        var applied = await _db.ResearchTypes.FirstOrDefaultAsync(x => x.Code == "APPLIED" && !x.RequireOrderingUnit);
+        if (applied == null) return;
+        applied.RequireOrderingUnit = true;
+        await _db.SaveChangesAsync();
+    }
+
     // ── Demo project + proposal v1 (idempotent via ProjectCode "DEMO-2026-001") ──
 
     private async Task SeedDemoProposalAsync()
@@ -443,7 +520,8 @@ public class DatabaseSeeder
 
         var unit = await GetOrCreateDemoUnitAsync();
 
-        // ResearchType — APPLIED
+        // ResearchType — APPLIED. Rule #8: Applied đi theo danh mục ĐẶT HÀNG (có OrderingUnit,
+        // nhiều PI đăng ký cạnh tranh) → RequireOrderingUnit = true. FE dựa cờ này đổi luồng nộp.
         var rt = await _db.ResearchTypes.FirstOrDefaultAsync(x => x.Code == "APPLIED");
         if (rt == null)
         {
@@ -452,7 +530,7 @@ public class DatabaseSeeder
                 Code = "APPLIED",
                 Name = "Nghiên cứu ứng dụng",
                 MaxBudgetCap = 900_000_000m,
-                RequireOrderingUnit = false,
+                RequireOrderingUnit = true,
                 RequirePublication = true,
                 IsActive = true
             };

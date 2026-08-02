@@ -25,6 +25,7 @@ public class FURPMSDbContext : DbContext
     public DbSet<LlmConfig> LlmConfigs => Set<LlmConfig>();
     public DbSet<PersonnelRoleType> PersonnelRoleTypes => Set<PersonnelRoleType>();
     public DbSet<SystemFinancialConfig> SystemFinancialConfigs => Set<SystemFinancialConfig>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
     public DbSet<BudgetExpenseCategory> BudgetExpenseCategories => Set<BudgetExpenseCategory>();
 
     // Domain 2 — Financial & Rubric
@@ -33,6 +34,7 @@ public class FURPMSDbContext : DbContext
     public DbSet<CouncilRemunerationRate> CouncilRemunerationRates => Set<CouncilRemunerationRate>();
     public DbSet<RubricTemplate> RubricTemplates => Set<RubricTemplate>();
     public DbSet<RubricCriterion> RubricCriteria => Set<RubricCriterion>();
+    public DbSet<RubricTemplateScope> RubricTemplateScopes => Set<RubricTemplateScope>();
 
     // Domain 3 — Users
     public DbSet<Role> Roles => Set<Role>();
@@ -45,6 +47,7 @@ public class FURPMSDbContext : DbContext
     public DbSet<ResearchCycle> ResearchCycles => Set<ResearchCycle>();
     public DbSet<CycleTrack> CycleTracks => Set<CycleTrack>();
     public DbSet<ResearchOrder> ResearchOrders => Set<ResearchOrder>();
+    public DbSet<DeadlineExtension> DeadlineExtensions => Set<DeadlineExtension>();
 
     // Domain 5 — Projects (gốc) & Proposal versions
     public DbSet<Project> Projects => Set<Project>();
@@ -69,6 +72,8 @@ public class FURPMSDbContext : DbContext
     public DbSet<ProposalReviewScore> ProposalReviewScores => Set<ProposalReviewScore>();
     public DbSet<ReviewScoreDetail> ReviewScoreDetails => Set<ReviewScoreDetail>();
     public DbSet<CouncilDecision> CouncilDecisions => Set<CouncilDecision>();
+    public DbSet<CouncilQaEntry> CouncilQaEntries => Set<CouncilQaEntry>();
+    public DbSet<CouncilMemberOpinion> CouncilMemberOpinions => Set<CouncilMemberOpinion>();
     public DbSet<ReviewerFeedback> ReviewerFeedbacks => Set<ReviewerFeedback>();
     public DbSet<AcceptanceEvaluation> AcceptanceEvaluations => Set<AcceptanceEvaluation>();
 
@@ -192,6 +197,15 @@ public class FURPMSDbContext : DbContext
             b.HasIndex(s => s.Code).IsUnique();
         });
 
+        // ── SystemSetting unique key ──
+        modelBuilder.Entity<SystemSetting>(b =>
+        {
+            b.HasIndex(s => s.Key).IsUnique();
+            b.Property(s => s.Key).HasMaxLength(100);
+            b.Property(s => s.Value).HasMaxLength(1000);
+            b.Property(s => s.RecommendedValue).HasMaxLength(1000);
+        });
+
         // ── BudgetExpenseCategory unique code ──
         modelBuilder.Entity<BudgetExpenseCategory>(b =>
         {
@@ -204,6 +218,16 @@ public class FURPMSDbContext : DbContext
             b.HasOne(rc => rc.CreatedByUser)
                 .WithMany()
                 .HasForeignKey(rc => rc.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── DeadlineExtension: log gia hạn (rule tuần 10) ──
+        modelBuilder.Entity<DeadlineExtension>(b =>
+        {
+            b.HasIndex(e => new { e.TargetType, e.TargetId });
+            b.HasOne(e => e.CreatedByUser)
+                .WithMany()
+                .HasForeignKey(e => e.CreatedBy)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
@@ -383,6 +407,18 @@ public class FURPMSDbContext : DbContext
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
+        // ── RubricTemplateScope: bộ tiêu chí ↔ (đợt + lĩnh vực) ──
+        modelBuilder.Entity<RubricTemplateScope>(b =>
+        {
+            // 1 bộ không gắn trùng cùng (đợt, lĩnh vực) 2 lần. Ràng buộc "mỗi (đợt+lĩnh vực+loại
+            // vòng) chỉ 1 bộ" cần biết TemplateType nên kiểm ở service, không đặt được ở DB index.
+            b.HasIndex(s => new { s.TemplateId, s.CycleId, s.TrackId }).IsUnique();
+            b.HasOne(s => s.Template)
+                .WithMany(t => t.Scopes)
+                .HasForeignKey(s => s.TemplateId)
+                .OnDelete(DeleteBehavior.Cascade);   // xoá bộ → xoá phạm vi của nó
+        });
+
         // ── ProjectRound (Phase B): Project–Round nhiều-nhiều ──
         modelBuilder.Entity<ProjectRound>(b =>
         {
@@ -444,6 +480,24 @@ public class FURPMSDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(cd => cd.SecretaryUserId)
                 .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── CouncilQaEntry: hỏi–đáp thuộc biên bản, xóa theo biên bản ──
+        modelBuilder.Entity<CouncilQaEntry>(b =>
+        {
+            b.HasOne(q => q.Decision)
+                .WithMany(cd => cd.QaEntries)
+                .HasForeignKey(q => q.DecisionId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // ── CouncilMemberOpinion: ý kiến TV thuộc biên bản, xóa theo biên bản ──
+        modelBuilder.Entity<CouncilMemberOpinion>(b =>
+        {
+            b.HasOne(o => o.Decision)
+                .WithMany(cd => cd.MemberOpinions)
+                .HasForeignKey(o => o.DecisionId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ── MeetingAttendance unique pair ──
@@ -627,6 +681,14 @@ public class FURPMSDbContext : DbContext
         {
             b.HasIndex(d => new { d.EntityType, d.EntityId })
                 .HasDatabaseName("IX_documents_entity");
+
+            // Nối navigation với đúng cột UploadedBy. Thiếu dòng này EF tự sinh thêm cột
+            // shadow `uploaded_by_user_id` — insert luôn vi phạm khóa ngoại (SQL 547),
+            // khiến upload tài liệu không bao giờ chạy được trên SQL Server thật.
+            b.HasOne(d => d.UploadedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.UploadedBy)
+                .OnDelete(DeleteBehavior.NoAction);
         });
 
         modelBuilder.Entity<Notification>(b =>

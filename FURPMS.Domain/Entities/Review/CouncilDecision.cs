@@ -23,4 +23,6 @@ public class CouncilDecision
     public Projects.Project Project { get; set; } = null!;
     public User? ChairUser { get; set; }
     public User? SecretaryUser { get; set; }
+    public ICollection<CouncilQaEntry> QaEntries { get; set; } = new List<CouncilQaEntry>();
+    public ICollection<CouncilMemberOpinion> MemberOpinions { get; set; } = new List<CouncilMemberOpinion>();
 }

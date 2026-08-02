@@ -4,6 +4,7 @@ using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FURPMS.Infrastructure.Migrations
 {
     [DbContext(typeof(FURPMSDbContext))]
-    partial class FURPMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260720160847_PhaseD_SystemSettings")]
+    partial class PhaseD_SystemSettings
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -89,11 +92,15 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("uploaded_by");
 
+                    b.Property<Guid>("UploadedByUserId")
+                        .HasColumnType("uniqueidentifier")
+                        .HasColumnName("uploaded_by_user_id");
+
                     b.HasKey("Id")
                         .HasName("pk_documents");
 
-                    b.HasIndex("UploadedBy")
-                        .HasDatabaseName("ix_documents_uploaded_by");
+                    b.HasIndex("UploadedByUserId")
+                        .HasDatabaseName("ix_documents_uploaded_by_user_id");
 
                     b.HasIndex("EntityType", "EntityId")
                         .HasDatabaseName("IX_documents_entity");
@@ -650,55 +657,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.ToTable("cycle_tracks", (string)null);
                 });
 
-            modelBuilder.Entity("FURPMS.Domain.Entities.Cycles.DeadlineExtension", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("id");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("created_at");
-
-                    b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("created_by");
-
-                    b.Property<DateOnly>("NewDeadline")
-                        .HasColumnType("date")
-                        .HasColumnName("new_deadline");
-
-                    b.Property<DateOnly>("OldDeadline")
-                        .HasColumnType("date")
-                        .HasColumnName("old_deadline");
-
-                    b.Property<string>("Reason")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("reason");
-
-                    b.Property<string>("TargetId")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)")
-                        .HasColumnName("target_id");
-
-                    b.Property<string>("TargetType")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(450)")
-                        .HasColumnName("target_type");
-
-                    b.HasKey("Id")
-                        .HasName("pk_deadline_extensions");
-
-                    b.HasIndex("CreatedBy")
-                        .HasDatabaseName("ix_deadline_extensions_created_by");
-
-                    b.HasIndex("TargetType", "TargetId")
-                        .HasDatabaseName("ix_deadline_extensions_target_type_target_id");
-
-                    b.ToTable("deadline_extensions", (string)null);
-                });
-
             modelBuilder.Entity("FURPMS.Domain.Entities.Cycles.ResearchCycle", b =>
                 {
                     b.Property<int>("Id")
@@ -1007,14 +965,6 @@ namespace FURPMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AppliesApplied")
-                        .HasColumnType("bit")
-                        .HasColumnName("applies_applied");
-
-                    b.Property<bool>("AppliesBasic")
-                        .HasColumnType("bit")
-                        .HasColumnName("applies_basic");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit")
                         .HasColumnName("is_active");
@@ -1045,37 +995,6 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasName("pk_rubric_templates");
 
                     b.ToTable("rubric_templates", (string)null);
-                });
-
-            modelBuilder.Entity("FURPMS.Domain.Entities.Financial.RubricTemplateScope", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CycleId")
-                        .HasColumnType("int")
-                        .HasColumnName("cycle_id");
-
-                    b.Property<int>("TemplateId")
-                        .HasColumnType("int")
-                        .HasColumnName("template_id");
-
-                    b.Property<int>("TrackId")
-                        .HasColumnType("int")
-                        .HasColumnName("track_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_rubric_template_scopes");
-
-                    b.HasIndex("TemplateId", "CycleId", "TrackId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_rubric_template_scopes_template_id_cycle_id_track_id");
-
-                    b.ToTable("rubric_template_scopes", (string)null);
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Logs.AuditLog", b =>
@@ -1777,10 +1696,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.Property<DateOnly>("ReportingPeriodStart")
                         .HasColumnType("date")
                         .HasColumnName("reporting_period_start");
-
-                    b.Property<string>("RoundName")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("round_name");
 
                     b.Property<DateTime?>("ScheduledMeetingAt")
                         .HasColumnType("datetime2")
@@ -2803,10 +2718,6 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("external_meeting_id");
 
-                    b.Property<string>("Location")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("location");
-
                     b.Property<string>("MeetingLink")
                         .HasColumnType("nvarchar(max)")
                         .HasColumnName("meeting_link");
@@ -2903,45 +2814,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.ToTable("council_members", (string)null);
                 });
 
-            modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilMemberOpinion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("AcademicComment")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("academic_comment");
-
-                    b.Property<string>("BudgetComment")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("budget_comment");
-
-                    b.Property<int>("DecisionId")
-                        .HasColumnType("int")
-                        .HasColumnName("decision_id");
-
-                    b.Property<string>("MemberName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("member_name");
-
-                    b.Property<int>("Order")
-                        .HasColumnType("int")
-                        .HasColumnName("order");
-
-                    b.HasKey("Id")
-                        .HasName("pk_council_member_opinions");
-
-                    b.HasIndex("DecisionId")
-                        .HasDatabaseName("ix_council_member_opinions_decision_id");
-
-                    b.ToTable("council_member_opinions", (string)null);
-                });
-
             modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilProjectAssignment", b =>
                 {
                     b.Property<int>("Id")
@@ -2955,25 +2827,9 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("council_id");
 
-                    b.Property<Guid?>("MeetingId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("meeting_id");
-
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("project_id");
-
-                    b.Property<int?>("SlotDurationMinutes")
-                        .HasColumnType("int")
-                        .HasColumnName("slot_duration_minutes");
-
-                    b.Property<int?>("SlotOrder")
-                        .HasColumnType("int")
-                        .HasColumnName("slot_order");
-
-                    b.Property<DateTime?>("SlotStartAt")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("slot_start_at");
 
                     b.HasKey("Id")
                         .HasName("pk_council_project_assignments");
@@ -2986,45 +2842,6 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasDatabaseName("ix_council_project_assignments_council_id_project_id");
 
                     b.ToTable("council_project_assignments", (string)null);
-                });
-
-            modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilQaEntry", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Answer")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("answer");
-
-                    b.Property<string>("AskedBy")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("asked_by");
-
-                    b.Property<int>("DecisionId")
-                        .HasColumnType("int")
-                        .HasColumnName("decision_id");
-
-                    b.Property<int>("Order")
-                        .HasColumnType("int")
-                        .HasColumnName("order");
-
-                    b.Property<string>("Question")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("question");
-
-                    b.HasKey("Id")
-                        .HasName("pk_council_qa_entries");
-
-                    b.HasIndex("DecisionId")
-                        .HasDatabaseName("ix_council_qa_entries_decision_id");
-
-                    b.ToTable("council_qa_entries", (string)null);
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Review.MeetingAttendance", b =>
@@ -3766,10 +3583,10 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.HasOne("FURPMS.Domain.Entities.Users.User", "UploadedByUser")
                         .WithMany()
-                        .HasForeignKey("UploadedBy")
+                        .HasForeignKey("UploadedByUserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_documents_users_uploaded_by");
+                        .HasConstraintName("fk_documents_users_uploaded_by_user_id");
 
                     b.Navigation("UploadedByUser");
                 });
@@ -3923,18 +3740,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.Navigation("Track");
                 });
 
-            modelBuilder.Entity("FURPMS.Domain.Entities.Cycles.DeadlineExtension", b =>
-                {
-                    b.HasOne("FURPMS.Domain.Entities.Users.User", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedBy")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_deadline_extensions_users_created_by");
-
-                    b.Navigation("CreatedByUser");
-                });
-
             modelBuilder.Entity("FURPMS.Domain.Entities.Cycles.ResearchCycle", b =>
                 {
                     b.HasOne("FURPMS.Domain.Entities.Users.User", "CreatedByUser")
@@ -4026,18 +3831,6 @@ namespace FURPMS.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_rubric_criteria_rubric_templates_template_id");
-
-                    b.Navigation("Template");
-                });
-
-            modelBuilder.Entity("FURPMS.Domain.Entities.Financial.RubricTemplateScope", b =>
-                {
-                    b.HasOne("FURPMS.Domain.Entities.Financial.RubricTemplate", "Template")
-                        .WithMany("Scopes")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_rubric_template_scopes_rubric_templates_template_id");
 
                     b.Navigation("Template");
                 });
@@ -4501,18 +4294,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilMemberOpinion", b =>
-                {
-                    b.HasOne("FURPMS.Domain.Entities.Review.CouncilDecision", "Decision")
-                        .WithMany("MemberOpinions")
-                        .HasForeignKey("DecisionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_council_member_opinions_council_decisions_decision_id");
-
-                    b.Navigation("Decision");
-                });
-
             modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilProjectAssignment", b =>
                 {
                     b.HasOne("FURPMS.Domain.Entities.Review.ReviewCouncil", "Council")
@@ -4532,18 +4313,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.Navigation("Council");
 
                     b.Navigation("Project");
-                });
-
-            modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilQaEntry", b =>
-                {
-                    b.HasOne("FURPMS.Domain.Entities.Review.CouncilDecision", "Decision")
-                        .WithMany("QaEntries")
-                        .HasForeignKey("DecisionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_council_qa_entries_council_decisions_decision_id");
-
-                    b.Navigation("Decision");
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Review.MeetingAttendance", b =>
@@ -4822,8 +4591,6 @@ namespace FURPMS.Infrastructure.Migrations
             modelBuilder.Entity("FURPMS.Domain.Entities.Financial.RubricTemplate", b =>
                 {
                     b.Navigation("Criteria");
-
-                    b.Navigation("Scopes");
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Progress.ProgressReport", b =>
@@ -4864,13 +4631,6 @@ namespace FURPMS.Infrastructure.Migrations
             modelBuilder.Entity("FURPMS.Domain.Entities.Proposals.ProposalResearchContent", b =>
                 {
                     b.Navigation("Activities");
-                });
-
-            modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilDecision", b =>
-                {
-                    b.Navigation("MemberOpinions");
-
-                    b.Navigation("QaEntries");
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Review.CouncilMeeting", b =>

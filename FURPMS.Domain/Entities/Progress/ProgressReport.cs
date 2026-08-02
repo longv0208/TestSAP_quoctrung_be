@@ -8,6 +8,9 @@ public class ProgressReport
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid ContractId { get; set; }
     public int ReportRound { get; set; }
+    // Tên đợt do Staff đặt (vd "Giữa kỳ", "Đợt 1 - Quý I"). Null → FE hiện "Kỳ {số}".
+    // Thầy 29/07: không fix cứng số đợt/tên đợt, Staff chỉnh linh hoạt.
+    public string? RoundName { get; set; }
     public DateOnly ReportingPeriodStart { get; set; }
     public DateOnly ReportingPeriodEnd { get; set; }
     public string CompletedContent { get; set; } = null!;

@@ -4,6 +4,7 @@ using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FURPMS.Infrastructure.Migrations
 {
     [DbContext(typeof(FURPMSDbContext))]
-    partial class FURPMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260723180959_PhaseI_DeadlineExtension")]
+    partial class PhaseI_DeadlineExtension
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1007,14 +1010,6 @@ namespace FURPMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<bool>("AppliesApplied")
-                        .HasColumnType("bit")
-                        .HasColumnName("applies_applied");
-
-                    b.Property<bool>("AppliesBasic")
-                        .HasColumnType("bit")
-                        .HasColumnName("applies_basic");
-
                     b.Property<bool>("IsActive")
                         .HasColumnType("bit")
                         .HasColumnName("is_active");
@@ -1045,37 +1040,6 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasName("pk_rubric_templates");
 
                     b.ToTable("rubric_templates", (string)null);
-                });
-
-            modelBuilder.Entity("FURPMS.Domain.Entities.Financial.RubricTemplateScope", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
-                        .HasColumnName("id");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("CycleId")
-                        .HasColumnType("int")
-                        .HasColumnName("cycle_id");
-
-                    b.Property<int>("TemplateId")
-                        .HasColumnType("int")
-                        .HasColumnName("template_id");
-
-                    b.Property<int>("TrackId")
-                        .HasColumnType("int")
-                        .HasColumnName("track_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_rubric_template_scopes");
-
-                    b.HasIndex("TemplateId", "CycleId", "TrackId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_rubric_template_scopes_template_id_cycle_id_track_id");
-
-                    b.ToTable("rubric_template_scopes", (string)null);
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Logs.AuditLog", b =>
@@ -1777,10 +1741,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.Property<DateOnly>("ReportingPeriodStart")
                         .HasColumnType("date")
                         .HasColumnName("reporting_period_start");
-
-                    b.Property<string>("RoundName")
-                        .HasColumnType("nvarchar(max)")
-                        .HasColumnName("round_name");
 
                     b.Property<DateTime?>("ScheduledMeetingAt")
                         .HasColumnType("datetime2")
@@ -2955,25 +2915,9 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("council_id");
 
-                    b.Property<Guid?>("MeetingId")
-                        .HasColumnType("uniqueidentifier")
-                        .HasColumnName("meeting_id");
-
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uniqueidentifier")
                         .HasColumnName("project_id");
-
-                    b.Property<int?>("SlotDurationMinutes")
-                        .HasColumnType("int")
-                        .HasColumnName("slot_duration_minutes");
-
-                    b.Property<int?>("SlotOrder")
-                        .HasColumnType("int")
-                        .HasColumnName("slot_order");
-
-                    b.Property<DateTime?>("SlotStartAt")
-                        .HasColumnType("datetime2")
-                        .HasColumnName("slot_start_at");
 
                     b.HasKey("Id")
                         .HasName("pk_council_project_assignments");
@@ -4030,18 +3974,6 @@ namespace FURPMS.Infrastructure.Migrations
                     b.Navigation("Template");
                 });
 
-            modelBuilder.Entity("FURPMS.Domain.Entities.Financial.RubricTemplateScope", b =>
-                {
-                    b.HasOne("FURPMS.Domain.Entities.Financial.RubricTemplate", "Template")
-                        .WithMany("Scopes")
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_rubric_template_scopes_rubric_templates_template_id");
-
-                    b.Navigation("Template");
-                });
-
             modelBuilder.Entity("FURPMS.Domain.Entities.Logs.AuditLog", b =>
                 {
                     b.HasOne("FURPMS.Domain.Entities.Users.User", "User")
@@ -4822,8 +4754,6 @@ namespace FURPMS.Infrastructure.Migrations
             modelBuilder.Entity("FURPMS.Domain.Entities.Financial.RubricTemplate", b =>
                 {
                     b.Navigation("Criteria");
-
-                    b.Navigation("Scopes");
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Progress.ProgressReport", b =>

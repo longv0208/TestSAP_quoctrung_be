@@ -7,6 +7,7 @@ public class CouncilMeeting
     public string? Title { get; set; }
     public string Platform { get; set; } = "IN_PERSON";
     public string? MeetingLink { get; set; }
+    public string? Location { get; set; }              // địa điểm khi họp trực tiếp (IN_PERSON)
     public string? ExternalMeetingId { get; set; }
     public string? CalendarEventId { get; set; }
     public DateTime ScheduledAt { get; set; }

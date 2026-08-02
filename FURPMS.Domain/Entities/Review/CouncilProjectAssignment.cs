@@ -10,6 +10,12 @@ public class CouncilProjectAssignment
     public Guid CouncilId { get; set; }
     public Guid ProjectId { get; set; }
 
+    // Slot theo đề tài (rule tuần 10): mỗi đề tài 1 khung giờ con trong buổi họp của hội đồng.
+    public Guid? MeetingId { get; set; }
+    public DateTime? SlotStartAt { get; set; }
+    public int? SlotDurationMinutes { get; set; }
+    public int? SlotOrder { get; set; }
+
     public ReviewCouncil Council { get; set; } = null!;
     public Project Project { get; set; } = null!;
 }
