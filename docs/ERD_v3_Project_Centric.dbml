@@ -3,7 +3,10 @@
 // ✅ ĐÃ ÁP DỤNG VÀO DB THẬT: Phase A (PhaseA_ProjectCentric) + Phase B
 // (PhaseB_ReviewMN) + Phase C (PhaseC_ChangeRequests, 09/07/2026: bảng
 // proposal_change_request) + Phase D (PhaseD_SystemSettings, 20/07/2026: bảng
-// system_settings) — đây giờ là schema HIỆN HÀNH (~58 bảng).
+// system_settings) + Phase E→L (tuần 10–12: council_qa_entry, council_member_opinion,
+// council_meeting.location, deadline_extension, progress_report.round_name /PhaseK 30/07/,
+// rubric_template_scope + rubric_template.applies_basic|applies_applied /PhaseL 01/08/)
+// — đây giờ là schema HIỆN HÀNH (62 bảng).
 // Phân tích: DB_Redesign_v3_PostReview2.md. Đây LÀ schema hiện hành (đã áp Phase A/B).
 //
 // Thay đổi chính so với hiện trạng:
@@ -126,12 +129,27 @@ Table council_remuneration_rate {
 
 Table rubric_template {
   id int [pk, increment]
-  template_type varchar
+  template_type varchar [note: 'REVIEW / ACCEPTANCE — quyết định bộ dùng cho loại vòng nào']
   name varchar
   max_total_score decimal
   track_id int [note: '(d) MỚI: scope theo track — nullable']
   order_id int [note: '(d) MỚI: scope theo order — nullable']
+  applies_basic bool [note: 'PhaseL (01/08): áp cho đề tài CƠ BẢN — default true']
+  applies_applied bool [note: 'PhaseL (01/08): áp cho đề tài ỨNG DỤNG — default true']
   is_active bool
+  Note: '"Bộ tiêu chí" (rule P4): 1 bộ = nhiều tiêu chí, gắn loại đề tài + nhiều (đợt, lĩnh vực) qua rubric_template_scope; sao chép được'
+}
+
+Table rubric_template_scope {
+  id int [pk, increment]
+  template_id int
+  cycle_id guid [note: 'đợt — nullable']
+  track_id int [note: 'lĩnh vực — nullable']
+  Note: 'PhaseL (01/08) — phạm vi áp dụng của bộ tiêu chí. Bộ KHÔNG có scope = bộ MẶC ĐỊNH (fallback, không bao giờ kẹt khi chấm).'
+
+  indexes {
+    (template_id, cycle_id, track_id) [unique]
+  }
 }
 
 Table rubric_criterion {
@@ -625,6 +643,7 @@ Table progress_report {
   id guid [pk]
   contract_id guid [note: 'GIỮ theo contract — tiến độ là của HĐ-giai đoạn']
   report_round int
+  round_name varchar [note: 'PhaseK (30/07): Staff tự đặt tên đợt; null → hiện "Kỳ {report_round}"']
   reporting_period_start date
   reporting_period_end date
   overall_completion_pct decimal
@@ -719,6 +738,9 @@ Ref: disbursement_template.research_type_id > research_type.id
 Ref: rubric_criterion.template_id > rubric_template.id
 Ref: rubric_template.track_id > research_track.id
 Ref: rubric_template.order_id > research_order.id
+Ref: rubric_template_scope.template_id > rubric_template.id
+Ref: rubric_template_scope.cycle_id > research_cycle.id
+Ref: rubric_template_scope.track_id > research_track.id
 
 // Domain 3
 Ref: user.unit_id > organizational_unit.id
@@ -834,6 +856,7 @@ TableGroup "2. Financial & Rubric" {
   disbursement_template
   council_remuneration_rate
   rubric_template
+  rubric_template_scope
   rubric_criterion
 }
 TableGroup "3. Users" {

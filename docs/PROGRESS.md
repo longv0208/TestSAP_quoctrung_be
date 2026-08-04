@@ -1,6 +1,6 @@
 # FURPMS Backend — Tiến độ theo nhóm chức năng
 
-> Ảnh chụp % hoàn thiện **so với phạm vi đồ án** (không phải "phần mềm hoàn hảo"). Đây là **ước lượng có cơ sở** (37 controller, Phase A/B/C đã code, 53/53 test, luồng core đã E2E) — KHÔNG phải số đo tự động. Cập nhật: 2026-07-15.
+> Ảnh chụp % hoàn thiện **so với phạm vi đồ án** (không phải "phần mềm hoàn hảo"). Đây là **ước lượng có cơ sở** (38 controller, Phase A→L đã code, **94/94 test**, luồng core đã E2E) — KHÔNG phải số đo tự động. Cập nhật: **2026-08-04** (sau demo thầy 29/07).
 >
 > Contract (`API_CONTRACT.md` §3–§10) liệt kê "BE cung cấp gì" theo đúng 8 nhóm dưới đây; file này bổ sung cột **% + còn thiếu**.
 
@@ -10,12 +10,16 @@
 | 2 | **Cấu hình / Master data** | Cycles+ResearchTypes+Tracks (**lĩnh vực toàn cục + gắn/gỡ theo đợt, rule #6, 22/07**), 6 lookup, **system_settings (Admin chỉnh giới hạn upload, 20/07)** | 98% | xóa đợt (chưa có endpoint DELETE /cycles/{id}) |
 | 3 | **Đề xuất & nội dung** | Proposals, Budget, Contents, TeamMembers, Documents, Export, ChangeRequests, AI-summary | 92% | upload siết theo cấu hình Admin: mặc định ≤10MB + whitelist đuôi file (18/07, chuyển sang `system_settings` 20/07) |
 | 4 | **Đặt hàng NC (Applied)** | ResearchOrders | 70% | multi-winner (đã chốt để sau — epic tương lai) |
-| 5 | **Phản biện, Hội đồng & Chấm** | ReviewBoard, Rounds, Councils, Meetings, Scoring, Feedback, Acceptance | 92% | **tuần 10:** UI biên bản (roster/Q&A/ý kiến TV), lịch họp offline+địa điểm, cảnh báo trùng lịch. Backlog: slot theo đề tài, gate gửi mời, điểm danh |
-| 6 | **Hợp đồng & sau HĐ** | Contracts, Disbursements, Deliverables, Amendments, ProgressReports, FinalReports, Settlements | 90% | **tuần 10:** tài chính=minh chứng (không quản tiền), timeline mốc hợp đồng, minh chứng giải ngân, tự sinh Word HĐ, gia hạn deadline log |
-| 7 | **Thống kê / Thông báo / Dev-tools** | Analytics (+3 dashboard theo role 15/07), Notifications, Admin, Documents | 92% | — |
+| 5 | **Phản biện, Hội đồng & Chấm** | ReviewBoard, Rounds, Councils, Meetings, Scoring, Feedback, Acceptance, **RubricTemplates** | 95% | **tuần 12:** fix 3 lỗi chấm nghiệm thu (403 reviewer · lệch kiểu mảng/object · không sửa được phiếu) · nối mạch ACCEPTANCE→`COMPLETED` · **Bộ tiêu chí** (gắn loại đề tài + nhiều đợt/lĩnh vực, sao chép, gắn riêng từng vòng) · chỉ cho tạo vòng REVIEW/ACCEPTANCE · **PI xem lịch họp** (`GET /meetings/my`). Còn: AI gợi ý chấm điểm |
+| 6 | **Hợp đồng & sau HĐ** | Contracts, Disbursements, Deliverables, Amendments, ProgressReports, FinalReports, Settlements | 93% | **tuần 12:** upload file thật (BM06 báo cáo tiến độ · BM09 tổng kết) thay dán URL · Staff phải xem file mới đánh giá được · số kỳ báo cáo **linh hoạt** + đặt tên đợt (PhaseK) · bảng tiến độ theo hoạt động (BM06) · fix từ vựng đánh giá `PASS/FAIL/CONDITIONAL` (trước lệch 3 kiểu → Staff **luôn 400**). Còn: **P5 giải ngân ↔ sản phẩm minh chứng**; sản phẩm vẫn dùng URL |
+| 7 | **Thống kê / Thông báo / Dev-tools** | Analytics (+3 dashboard theo role 15/07), Notifications, Admin, Documents | 93% | **tuần 12:** nhắc hạn thêm mốc **T-3** + scanner quét cả **báo cáo tiến độ** (trước chỉ quét sản phẩm). Còn: chuông auto-poll, thêm trigger sự kiện |
 | 8 | **Hạ tầng nền** | Middleware, JWT, Email/SMTP, DeadlineReminder, Gemini, Seeder | 85% | Email/Gemini cần config key thật để chạy đầy đủ |
 
-**Tổng thể ≈ 85–90%** cho phạm vi capstone. Lõi (đề xuất → xét duyệt → hợp đồng → giải ngân → nghiệm thu) chạy thông end-to-end.
+**Tổng thể ≈ 88–92%** cho phạm vi capstone. Lõi (đề cương → xét duyệt → hợp đồng → giải ngân → **nghiệm thu → COMPLETED**) chạy thông end-to-end.
+
+## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
+**≈16/18 ý (89%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1335 key).
+**Chưa (user chủ động hoãn):** **P5** giải ngân gắn sản phẩm minh chứng · **P8** AI (hoàn thiện flow + gợi ý chấm điểm).
 
 ## Vì sao KHÔNG nhóm nào 100%?
 - **% là ước lượng, không phải đo được.** Trần 95% là chủ ý: không claim "provably complete" khi chưa verify mọi nhánh (edge case, coverage, polish). 100% sẽ là overclaim.

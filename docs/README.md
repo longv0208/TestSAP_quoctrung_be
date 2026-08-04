@@ -1,10 +1,12 @@
 # FURPMS — Mục lục tài liệu & Việc còn lại
 
+> ⭐ **ĐANG Ở ĐÂU? Đọc `PLAN_Week12.md` trước** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P4, P6, P7** (≈16/18 ý thầy, 89%); còn **P5** (giải ngân ↔ sản phẩm minh chứng) và **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
+>
 > 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `core/FURPMS-Web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
 >
 > 📋 **Rà soát hệ thống + backlog (thừa / chưa ổn / ý tưởng để sau):** **`SYSTEM_REVIEW.md`** — chốt lại đánh giá để không quên (IDOR endpoint con, đa vai, sản phẩm/kỳ báo cáo tự tạo, rich text, lịch/thông báo…). Cập nhật tuần 11.
 
-> Điểm vào cho thư mục `docs/`. Cập nhật: 2026-07-24.
+> Điểm vào cho thư mục `docs/`. Cập nhật: 2026-08-04.
 > Lưu ý: KHÔNG đổi tên / di chuyển các file (CLAUDE.md + docs khác đang tham chiếu path) — file này để tra cứu + theo dõi việc dở.
 
 ---
@@ -107,7 +109,8 @@
 | File | Nội dung |
 |---|---|
 | `DB_Redesign_v3_PostReview2.md` | **★ Thiết kế DB v3 Project-centric theo biên bản Review 2** (a)–(e) → schema đích · bảng thay đổi từng thực thể · roadmap code Phase A/B · câu hỏi mở Q1–Q5. |
-| `ERD_v3_Project_Centric.dbml` | **★ ERD hiện hành (đã áp Phase A/B)** — dán vào dbdiagram.io (~56 bảng: +project, cycle_track, project_round, council_project_assignment, contract_phase). **Sơ đồ DB DUY NHẤT** (các bản .dbml/.sql cũ đã xóa 15/07 — xem git nếu cần lịch sử). |
+| `PLAN_Week12.md` | **★ Kế hoạch sau demo thầy 29/07** — P0–P8 + trạng thái từng mục + việc làm thêm ngoài kế hoạch. |
+| `ERD_v3_Project_Centric.dbml` | **★ ERD hiện hành (đã áp Phase A→L)** — dán vào dbdiagram.io (**62 bảng**: +project, cycle_track, project_round, council_project_assignment, contract_phase). **Sơ đồ DB DUY NHẤT** (các bản .dbml/.sql cũ đã xóa 15/07 — xem git nếu cần lịch sử). |
 | `Review2_Diagrams.md` | Bộ diagram: Context · Architecture · **System Overview (§2b)** · State Machine · ERD rút gọn (§6) + **Logical ERD đầy đủ (§6b — có sản phẩm/giải ngân, Proposal→n Contract)** · Use Case · **Activity (§9)** + đánh giá DB/code (§7). |
 | `Review2_Tech_Stack.md` | 4 danh sách Product/Tech (3rd-party · stack · DevOps · deploy). |
 | `RP4_Diagrams.md` | **Diagram theo khung Report 4 (SDD)**: Package Diagram + Class Diagram + Sequence Diagram (3 feature lõi). Architecture/ERD trỏ về Review2_Diagrams. |
