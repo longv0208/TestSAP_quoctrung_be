@@ -412,4 +412,162 @@ public class ContractLifecycleTests
         var refreshed = await db.Contracts.FindAsync(contract.Id);
         Assert.Equal(originalEnd.AddMonths(3), refreshed!.EndDate);
     }
+
+    // ── P5: giải ngân phải có sản phẩm minh chứng đã nghiệm thu ──────────────
+
+    /// <summary>Dựng 1 hợp đồng + 1 đợt giải ngân, tuỳ chọn gắn sản phẩm ở trạng thái cho trước.</summary>
+    private static async Task<(FURPMS.Infrastructure.Data.FURPMSDbContext db, ContractDisbursement tranche, int deliverableId)>
+        SeedTrancheAsync(string? deliverableStatus)
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+
+        var pi = MakeUser();
+        var rt = MakeResearchType();
+        var cat = new ProductCategory { Code = "SW-P5", Name = "Software", IsActive = true };
+        db.Users.Add(pi);
+        db.ResearchTypes.Add(rt);
+        db.ProductCategories.Add(cat);
+        await db.SaveChangesAsync();
+
+        var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        proposal.FundingMethod = "WHOLE";   // P5: WHOLE cũng gắn được sản phẩm
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+
+        var contract = MakeContract(project.Id);
+        db.Contracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        int deliverableId = 0;
+        if (deliverableStatus != null)
+        {
+            var deliverable = new FURPMS.Domain.Entities.Projects.ProjectDeliverable
+            {
+                ProjectId = project.Id,
+                ContractId = contract.Id,
+                CategoryId = cat.Id,
+                ProductName = "Bao cao chuyen de",
+                AcceptanceStatus = deliverableStatus,
+                IsCompleted = deliverableStatus == "PASSED"
+            };
+            db.ProjectDeliverables.Add(deliverable);
+            await db.SaveChangesAsync();
+            deliverableId = deliverable.Id;
+        }
+
+        var tranche = new ContractDisbursement
+        {
+            ContractId = contract.Id,
+            RoundNumber = 1,
+            Percentage = 100m,
+            PlannedAmount = 1_000_000m,
+            ConditionDescription = "Dot 1",
+            DeliverableId = deliverableStatus == null ? null : deliverableId,
+            Status = "PENDING"
+        };
+        db.ContractDisbursements.Add(tranche);
+        await db.SaveChangesAsync();
+
+        return (db, tranche, deliverableId);
+    }
+
+    private static DisbursementService MakeDisbursementService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
+        new(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(),
+            new SystemSettingService(new MasterDataRepository(db)));
+
+    [Theory]
+    [InlineData("PENDING")]
+    [InlineData("FAILED")]
+    public async Task Confirm_DeliverableNotPassed_Throws(string deliverableStatus)
+    {
+        var (db, tranche, _) = await SeedTrancheAsync(deliverableStatus);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            MakeDisbursementService(db).ConfirmAsync(
+                tranche.Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid()));
+
+        Assert.Contains("chua nghiem thu Dat", RemoveDiacritics(ex.Message));
+
+        // Không được đánh dấu nửa vời: đợt vẫn PENDING.
+        Assert.Equal("PENDING", (await db.ContractDisbursements.FindAsync(tranche.Id))!.Status);
+    }
+
+    /// <summary>Đợt KHÔNG gắn sản phẩm (vd tạm ứng khởi động) vẫn đánh dấu được — không chặn oan.</summary>
+    [Fact]
+    public async Task Confirm_NoDeliverableLinked_Succeeds()
+    {
+        var (db, tranche, _) = await SeedTrancheAsync(null);
+
+        var result = await MakeDisbursementService(db).ConfirmAsync(
+            tranche.Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid());
+
+        Assert.Equal("DISBURSED", result.Status);
+        Assert.False(result.IsBlockedByDeliverable);
+    }
+
+    [Fact]
+    public async Task Confirm_DeliverablePassed_Succeeds()
+    {
+        var (db, tranche, _) = await SeedTrancheAsync("PASSED");
+
+        var result = await MakeDisbursementService(db).ConfirmAsync(
+            tranche.Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid());
+
+        Assert.Equal("DISBURSED", result.Status);
+        Assert.Equal("Bao cao chuyen de", result.DeliverableName);
+    }
+
+    /// <summary>Không cho lấy sản phẩm của hợp đồng khác làm minh chứng.</summary>
+    [Fact]
+    public async Task LinkDeliverable_FromAnotherContract_Throws()
+    {
+        var (db, tranche, _) = await SeedTrancheAsync(null);
+
+        var otherProject = (await db.Projects.FindAsync(
+            (await db.Contracts.FindAsync(tranche.ContractId))!.ProjectId))!;
+        var otherContract = MakeContract(otherProject.Id);
+        db.Contracts.Add(otherContract);
+        await db.SaveChangesAsync();
+
+        var foreign = new FURPMS.Domain.Entities.Projects.ProjectDeliverable
+        {
+            ProjectId = otherProject.Id,
+            ContractId = otherContract.Id,
+            CategoryId = db.ProductCategories.First().Id,
+            ProductName = "San pham HD khac",
+            AcceptanceStatus = "PASSED"
+        };
+        db.ProjectDeliverables.Add(foreign);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            MakeDisbursementService(db).LinkDeliverableAsync(
+                tranche.Id, new Application.DTOs.Contract.LinkDeliverableRequest { DeliverableId = foreign.Id }));
+    }
+
+    /// <summary>Gắn sản phẩm ĐÃ nghiệm thu ⇒ điều kiện đạt ngay, không phải chấm lại.</summary>
+    [Fact]
+    public async Task LinkDeliverable_AlreadyPassed_SetsConditionMet()
+    {
+        var (db, tranche, deliverableId) = await SeedTrancheAsync("PASSED");
+        tranche.DeliverableId = null;               // giả lập đợt WHOLE chưa gắn gì
+        await db.SaveChangesAsync();
+
+        var result = await MakeDisbursementService(db).LinkDeliverableAsync(
+            tranche.Id, new Application.DTOs.Contract.LinkDeliverableRequest { DeliverableId = deliverableId });
+
+        Assert.Equal(deliverableId, result.DeliverableId);
+        Assert.NotNull(result.ConditionMetAt);
+        Assert.False(result.IsBlockedByDeliverable);
+    }
+
+    private static string RemoveDiacritics(string text)
+    {
+        var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+        var chars = normalized.Where(c =>
+            System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c)
+                != System.Globalization.UnicodeCategory.NonSpacingMark);
+        return new string(chars.ToArray()).Replace('đ', 'd').Replace('Đ', 'D');
+    }
 }

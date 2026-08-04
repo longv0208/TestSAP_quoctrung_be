@@ -544,6 +544,7 @@ Key hiện có:
 
 ### Giải ngân — `/api/disbursements`
 | POST | `/api/disbursements/{id}/confirm` | Admin, Staff | **Đánh dấu đã giải ngân** (rule tuần 10 — không quản tiền): `{ actualAmount?, bankReference?, notes? }` — **tất cả optional**, chỉ đổi status→DISBURSED + `disbursedAt` |
+| PUT | `/api/disbursements/{id}/deliverable` | Admin, Staff | **Gắn/gỡ sản phẩm minh chứng cho đợt** (P5): `{ deliverableId: int \| null }` — `null` = gỡ. **400** nếu sản phẩm không thuộc cùng hợp đồng; **409** nếu đợt đã giải ngân. Gắn sản phẩm đã `PASSED` ⇒ set luôn `conditionMetAt` |
 | GET | `/api/disbursements/{id}/evidence` | Admin, Staff | **Minh chứng giải ngân** (rule tuần 10) — list file HĐ/chứng từ của đợt |
 | POST | `/api/disbursements/{id}/evidence` | Admin, Staff | Upload minh chứng (multipart `file`) — tái dùng `Document` polymorphic (EntityType="Disbursement"); siết dung lượng/đuôi theo `system_settings` |
 | GET | `/api/disbursements/{id}/evidence/{documentId}/download` | Admin, Staff | Tải/mở file minh chứng (cần Bearer) |
@@ -730,8 +731,10 @@ Key hiện có:
 - `POST /api/contracts/{id}/disbursements/generate` sinh đợt theo `fundingMethod`:
   - `PARTIAL` → mỗi mốc nghiệm thu sản phẩm 1 đợt.
   - `WHOLE` → 2–3 đợt (đầu/giữa/cuối).
+- **P5 (04/08):** đợt giải ngân **nào cũng** gắn được sản phẩm minh chứng (không chỉ PARTIAL) qua `PUT /api/disbursements/{id}/deliverable`. `GET .../disbursements` nay trả kèm `deliverableName`, `deliverableAcceptanceStatus`, `deliverableSubmittedAt`, `isBlockedByDeliverable`.
+- **Gate:** `POST /api/disbursements/{id}/confirm` trả **409** nếu đợt **có gắn** sản phẩm mà sản phẩm chưa nghiệm thu `PASSED`. Đợt **không gắn** sản phẩm (vd tạm ứng khởi động HĐ) vẫn xác nhận bình thường.
 - `POST /api/deliverables/{id}/evaluate`:
-  - `PASSED` → mở khoá đợt giải ngân tương ứng (nếu PARTIAL); `IsCompleted=true`.
+  - `PASSED` → mở khoá **mọi** đợt giải ngân trỏ tới sản phẩm này (theo LIÊN KẾT, không còn theo `fundingMethod`); `IsCompleted=true`.
   - `FAILED` → hợp đồng chuyển trạng thái xem xét.
 - Nhắc hạn (job nội bộ, không phải endpoint): quét `deliverables.dueDate` gửi email mốc **T-30 / T-14 / T-7 / quá hạn**. Test bằng dev-tools tua thời gian (§10).
 

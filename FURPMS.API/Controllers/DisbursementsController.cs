@@ -29,4 +29,17 @@ public class DisbursementsController : ControllerBase
         var result = await _service.ConfirmAsync(id, request, userId);
         return Ok(ApiResponse<DisbursementResponse>.Ok(result));
     }
+
+    /// <summary>
+    /// Gắn sản phẩm minh chứng cho đợt giải ngân (<c>deliverableId = null</c> để gỡ).
+    /// Sản phẩm phải thuộc cùng hợp đồng; đợt đã giải ngân thì không đổi được nữa.
+    /// </summary>
+    [ProducesResponseType(typeof(ApiResponse<DisbursementResponse>), StatusCodes.Status200OK)]
+    [HttpPut("{id:int}/deliverable")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> LinkDeliverable(int id, [FromBody] LinkDeliverableRequest request)
+    {
+        var result = await _service.LinkDeliverableAsync(id, request);
+        return Ok(ApiResponse<DisbursementResponse>.Ok(result));
+    }
 }

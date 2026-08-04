@@ -1,6 +1,6 @@
 # FURPMS — Mục lục tài liệu & Việc còn lại
 
-> ⭐ **ĐANG Ở ĐÂU? Đọc `PLAN_Week12.md` trước** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P4, P6, P7** (≈16/18 ý thầy, 89%); còn **P5** (giải ngân ↔ sản phẩm minh chứng) và **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
+> ⭐ **ĐANG Ở ĐÂU? Đọc `PLAN_Week12.md` trước** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P7** (≈17/18 ý thầy, 94%); còn **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
 >
 > 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `core/FURPMS-Web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
 >

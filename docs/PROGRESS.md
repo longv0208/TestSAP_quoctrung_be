@@ -11,15 +11,15 @@
 | 3 | **Đề xuất & nội dung** | Proposals, Budget, Contents, TeamMembers, Documents, Export, ChangeRequests, AI-summary | 92% | upload siết theo cấu hình Admin: mặc định ≤10MB + whitelist đuôi file (18/07, chuyển sang `system_settings` 20/07) |
 | 4 | **Đặt hàng NC (Applied)** | ResearchOrders | 70% | multi-winner (đã chốt để sau — epic tương lai) |
 | 5 | **Phản biện, Hội đồng & Chấm** | ReviewBoard, Rounds, Councils, Meetings, Scoring, Feedback, Acceptance, **RubricTemplates** | 95% | **tuần 12:** fix 3 lỗi chấm nghiệm thu (403 reviewer · lệch kiểu mảng/object · không sửa được phiếu) · nối mạch ACCEPTANCE→`COMPLETED` · **Bộ tiêu chí** (gắn loại đề tài + nhiều đợt/lĩnh vực, sao chép, gắn riêng từng vòng) · chỉ cho tạo vòng REVIEW/ACCEPTANCE · **PI xem lịch họp** (`GET /meetings/my`). Còn: AI gợi ý chấm điểm |
-| 6 | **Hợp đồng & sau HĐ** | Contracts, Disbursements, Deliverables, Amendments, ProgressReports, FinalReports, Settlements | 93% | **tuần 12:** upload file thật (BM06 báo cáo tiến độ · BM09 tổng kết) thay dán URL · Staff phải xem file mới đánh giá được · số kỳ báo cáo **linh hoạt** + đặt tên đợt (PhaseK) · bảng tiến độ theo hoạt động (BM06) · fix từ vựng đánh giá `PASS/FAIL/CONDITIONAL` (trước lệch 3 kiểu → Staff **luôn 400**). Còn: **P5 giải ngân ↔ sản phẩm minh chứng**; sản phẩm vẫn dùng URL |
+| 6 | **Hợp đồng & sau HĐ** | Contracts, Disbursements, Deliverables, Amendments, ProgressReports, FinalReports, Settlements | 93% | **tuần 12:** upload file thật (BM06 báo cáo tiến độ · BM09 tổng kết) thay dán URL · Staff phải xem file mới đánh giá được · số kỳ báo cáo **linh hoạt** + đặt tên đợt (PhaseK) · bảng tiến độ theo hoạt động (BM06) · fix từ vựng đánh giá `PASS/FAIL/CONDITIONAL` (trước lệch 3 kiểu → Staff **luôn 400**). **P5 (04/08):** mọi đợt giải ngân gắn được sản phẩm minh chứng (`PUT /disbursements/{id}/deliverable`), chặn đánh dấu giải ngân khi sản phẩm chưa nghiệm thu Đạt. Còn: form nộp sản phẩm vẫn dùng URL + thiếu `TrialEvidenceUrl` |
 | 7 | **Thống kê / Thông báo / Dev-tools** | Analytics (+3 dashboard theo role 15/07), Notifications, Admin, Documents | 93% | **tuần 12:** nhắc hạn thêm mốc **T-3** + scanner quét cả **báo cáo tiến độ** (trước chỉ quét sản phẩm). Còn: chuông auto-poll, thêm trigger sự kiện |
 | 8 | **Hạ tầng nền** | Middleware, JWT, Email/SMTP, DeadlineReminder, Gemini, Seeder | 85% | Email/Gemini cần config key thật để chạy đầy đủ |
 
 **Tổng thể ≈ 88–92%** cho phạm vi capstone. Lõi (đề cương → xét duyệt → hợp đồng → giải ngân → **nghiệm thu → COMPLETED**) chạy thông end-to-end.
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
-**≈16/18 ý (89%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1335 key).
-**Chưa (user chủ động hoãn):** **P5** giải ngân gắn sản phẩm minh chứng · **P8** AI (hoàn thiện flow + gợi ý chấm điểm).
+**≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).
+**Chưa (user chủ động hoãn):** **P8** AI (hoàn thiện flow + gợi ý chấm điểm).
 
 ## Vì sao KHÔNG nhóm nào 100%?
 - **% là ước lượng, không phải đo được.** Trần 95% là chủ ý: không claim "provably complete" khi chưa verify mọi nhánh (edge case, coverage, polish). 100% sẽ là overclaim.

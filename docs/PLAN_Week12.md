@@ -95,10 +95,23 @@ Thầy: tách tiêu chí theo **loại nghiên cứu** (Ứng dụng / Cơ bản
 - `RubricTemplate` hiện có `TemplateType` + **`TrackId`** (lĩnh vực) nhưng **THIẾU `ResearchTypeId`** → thêm cột + migration + UI chọn group khi tạo template.
 - Khi chấm: tự lấy template khớp (loại NC + lĩnh vực), fallback template chung.
 
-## P5 — Giải ngân gắn sản phẩm minh chứng (mở rộng scope)
+## P5 — Giải ngân gắn sản phẩm minh chứng — ✅ **XONG (04/08)**
 Thầy: *"mỗi khi giải ngân từng đợt nên có sản phẩm minh chứng cho tiến độ đó, không phải chỉ input % và note"*.
-- Đã có `ContractDisbursement.DeliverableId` (dùng cho PARTIAL) → **mở rộng cho cả WHOLE** + UI gắn sản phẩm/minh chứng cho từng đợt + hiển thị rõ điều kiện ↔ sản phẩm.
-- Xem lại toàn bộ cách chia đợt giải ngân (kết hợp rule #15: không quản tiền, chỉ mốc + minh chứng).
+
+**3 lỗ hổng tìm ra khi rà code:**
+1. `DeliverableId` **chỉ gán lúc SINH đợt và chỉ với PARTIAL**, ghép máy móc theo thứ tự (đợt thứ i ↔ sản phẩm thứ i). Ghép sai thì không sửa được; WHOLE thì **không bao giờ** có sản phẩm.
+2. `ConfirmAsync` cho đánh dấu đã giải ngân **bất kể** sản phẩm đã nghiệm thu hay chưa — đúng chỗ thầy chê.
+3. DTO chỉ trả `deliverableId` trần (không tên, không trạng thái) ⇒ FE không hiện được minh chứng dù dữ liệu có.
+
+**Đã làm:**
+- **`PUT /api/disbursements/{id}/deliverable`** — Staff gắn/gỡ sản phẩm cho **bất kỳ** đợt nào (`null` = gỡ). Chặn sản phẩm **khác hợp đồng** (400) và đợt **đã giải ngân** (409). Gắn sản phẩm đã `PASSED` ⇒ set luôn `conditionMetAt`.
+- **Gate `confirm`:** đợt **có gắn** sản phẩm mà chưa `PASSED` → **409** kèm tên sản phẩm. Đợt **không gắn** (tạm ứng khởi động HĐ) vẫn xác nhận bình thường — không chặn oan.
+- **`EvaluateAsync`** mở khoá điều kiện theo **LIÊN KẾT** thay vì `fundingMethod`, và mở cho **mọi** đợt trỏ tới sản phẩm đó (trước chỉ `FirstOrDefault`).
+- **DTO** trả kèm `deliverableName` / `deliverableAcceptanceStatus` / `deliverableSubmittedAt` / `isBlockedByDeliverable`.
+- **FE** `DisbursementDeliverableLink.tsx`: mỗi đợt hiện sản phẩm + badge nghiệm thu, chưa gắn thì có dropdown chọn; nút "Đánh dấu đã giải ngân" **bị khoá** khi sản phẩm chưa Đạt (khỏi bấm rồi mới ăn 409).
+- **+6 test** (`Confirm_DeliverableNotPassed_Throws` ×2, `Confirm_NoDeliverableLinked_Succeeds`, `Confirm_DeliverablePassed_Succeeds`, `LinkDeliverable_FromAnotherContract_Throws`, `LinkDeliverable_AlreadyPassed_SetsConditionMet`) → **100/100**.
+
+**Không làm (có chủ ý):** không đụng cách chia đợt/tỷ lệ %, vì rule #15 đã bỏ phần tính tiền — đợt giờ chỉ là **mốc**.
 
 ## P6 — Dashboard PI thiết kế lại — ✅ **XONG (31/07)**
 Card **"Đợt đang nhận đề cương"** (`OpenCyclesCard`): tên đợt · **loại NC** (Ứng dụng/Cơ bản, suy từ đợt theo rule #7) · **hạn nộp còn bao lâu**, bấm vào đi thẳng wizard nộp.
@@ -134,9 +147,9 @@ Card **"Đợt đang nhận đề cương"** (`OpenCyclesCard`): tên đợt · 
 - 🟡 Rich text (thuyết minh/biên bản) · reschedule sau gửi mời · seed dữ liệu thật (bỏ "12") · vòng đóng thủ công thay vì tự đóng.
 
 ## Trạng thái tổng (cập nhật 04/08)
-✅ **P0 · P1 · P2 · P3 · P4 · P6 · P7** — xong, BE **94/94 test xanh**, FE `tsc` 0 lỗi, build production OK.
-⬜ **P5** (giải ngân ↔ sản phẩm minh chứng) · **P8** (AI) — user chủ động hoãn để test trước.
-→ **≈16/18 ý thầy góp ý (89%)**.
+✅ **P0 · P1 · P2 · P3 · P4 · P5 · P6 · P7** — xong, BE **100/100 test xanh**, FE `tsc` 0 lỗi, build production OK, i18n vi=en=1341.
+⬜ **P8** (AI: hoàn thiện flow + gợi ý chấm điểm) — user chủ động hoãn.
+→ **≈17/18 ý thầy góp ý (94%)**.
 
 ## Thứ tự đề xuất
 **P0 (lỗi nghiệm thu + nối mạch)** → **P1 (upload PDF + Staff xem file mới chấm)** → **P2 (số đợt linh hoạt + gia hạn)** → **P3 (nhắc hạn)** → **P6 (dashboard PI)** → **P7 (chuẩn hoá ngôn ngữ)** → **P4 (rubric group)** → **P5 (giải ngân ↔ sản phẩm)** → **P8 (AI)**.

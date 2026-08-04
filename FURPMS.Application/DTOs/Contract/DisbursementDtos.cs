@@ -14,6 +14,22 @@ public class DisbursementResponse
     public string? BankReference { get; set; }
     public string Status { get; set; } = null!;
     public string? Notes { get; set; }
+
+    // ── Sản phẩm minh chứng cho đợt này (rule #15: hệ thống không quản tiền,
+    // chỉ theo dõi MỐC + MINH CHỨNG). Trả kèm tên/trạng thái để FE hiện thẳng,
+    // khỏi phải gọi thêm API deliverables rồi tự ghép.
+    public int? DeliverableId { get; set; }
+    public string? DeliverableName { get; set; }
+    /// <summary>PENDING / PASSED / FAILED — null nếu đợt chưa gắn sản phẩm.</summary>
+    public string? DeliverableAcceptanceStatus { get; set; }
+    public DateTime? DeliverableSubmittedAt { get; set; }
+    /// <summary>Đợt có gắn sản phẩm nhưng sản phẩm chưa nghiệm thu Đạt ⇒ chưa được đánh dấu đã giải ngân.</summary>
+    public bool IsBlockedByDeliverable { get; set; }
+}
+
+/// <summary>Staff gắn / gỡ sản phẩm minh chứng cho một đợt giải ngân. <c>null</c> = gỡ.</summary>
+public class LinkDeliverableRequest
+{
     public int? DeliverableId { get; set; }
 }
 

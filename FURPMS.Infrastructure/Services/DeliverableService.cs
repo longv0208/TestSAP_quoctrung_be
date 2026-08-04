@@ -121,26 +121,30 @@ public class DeliverableService : IDeliverableService
         deliverable.IsCompleted = request.AcceptanceStatus == AcceptanceStatus.Passed;
 
         var contract = deliverable.Contract;
-        var fundingMethod = contract.Project.Proposals.FirstOrDefault()?.FundingMethod ?? FundingMethod.Whole;
 
         if (request.AcceptanceStatus == AcceptanceStatus.Passed)
         {
-            // Mốc giải ngân gắn sản phẩm chỉ áp cho PARTIAL (mỗi mốc 1 sản phẩm).
-            if (fundingMethod == FundingMethod.Partial)
-            {
-                var tranche = await _contracts.Disbursements
-                    .FirstOrDefaultAsync(d => d.DeliverableId == deliverableId);
-                if (tranche != null)
-                {
-                    tranche.ConditionMetAt = _clock.UtcNow;
-                    tranche.ConditionMetBy = evaluatedBy;
-                }
+            // Mở khoá điều kiện giải ngân theo LIÊN KẾT đợt↔sản phẩm, không theo
+            // fundingMethod nữa: Staff nay gắn được sản phẩm cho cả đợt WHOLE (P5).
+            // Lấy TẤT CẢ đợt trỏ tới sản phẩm này — 1 sản phẩm có thể là điều kiện
+            // của nhiều đợt.
+            var tranches = await _contracts.Disbursements
+                .Where(d => d.DeliverableId == deliverableId)
+                .ToListAsync();
 
+            foreach (var tranche in tranches)
+            {
+                tranche.ConditionMetAt = _clock.UtcNow;
+                tranche.ConditionMetBy = evaluatedBy;
+            }
+
+            if (tranches.Count > 0)
+            {
                 await NotifyStaffAsync(
                     contract,
                     "DELIVERABLE_PASSED",
                     $"Sản phẩm \"{deliverable.ProductName}\" đã được nghiệm thu. Vui lòng xem xét giải ngân.",
-                    $"/api/contracts/{contract.Id}/disbursements");
+                    $"/contracts/{contract.Id}");
             }
 
             // PI phải biết sản phẩm mình nộp đã ĐẠT — trước đây chỉ báo khi KHÔNG đạt,

@@ -31,11 +31,50 @@ public class DisbursementService : IDisbursementService
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
         var items = await _contracts.Disbursements
+            .Include(d => d.Deliverable)
             .Where(d => d.ContractId == contractId)
             .OrderBy(d => d.RoundNumber)
             .ToListAsync();
 
         return items.Select(Map);
+    }
+
+    public async Task<DisbursementResponse> LinkDeliverableAsync(int disbursementId, LinkDeliverableRequest request)
+    {
+        var d = await _contracts.Disbursements
+            .Include(x => x.Deliverable)
+            .FirstOrDefaultAsync(x => x.Id == disbursementId)
+            ?? throw new KeyNotFoundException($"Disbursement {disbursementId} not found.");
+
+        if (d.Status == DisbursementStatus.Disbursed)
+            throw new InvalidOperationException(
+                "Đợt này đã đánh dấu giải ngân — không đổi được sản phẩm minh chứng nữa.");
+
+        if (request.DeliverableId is int deliverableId)
+        {
+            // Chỉ cho gắn sản phẩm CÙNG hợp đồng, tránh lấy minh chứng của đề tài khác.
+            var deliverable = await _contracts.Deliverables
+                .FirstOrDefaultAsync(x => x.Id == deliverableId && x.ContractId == d.ContractId)
+                ?? throw new ArgumentException(
+                    $"Sản phẩm {deliverableId} không thuộc hợp đồng của đợt giải ngân này.");
+
+            d.DeliverableId = deliverable.Id;
+            d.Deliverable = deliverable;
+
+            // Sản phẩm đã nghiệm thu từ trước ⇒ điều kiện coi như đạt ngay khi gắn.
+            d.ConditionMetAt = deliverable.AcceptanceStatus == AcceptanceStatus.Passed
+                ? d.ConditionMetAt ?? _clock.UtcNow
+                : null;
+        }
+        else
+        {
+            d.DeliverableId = null;
+            d.Deliverable = null;
+            d.ConditionMetAt = null;
+        }
+
+        await _contracts.SaveChangesAsync();
+        return Map(d);
     }
 
     public async Task<IEnumerable<DisbursementResponse>> GenerateAsync(Guid contractId)
@@ -66,11 +105,21 @@ public class DisbursementService : IDisbursementService
 
     public async Task<DisbursementResponse> ConfirmAsync(int disbursementId, ConfirmDisbursementRequest request, Guid processedBy)
     {
-        var d = await _contracts.Disbursements.FirstOrDefaultAsync(x => x.Id == disbursementId)
+        var d = await _contracts.Disbursements
+            .Include(x => x.Deliverable)
+            .FirstOrDefaultAsync(x => x.Id == disbursementId)
             ?? throw new KeyNotFoundException($"Disbursement {disbursementId} not found.");
 
         if (d.Status == DisbursementStatus.Disbursed)
             throw new InvalidOperationException("Disbursement already confirmed.");
+
+        // Đợt nào có gắn sản phẩm minh chứng thì sản phẩm phải nghiệm thu ĐẠT rồi mới
+        // được đánh dấu đã giải ngân (QĐ543 Điều 16 — giải ngân theo tiến độ thực hiện).
+        // Đợt KHÔNG gắn sản phẩm (vd tạm ứng khởi động hợp đồng) vẫn cho qua bình thường.
+        if (d.Deliverable is not null && d.Deliverable.AcceptanceStatus != AcceptanceStatus.Passed)
+            throw new InvalidOperationException(
+                $"Sản phẩm minh chứng \"{d.Deliverable.ProductName}\" chưa nghiệm thu Đạt " +
+                "— chưa thể đánh dấu đã giải ngân đợt này.");
 
         if (request.ActualAmount.HasValue) d.ActualAmount = request.ActualAmount;   // optional, không bắt buộc
         if (!string.IsNullOrWhiteSpace(request.BankReference)) d.BankReference = request.BankReference;
@@ -184,6 +233,11 @@ public class DisbursementService : IDisbursementService
         BankReference = d.BankReference,
         Status = d.Status,
         Notes = d.Notes,
-        DeliverableId = d.DeliverableId
+        DeliverableId = d.DeliverableId,
+        DeliverableName = d.Deliverable?.ProductName,
+        DeliverableAcceptanceStatus = d.Deliverable?.AcceptanceStatus,
+        DeliverableSubmittedAt = d.Deliverable?.SubmittedAt,
+        IsBlockedByDeliverable =
+            d.Deliverable is not null && d.Deliverable.AcceptanceStatus != AcceptanceStatus.Passed
     };
 }
