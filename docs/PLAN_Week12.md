@@ -122,9 +122,82 @@ Card **"Đợt đang nhận đề cương"** (`OpenCyclesCard`): tên đợt · 
 - Nhãn **loại vòng chấm đổi được tại `i18n/locales/{vi,en}.ts → reviewBoard.type.*`** — mã bên trái (`REVIEW`/`ACCEPTANCE`) **CỐ Ý fix cứng**, xem `SYSTEM_REVIEW.md` §0b.
 - Thầy chốt: **demo thật để tiếng Anh**; lẫn vi trong màn en mới là lỗi (đã hết).
 
-## P8 — AI
-- **Hoàn thiện flow AI** (trích xuất đề cương, tóm tắt, semantic search) — hiện on-demand, phụ thuộc Gemini key.
-- **MỚI: AI gợi ý chấm điểm** cho reviewer (gợi ý điểm theo rubric + lý do, người chấm quyết định cuối).
+## P8 — AI — 🟡 **ĐANG LÀM (04/08)**: xong bước 1–2, còn 3–6
+
+**Rà ra trước khi code — nặng hơn dự kiến.** Đối chiếu từng lời gọi của FE với route thật của BE thì **4 nút AI trên UI đang bấm vào là 404**, không phải "chưa hoàn thiện":
+
+| FE gọi | Màn | Trạng thái |
+|---|---|---|
+| `POST /ai/extract` | Wizard nộp đề cương B2 | ✅ **đã sửa** — BE là `/proposals/extract`, FE gọi sai đường dẫn ⇒ **Đường B (upload+AI, rule #10/#20) chưa từng chạy** |
+| `POST /ai/proposals/{id}/feedback` | `AiFeedbackCard` (PI) | ✅ **đã làm BE** |
+| *(mới)* score-suggestion | Form chấm của reviewer | ✅ **đã làm** |
+| `POST /ai/search` | Trang tìm kiếm ngữ nghĩa | ⬜ 404 |
+| `POST /ai/suggest-reviewers` | Dialog thêm TV hội đồng | ⬜ 404 |
+| `POST /ai/similarity-check` | *không màn nào dùng* | ⬜ code chết cả 2 đầu → nên xoá |
+
+### ✅ Bước 1 — nối lại Đường B (upload + AI)
+Không chỉ lệch đường dẫn: `AiExtractionResult` của FE khai `keywords`/`researchArea`/`abstractEN` — **BE chưa bao giờ trả**; ngược lại **4 field BE có** (`researchObjectives`, `methodology`, `expectedOutput`, `durationMonths`) thì FE **bỏ phí**, trong đó objectives + durationMonths lại **bắt buộc** ở bước 2. Nay type khớp `ExtractedProposalDto`, prefill đủ 7 trường, chỉ ghi đè trường AI đọc được (không xoá thứ PI đã gõ), hiện danh sách trường đã điền + `warning` của BE.
+
+### ✅ Bước 2 — AI trợ lý (`IAiAdvisorService`)
+- `GET/POST /api/ai/proposals/{id}/feedback` — góp ý 4–6 ý theo nhóm (Mục tiêu/Phương pháp/Sản phẩm/Khả thi/Kinh phí/Trình bày). **GET đọc cache**, không tốn quota.
+- `POST /api/ai/councils/{councilId}/proposals/{proposalId}/score-suggestion` — **AI gợi ý điểm theo từng tiêu chí** (thầy nhắc trực tiếp). Gác quyền: chỉ **thành viên hội đồng** hoặc Admin/Staff. Luôn trả **đủ** tiêu chí theo bộ; AI thiếu cái nào thì 0 + ghi chú, **không** để mất tiêu chí. Điểm bị **kẹp** trong `[0, maxScore]`.
+- **Kết quả lưu `llm_outputs`** — bảng có sẵn trong schema nhưng trước giờ chỉ dùng cho SUMMARY.
+- Gemini hay bọc JSON trong ```` ```json ```` → cắt đúng đoạn mảng rồi mới parse, không để cả tính năng hỏng vì mấy ký tự thừa.
+- **Tách `IRubricResolver`**: thứ tự ưu tiên bộ tiêu chí (vòng → đợt+lĩnh vực → mặc định) trước nằm **trong controller**; giờ AI cũng cần ⇒ tách ra dùng chung, `RubricTemplatesController` chuyển sang gọi nó (tránh 2 bản logic lệch nhau).
+- **FE:** nút "AI gợi ý điểm" trong form chấm; gợi ý hiện **dưới từng tiêu chí** kèm nút "Áp dụng" — **không tự ghi đè** điểm người chấm đã nhập (rule #12).
+
+### ✅ Bước 3 — sửa đúng người, đúng việc (04/08, sau khi user hỏi "đặt mình vào từng role")
+- 🔴 **Tóm tắt AI đang đưa NHẦM NGƯỜI.** Card chỉ có ở màn PI — mà PI là người **viết ra** đề cương, họ thuộc nội dung. Người cần nhất là **reviewer** (đọc 5–10 đề tài, thời gian ngắn) thì màn chấm **không có**. → Đưa `AiSummaryCard` vào `ProposalReviewWorkspace`, đặt **trên** khung xem file.
+- 🔴 **Card tóm tắt vốn đang CRASH.** FE render `data.summary` + `data.highlights.map(...)`, BE trả `summaryText` và **không có** `highlights` ⇒ bấm "Tạo tóm tắt" là `undefined.map` → vỡ trang. (Lỗi DTO lệch **thứ ba** trong ngày, cùng họ với `/ai/extract` và `AiExtractionResult`.) → Type khớp `AiSummaryDto`; ưu tiên bản người sửa tay (`editedText`) hơn bản AI.
+- ✅ **Thêm `useProposalSummaryQuery`** — mở màn là đọc bản đã sinh sẵn từ `llm_outputs`, **không tốn quota**; chưa có mới hiện nút tạo.
+- ✅ **"Đối chiếu form ↔ file"** (`POST /api/ai/proposals/{id}/consistency-check`) — **đây mới là thứ thầy yêu cầu**, khác hẳn "Góp ý AI" (chỉ đọc field đã điền rồi nhận xét chung, **không mở file**). AI đọc file đính kèm mới nhất qua `GenerateFromInlineDataAsync`, trả `MISSING` / `MISMATCH` / `EXTRA` theo từng trường. Chưa có file → `hasFile=false`, FE hiện lời nhắc thay vì báo lỗi.
+- **Staff/Admin: cố ý KHÔNG thêm AI.** Việc của họ là **đối sánh/lọc**, không phải sinh chữ. `suggest-reviewers` nên làm **truy vấn thuần** (chính xác + ổn định + không tốn quota); Admin chỉ cần bật/tắt AI + xem log. Nhét AI cho đủ mâm 4 role sẽ bị hỏi ngược *"giải quyết vấn đề gì?"*.
+
+### ⬜ Còn lại
+3. `/ai/suggest-reviewers` — nên làm **không cần AI** (truy vấn theo lĩnh vực + lịch sử) → rẻ và ổn định hơn.
+4. `/ai/search` — xem mục **⏸ Chờ quyết định** bên dưới.
+5. Cache `llm_output` cho các lời gọi còn lại.
+6. Xoá `similarity-check` (chết cả 2 đầu).
+
+---
+
+## ⏸ Chờ user quyết định (đừng tự làm — hỏi lại rồi mới làm)
+
+### Q1. Tìm kiếm ngữ nghĩa (semantic) — LÀM, THAY, hay BỎ?
+> Đặt ra 04/08. User: *"để tôi quyết định sau"*.
+
+**Semantic là gì:** tìm theo **ý nghĩa** thay vì trùng chữ — gõ "dạy học trực tuyến" ra được cả bài viết "e-learning", "lớp học ảo".
+
+**Chi phí thật KHÔNG phải tiền** (embedding là loại gọi AI rẻ nhất, free tier vẫn có), mà là:
+- Phải sinh vector cho **mọi** đề cương + **sinh lại mỗi lần PI sửa** (quên → sai âm thầm) + backfill dữ liệu cũ.
+- SQL Server bản đang dùng **không có kiểu vector / index ANN** → phải kéo hết vector về C# tính cosine tay. Cỡ đồ án chạy được nhưng là giải pháp đồ chơi.
+- Demo phụ thuộc mạng + key; dính 429 giữa buổi là hỏng.
+
+**Hiệu quả so với tìm thường:** không có con số trung thực nào đưa ra được — phụ thuộc kích thước kho và kiểu câu hỏi. Lập luận theo quy mô: kho đồ án cỡ **vài chục–vài trăm** đề cương, ở mức đó **lọc (đợt/lĩnh vực/loại/trạng thái) + tìm chữ** giải quyết gần hết nhu cầu. Semantic chỉ thắng rõ khi (a) người dùng gõ từ khác hẳn tài liệu **và** (b) kho đủ lớn để không lọc tay nổi — đồ án không thoả cả hai. Tiếng Việt còn bất lợi: SQL Server không có bộ tách từ tiếng Việt.
+
+| Phương án | Công | Ghi chú |
+|---|---|---|
+| **A. Bỏ semantic → "Tìm kiếm nâng cao"** ⭐ *khuyến nghị* | **nhỏ** | BE **đã có sẵn** `GET /api/proposals?cycleId&trackId&status&type&search`. Chỉ còn: (i) mở rộng `search` quét thêm mục tiêu/phương pháp/sản phẩm (**hiện chỉ quét tiêu đề VI/EN**), (ii) đổi `SemanticSearchPage` (144 dòng) sang gọi endpoint có sẵn |
+| **A+. Như A, thêm quét bản tóm tắt AI** | nhỏ | Cho `search` quét luôn nội dung trong `llm_outputs`. Tóm tắt do AI viết nên hay dùng **từ khác bản gốc** ⇒ bắt được kha khá ca "khác chữ cùng nghĩa" — lấy ~nửa lợi ích semantic mà **không cần embedding** |
+| B. Làm semantic thật | lớn | Embedding + `semantic_search_vector` + backfill + cosine trong C# |
+| C. Ẩn nút, không làm gì | ~0 | Mất một mục trong scope |
+
+**Nếu chọn A/A+:** nhớ xoá luôn `similarity-check` (chết cả 2 đầu).
+
+### Q2. AI cho từng role — hiện đang LỆCH so với nhu cầu thật
+> Rà 04/08 khi user hỏi *"đặt mình vào từng role xem họ cần gì"*.
+
+**✅ ĐÃ XỬ LÝ 04/08** — xem "Bước 3" ở trên. Hiện trạng sau khi sửa:
+
+| Role | Tính năng AI |
+|---|---|
+| **PI** | Trích xuất từ file (Đường B) · **Đối chiếu form ↔ file** · Tóm tắt · Góp ý |
+| **Reviewer** | **Tóm tắt** (mới đưa sang) · Gợi ý điểm từng tiêu chí |
+| **Staff/Admin** | *cố ý không có* — cần đối sánh/lọc, không cần sinh chữ |
+
+⚠️ **CHƯA kiểm chứng bằng dữ liệu thật:** build + 100/100 test chỉ chứng minh code biên dịch & logic đơn vị đúng. Chưa biết Gemini trả JSON đúng khuôn không, chất lượng góp ý/đối chiếu ra sao, prompt tiếng Việt ổn không. **Phải chạy app đi luồng thật mới kết luận được.**
+
+> **Chi phí:** Gemini **free tier là đủ** — AI ở đây gọi theo yêu cầu, không chạy nền. Không cần bật billing. Rủi ro duy nhất là 429 khi demo dồn ⇒ đã có cache `llm_outputs` giảm gọi lại.
 
 ---
 

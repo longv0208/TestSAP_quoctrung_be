@@ -1,5 +1,6 @@
 using FURPMS.Application.Common;
 using FURPMS.Application.Interfaces.Repositories;
+using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Financial;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,12 +22,15 @@ public class RubricTemplatesController : ControllerBase
     private readonly IMasterDataRepository _repo;
     private readonly IReviewRepository _review;
     private readonly ICycleRepository _cycles;
+    private readonly IRubricResolver _resolver;
 
-    public RubricTemplatesController(IMasterDataRepository repo, IReviewRepository review, ICycleRepository cycles)
+    public RubricTemplatesController(
+        IMasterDataRepository repo, IReviewRepository review, ICycleRepository cycles, IRubricResolver resolver)
     {
         _repo = repo;
         _review = review;
         _cycles = cycles;
+        _resolver = resolver;
     }
 
     // GET /api/rubric-templates/for-council/{councilId}
@@ -35,35 +39,10 @@ public class RubricTemplatesController : ControllerBase
     [HttpGet("for-council/{councilId:guid}")]
     public async Task<IActionResult> ResolveForCouncil(Guid councilId)
     {
-        var council = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
-
-        var round = council.RoundId.HasValue
-            ? await _review.ReviewRounds.FirstOrDefaultAsync(r => r.Id == council.RoundId.Value)
-            : null;
-
-        // Thứ tự ưu tiên (để vừa linh hoạt vừa đỡ phải cấu hình từng vòng):
-        //   1. Bộ GẮN RIÊNG cho vòng này  → mỗi vòng dùng bộ khác nhau; 1 bộ gắn được nhiều vòng.
-        //   2. Bộ theo (đợt + lĩnh vực + loại vòng) → mặc định cho cả đợt, cấu hình 1 lần.
-        //   3. Bộ mặc định chung           → không bao giờ kẹt không chấm được.
-        if (round?.RubricTemplateId is int overrideId)
-        {
-            var pinned = await _repo.RubricTemplates
-                .Include(t => t.Criteria).Include(t => t.Scopes)
-                .FirstOrDefaultAsync(t => t.Id == overrideId && t.IsActive);
-            if (pinned != null) return Ok(ApiResponse<object?>.Ok(Map(pinned)));
-        }
-
-        var templateType = round?.RoundType ?? council.CouncilType;
-
-        int cycleId = 0, trackId = 0;
-        if (round != null)
-        {
-            var ct = await _cycles.CycleTracks.FirstOrDefaultAsync(x => x.Id == round.CycleTrackId);
-            if (ct != null) { cycleId = ct.CycleId; trackId = ct.TrackId; }
-        }
-
-        return Ok(ApiResponse<object?>.Ok(await ResolveInternalAsync(cycleId, trackId, templateType)));
+        // Thứ tự ưu tiên nằm trong IRubricResolver — dùng chung với AI gợi ý chấm điểm,
+        // để không có 2 bản logic rồi lệch nhau.
+        var template = await _resolver.ResolveForCouncilAsync(councilId);
+        return Ok(ApiResponse<object?>.Ok(template == null ? null : Map(template)));
     }
 
     // GET /api/rubric-templates — danh sách bộ + tiêu chí + phạm vi đã gắn

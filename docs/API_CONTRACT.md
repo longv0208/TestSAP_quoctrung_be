@@ -670,10 +670,25 @@ Key hiện có:
 
 > Cần cấu hình **`GeminiAI:ApiKey`** (đặt trong `appsettings.Development.json` đã gitignore, hoặc biến môi trường `GeminiAI__ApiKey`). Kết quả lưu ở bảng `llm_outputs`. Chưa cấu hình key → trả lỗi rõ ("Hết hạn mức/Key bị từ chối…").
 
+### AI trợ lý (P8, 04/08) — ✅ ĐÃ CÓ
+| Method | Path | Quyền | Mô tả |
+|---|---|---|---|
+| GET | `/api/ai/proposals/{id}/feedback` | chủ đề cương / Staff / Admin | Góp ý **đã sinh trước đó** (null nếu chưa có) — đọc cache `llm_outputs`, **không tốn quota** |
+| POST | `/api/ai/proposals/{id}/feedback` | như trên | Sinh góp ý mới: mảng `{ category, suggestion }`, nhóm ∈ Mục tiêu / Phương pháp / Sản phẩm dự kiến / Tính khả thi / Kinh phí / Trình bày |
+| POST | `/api/ai/proposals/{id}/consistency-check` | chủ đề cương / Staff / Admin | **Đối chiếu form ↔ FILE đề cương** (thầy 29/07). AI đọc **file đính kèm mới nhất** rồi so với thông tin đã điền. Trả `{ hasFile, fileName, issues[] }`; `issues[i].kind` ∈ `MISSING` (form thiếu) / `MISMATCH` (lệch) / `EXTRA` (form có, file không nhắc). **Chưa đính kèm file → `hasFile=false`, KHÔNG phải lỗi** |
+| POST | `/api/ai/councils/{councilId}/proposals/{proposalId}/score-suggestion` | **thành viên hội đồng** hoặc Admin/Staff (khác → **403**) | **AI gợi ý điểm từng tiêu chí**: `{ criterionId, criterionName, maxScore, suggestedScore, comment }`. Luôn trả **đủ** tiêu chí của bộ đang áp; AI thiếu thì `suggestedScore=0` + ghi chú. Điểm bị kẹp `[0, maxScore]`. **404** nếu hội đồng chưa có bộ tiêu chí nào |
+
+> Bộ tiêu chí dùng để gợi ý chọn bằng **cùng** thứ tự ưu tiên với màn chấm (`IRubricResolver`: vòng → đợt+lĩnh vực → mặc định) — không có 2 bản logic.
+> **AI chỉ GỢI Ý** — người chấm tự nhập điểm cuối (rule #12). FE hiện gợi ý dưới từng tiêu chí kèm nút "Áp dụng", không tự ghi đè.
+
 ### ⚠️ FE đang gọi nhưng BE CHƯA implement (trả 404) — cần làm BE hoặc ẩn ở FE
 | FE gọi | Mục đích | Trạng thái BE |
 |---|---|---|
-| `POST /api/assignments/{id}/ai-feedback`, `.../ai-rubric-assessment` | AI hỗ trợ chấm điểm | ❌ Chưa làm (cần Gemini key) |
+| `POST /api/ai/search` | Tìm kiếm ngữ nghĩa (trang PI) | ❌ Chưa làm — cần embedding + `semantic_search_vector` |
+| `POST /api/ai/suggest-reviewers` | Gợi ý thành viên hội đồng | ❌ Chưa làm — **nên làm bằng truy vấn thuần**, không cần AI |
+| `POST /api/ai/similarity-check` | Trùng lặp với đặt hàng | ❌ Chưa làm — **không màn nào dùng**, nên xoá cả 2 đầu |
+
+> ✅ **Đã sửa 04/08:** `POST /ai/extract` — FE gọi sai đường dẫn suốt (BE là **`POST /api/proposals/extract`**) ⇒ nút "phân tích bằng AI" ở wizard **chưa từng chạy**, tức Đường B (upload+AI, rule #10/#20) coi như chưa có. Kèm theo `AiExtractionResult` ở FE cũng lệch hẳn field so với `ExtractedProposalDto` — nay đã khớp, prefill đủ 7 trường.
 
 > ✅ **Đã bổ sung** (trước đây 404): tài liệu đính kèm `/api/proposals/{id}/documents` + `/api/documents` (§6), 4 endpoint change-requests (§6), `toggle-active` + `reset-password` (§4).
 

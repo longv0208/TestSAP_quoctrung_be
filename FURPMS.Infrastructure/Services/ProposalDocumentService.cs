@@ -143,6 +143,22 @@ public class ProposalDocumentService : IProposalDocumentService
         return (stream, doc.MimeType, doc.OriginalFileName);
     }
 
+    public async Task<(byte[] Content, string ContentType, string FileName)?> GetLatestProposalFileAsync(Guid proposalId)
+    {
+        var doc = await _docs.Query()
+            .Where(d => d.EntityType == EntityTypeProposal
+                        && d.EntityId == proposalId.ToString()
+                        && !d.IsDeleted)
+            .OrderByDescending(d => d.UploadedAt)
+            .FirstOrDefaultAsync();
+        if (doc == null) return null;
+
+        var fullPath = Path.Combine(_root, doc.StorageBlobName.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(fullPath)) return null;
+
+        return (await File.ReadAllBytesAsync(fullPath), doc.MimeType, doc.OriginalFileName);
+    }
+
     public async Task DeleteAsync(Guid proposalId, Guid documentId)
     {
         var doc = await _docs.Query()

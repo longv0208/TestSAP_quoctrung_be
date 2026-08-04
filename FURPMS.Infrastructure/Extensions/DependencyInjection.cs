@@ -72,6 +72,8 @@ public static class DependencyInjection
         services.AddSingleton<IClock, SystemClock>();
         services.AddHttpClient<IGeminiService, GeminiService>();
         services.AddScoped<IAiSummaryService, AiSummaryService>();
+        services.AddScoped<IRubricResolver, RubricResolver>();
+        services.AddScoped<IAiAdvisorService, AiAdvisorService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<INotifier, Notifier>();
         services.AddScoped<IDeadlineReminderScanner, DeadlineReminderScanner>();

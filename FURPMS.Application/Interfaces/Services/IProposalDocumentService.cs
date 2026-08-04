@@ -17,6 +17,12 @@ public interface IProposalDocumentService
 
     Task<(Stream Stream, string ContentType, string FileName)> DownloadAsync(Guid proposalId, Guid documentId);
 
+    /// <summary>
+    /// File đính kèm MỚI NHẤT của đề cương, đọc sẵn ra byte để đưa cho AI đối chiếu.
+    /// <c>null</c> khi đề cương chưa đính kèm file nào — gọi bên ngoài tự xử, không ném lỗi.
+    /// </summary>
+    Task<(byte[] Content, string ContentType, string FileName)?> GetLatestProposalFileAsync(Guid proposalId);
+
     Task DeleteAsync(Guid proposalId, Guid documentId);
 
     // Minh chứng giải ngân (rule tuần 10): Staff upload file hợp đồng/chứng từ gắn 1 đợt giải ngân.
