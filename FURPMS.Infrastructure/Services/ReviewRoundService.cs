@@ -4,7 +4,6 @@ using FURPMS.Application.DTOs.ReviewRounds;
 using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
-using FURPMS.Domain.Entities.AI;
 using FURPMS.Domain.Entities.Review;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,17 +17,20 @@ public class ReviewRoundService : IReviewRoundService
     private readonly IReviewRepository _review;
     private readonly IProposalRepository _proposals;
     private readonly INotificationRepository _notifications;
+    private readonly INotifier _notifier;
     private readonly IClock _clock;
 
     public ReviewRoundService(
         IReviewRepository review,
         IProposalRepository proposals,
         INotificationRepository notifications,
+        INotifier notifier,
         IClock clock)
     {
         _review = review;
         _proposals = proposals;
         _notifications = notifications;
+        _notifier = notifier;
         _clock = clock;
     }
 
@@ -222,18 +224,16 @@ public class ReviewRoundService : IReviewRoundService
                 ? $"Vòng xét duyệt #{round.RoundNumber} ({round.Dimension}) bị TỪ CHỐI. Đề tài bị từ chối."
                 : $"Vòng xét duyệt #{round.RoundNumber} ({round.Dimension}) yêu cầu CHỈNH SỬA.";
 
-        await _notifications.AddAsync(new Notification
-        {
-            Id = Guid.NewGuid(),
-            UserId = project.PiUserId,
-            NotificationType = "REVIEW_ROUND_CLOSED",
-            Title = $"Kết quả xét duyệt vòng {round.RoundNumber}",
-            Body = message,
-            RelatedEntityType = "ReviewRound",
-            RelatedEntityId = round.Id.ToString(),
-            Priority = result == ReviewResult.Rejected ? "HIGH" : "NORMAL",
-            CreatedAt = DateTime.UtcNow
-        });
+        // Gửi kèm EMAIL: đây là tin PI cần biết ngay, không thể chờ họ tự mở app.
+        await _notifier.NotifyAsync(
+            project.PiUserId,
+            "REVIEW_ROUND_CLOSED",
+            $"Kết quả xét duyệt vòng {round.RoundNumber}",
+            message,
+            actionUrl: "/proposals/my",
+            entityType: "ReviewRound",
+            entityId: round.Id.ToString(),
+            priority: result == ReviewResult.Rejected ? "HIGH" : "NORMAL");
         await _notifications.SaveChangesAsync();
     }
 

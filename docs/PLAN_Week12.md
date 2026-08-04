@@ -19,7 +19,7 @@
 
 **Còn lại của mạch cuối (chưa làm):** sau `COMPLETED` → quyết toán/thanh lý (`ContractSettlement`) đã có endpoint nhưng chưa kiểm end-to-end.
 
-## P1 — Upload file thật thay URL — 🟡 **ĐANG LÀM (30/07)**
+## P1 — Upload file thật thay URL — ✅ **XONG phần chính (30/07)**, còn sản phẩm
 
 ### ✅ Xong: file báo cáo tiến độ (BM06) — phần thầy nhấn mạnh nhất
 - **BE:** `POST/GET /api/progress-reports/{id}/documents` + `/download` (Document polymorphic `EntityType="ProgressReport"`, tái dùng hạ tầng upload sẵn có). Upload gác quyền: **chỉ PI của đề tài** (hoặc Staff/Admin) → người khác 403.
@@ -67,7 +67,15 @@ Khi Staff đánh giá "cần chỉnh sửa" đúng ngày cuối deadline → cho
 - Mốc nhắc mặc định thêm **3 ngày**: `DEADLINE_REMINDER_DAYS = 30,14,7,3` (Admin đổi được).
 - **Scanner nay quét cả BÁO CÁO TIẾN ĐỘ** (trước chỉ quét sản phẩm → PI không được nhắc gì về báo cáo):
   `REPORT_REMINDER_T{n}` khi tới mốc, `REPORT_OVERDUE` (URGENT) khi quá hạn; chỉ kỳ **chưa nộp** + đã có hạn; không gửi trùng; dùng **tên đợt** Staff đặt trong tiêu đề. +2 test.
-- **Còn lại (chưa làm):** chuông thông báo auto-poll + mở rộng trigger cho các sự kiện mới (xác nhận thay, đánh giá xong…).
+- ✅ **04/08 — thông báo qua EMAIL (`INotifier`):** gom "tạo chuông + gửi mail" về **một chỗ dùng chung**, thay vì mỗi service tự nhớ.
+  - **Lỗ hổng đã bịt:** `ReviewRoundService` (**kết quả xét duyệt gửi PI**) và `DeliverableService` (**sản phẩm đạt/không đạt**) trước đây **chỉ bắn chuông, không gửi mail** — PI không mở app thì không biết đề tài mình đậu hay rớt.
+  - **Phát hiện thêm:** PI **chưa từng** được báo khi sản phẩm **ĐẠT** (chỉ báo khi trượt) → đã thêm.
+  - Mail vẫn chịu công tắc tổng của Admin (`EMAIL_ENABLED`); tắt thì ghi `email_log` = `SKIPPED`, chuông vẫn chạy. Test dùng `TestNotifier` (email đi vào hư vô, không gửi thật).
+  - **Cấu hình:** local `appsettings.Development.json` (đã gitignore) · Render đặt env var `EmailSettings__SmtpUsername` / `EmailSettings__SmtpPassword` / `EmailSettings__FrontendUrl` / `GeminiAI__ApiKey` (`:` → `__`).
+  - **Đã test gửi thật:** SMTP thô trả `235 Authentication succeeded` → `250 OK: queued`. Mail **tới nơi nhưng vào Spam** — do `FromEmail` là `@gmail.com` mà gửi qua relay Brevo ⇒ SPF/DKIM không khớp domain. **Không sửa được bằng code**; muốn sạch phải dùng domain sở hữu / sender đã verify ở Brevo.
+  - **Test được luồng mail:** thêm `EmailSettings:RedirectAllTo` — dev thì dồn **mọi** mail về 1 hộp thư thật (tài khoản seed dùng email không tồn tại; đổi email seed sẽ hỏng seeder vì nó dùng email làm **khóa định danh**). Tiêu đề ghi `[→ người-nhận-thật]`; `email_log` vẫn lưu người nhận thật. **PROD để trống.**
+  - **Đã giảm điểm spam bằng code:** trước đây body là **text trần nhưng cờ `IsBodyHtml=true`, không có bản text thay thế** — đặc điểm mail rác. Nay gửi đúng **multipart/alternative** (text + HTML có template FURPMS) + **nút "Xem chi tiết"** ghép từ `EmailSettings:FrontendUrl` + `ActionUrl` của thông báo (bỏ qua các `ActionUrl` kiểu `/api/...` vì mở trên trình duyệt không ra gì).
+- **Còn lại (chưa làm):** chuông thông báo auto-poll + mở rộng trigger cho các sự kiện mới (xác nhận thay, đánh giá tiến độ xong…).
 
 ### Nội dung gốc (tham chiếu)
 - Nhắc **trước 3 ngày** + **khi quá hạn** (báo cáo tiến độ, sản phẩm, nộp đề cương).
@@ -92,19 +100,30 @@ Thầy: *"mỗi khi giải ngân từng đợt nên có sản phẩm minh chứn
 - Đã có `ContractDisbursement.DeliverableId` (dùng cho PARTIAL) → **mở rộng cho cả WHOLE** + UI gắn sản phẩm/minh chứng cho từng đợt + hiển thị rõ điều kiện ↔ sản phẩm.
 - Xem lại toàn bộ cách chia đợt giải ngân (kết hợp rule #15: không quản tiền, chỉ mốc + minh chứng).
 
-## P6 — Dashboard PI thiết kế lại
-Hiện: **đợt nào đang mở**, **loại nào đang mở** (Ứng dụng/Cơ bản), hạn nộp còn bao lâu, việc cần làm của tôi (kỳ báo cáo tới hạn, sản phẩm phải nộp).
+## P6 — Dashboard PI thiết kế lại — ✅ **XONG (31/07)**
+Card **"Đợt đang nhận đề cương"** (`OpenCyclesCard`): tên đợt · **loại NC** (Ứng dụng/Cơ bản, suy từ đợt theo rule #7) · **hạn nộp còn bao lâu**, bấm vào đi thẳng wizard nộp.
+- Còn (nhỏ): gom "việc cần làm của tôi" (kỳ báo cáo tới hạn, sản phẩm phải nộp) vào 1 card duy nhất — hiện nằm rải ở từng trang.
 
-## P7 — Chuẩn hoá ngôn ngữ + UI
-- **Một ngôn ngữ nhất quán** (VN hết hoặc EN hết). Hiện còn lẫn: `Schedule`, `Evaluate`, `Submit`, `Cancel`, `Join link`, `Due`, `Submitted`… hardcode tiếng Anh trong màn tiếng Việt (vd `ProgressReportsPanel`, `SubmitDeliverableDialog`).
-- **In hoa/in thường thống nhất** một kiểu.
-- Tiếp tục chuẩn hoá thuật ngữ EN (vi đã xong tuần 11: "đề cương/đề tài").
+## P7 — Chuẩn hoá ngôn ngữ + UI — ✅ **XONG (31/07)**
+- Quét hết chuỗi hardcode → đưa vào i18n; thêm namespace `toast` (38 key). **Bật English không còn lộ tiếng Việt.** Parity **vi = en = 1335 key**.
+- Nhãn **loại vòng chấm đổi được tại `i18n/locales/{vi,en}.ts → reviewBoard.type.*`** — mã bên trái (`REVIEW`/`ACCEPTANCE`) **CỐ Ý fix cứng**, xem `SYSTEM_REVIEW.md` §0b.
+- Thầy chốt: **demo thật để tiếng Anh**; lẫn vi trong màn en mới là lỗi (đã hết).
 
 ## P8 — AI
 - **Hoàn thiện flow AI** (trích xuất đề cương, tóm tắt, semantic search) — hiện on-demand, phụ thuộc Gemini key.
 - **MỚI: AI gợi ý chấm điểm** cho reviewer (gợi ý điểm theo rubric + lý do, người chấm quyết định cuối).
 
 ---
+
+## ✚ Làm thêm ngoài kế hoạch (phát sinh khi rà / user yêu cầu)
+| Việc | Vì sao | Chỗ chính |
+|---|---|---|
+| **Merge nhánh UI redesign** của bạn (`dev01`) vào `dev` | 2 nhánh song song, 70 file UI vs 8 file logic **không đè nhau** → 0 conflict | FE `4e69f50` |
+| **Fix lag UI** sau merge | aurora orb dùng `motion.div` animate **vô hạn** với blur 64px → repaint liên tục. Đổi sang `div` tĩnh + `will-change`/`contain: paint` | FE `49a7a72`, `AppLayout/AuthLayout`, `index.css` |
+| **PI xem được lịch họp** hội đồng chấm đề tài mình | Process_Spec: PI **trình bày trước hội đồng** rồi rời phòng khi họp kín → phải biết giờ + địa điểm/link. Trước đó chỉ Staff/Reviewer thấy | BE `GET /api/meetings/my`; FE `MyMeetingsPage` |
+| **Bảng tiến độ theo hoạt động (BM06)** | Mẫu BM06 có bảng %/hoạt động, form cũ thiếu hẳn | BE `ProgressReportService.UpdateAsync` (thay `items`); FE `CreateProgressReportSheet` |
+| **Khoá cửa sau `SCREENING`** ở BE | FE đã bỏ nhưng BE vẫn cho tạo → dữ liệu rác. Nay chỉ nhận `REVIEW`/`ACCEPTANCE` (rule #16) | BE `ReviewBoardService` + `ReviewRoundService` |
+| **Bỏ hẳn repo FE cũ đuôi `v0`** | User chốt: không tham chiếu nữa | `7a52239`, docs + `.claude/skills/fe-e2e` |
 
 ## Việc dang dở từ trước (giữ trong backlog — `SYSTEM_REVIEW.md`)
 - 🔴 **Rà IDOR endpoint con** proposal (`/documents`, `/budget`, `/team-members`) — cùng họ lỗi đã fix ở `GET /proposals/{id}`.
@@ -113,6 +132,11 @@ Hiện: **đợt nào đang mở**, **loại nào đang mở** (Ứng dụng/Cơ
 - 🟠 **Đa vai role-aware** toàn cục (mới ép đúng `/proposals/my` + `/contracts?mine=true`).
 - 🟠 **Báo cáo tiến độ ↔ giải ngân** (Đạt → mở đợt sau) — nay P5 đụng tới, gộp làm chung.
 - 🟡 Rich text (thuyết minh/biên bản) · reschedule sau gửi mời · seed dữ liệu thật (bỏ "12") · vòng đóng thủ công thay vì tự đóng.
+
+## Trạng thái tổng (cập nhật 04/08)
+✅ **P0 · P1 · P2 · P3 · P4 · P6 · P7** — xong, BE **94/94 test xanh**, FE `tsc` 0 lỗi, build production OK.
+⬜ **P5** (giải ngân ↔ sản phẩm minh chứng) · **P8** (AI) — user chủ động hoãn để test trước.
+→ **≈16/18 ý thầy góp ý (89%)**.
 
 ## Thứ tự đề xuất
 **P0 (lỗi nghiệm thu + nối mạch)** → **P1 (upload PDF + Staff xem file mới chấm)** → **P2 (số đợt linh hoạt + gia hạn)** → **P3 (nhắc hạn)** → **P6 (dashboard PI)** → **P7 (chuẩn hoá ngôn ngữ)** → **P4 (rubric group)** → **P5 (giải ngân ↔ sản phẩm)** → **P8 (AI)**.

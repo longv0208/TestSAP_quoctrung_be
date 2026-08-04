@@ -13,17 +13,20 @@ public class DeliverableService : IDeliverableService
     private readonly IContractRepository _contracts;
     private readonly IUserRepository _users;
     private readonly INotificationRepository _notifications;
+    private readonly INotifier _notifier;
     private readonly IClock _clock;
 
     public DeliverableService(
         IContractRepository contracts,
         IUserRepository users,
         INotificationRepository notifications,
+        INotifier notifier,
         IClock clock)
     {
         _contracts = contracts;
         _users = users;
         _notifications = notifications;
+        _notifier = notifier;
         _clock = clock;
     }
 
@@ -120,21 +123,39 @@ public class DeliverableService : IDeliverableService
         var contract = deliverable.Contract;
         var fundingMethod = contract.Project.Proposals.FirstOrDefault()?.FundingMethod ?? FundingMethod.Whole;
 
-        if (request.AcceptanceStatus == AcceptanceStatus.Passed && fundingMethod == FundingMethod.Partial)
+        if (request.AcceptanceStatus == AcceptanceStatus.Passed)
         {
-            var tranche = await _contracts.Disbursements
-                .FirstOrDefaultAsync(d => d.DeliverableId == deliverableId);
-            if (tranche != null)
+            // Mốc giải ngân gắn sản phẩm chỉ áp cho PARTIAL (mỗi mốc 1 sản phẩm).
+            if (fundingMethod == FundingMethod.Partial)
             {
-                tranche.ConditionMetAt = _clock.UtcNow;
-                tranche.ConditionMetBy = evaluatedBy;
+                var tranche = await _contracts.Disbursements
+                    .FirstOrDefaultAsync(d => d.DeliverableId == deliverableId);
+                if (tranche != null)
+                {
+                    tranche.ConditionMetAt = _clock.UtcNow;
+                    tranche.ConditionMetBy = evaluatedBy;
+                }
+
+                await NotifyStaffAsync(
+                    contract,
+                    "DELIVERABLE_PASSED",
+                    $"Sản phẩm \"{deliverable.ProductName}\" đã được nghiệm thu. Vui lòng xem xét giải ngân.",
+                    $"/api/contracts/{contract.Id}/disbursements");
             }
 
-            await NotifyStaffAsync(
-                contract,
-                "DELIVERABLE_PASSED",
-                $"Sản phẩm \"{deliverable.ProductName}\" đã được nghiệm thu. Vui lòng xem xét giải ngân.",
-                $"/api/contracts/{contract.Id}/disbursements");
+            // PI phải biết sản phẩm mình nộp đã ĐẠT — trước đây chỉ báo khi KHÔNG đạt,
+            // nộp xong đạt thì im lặng, PI không biết đã xong hay chưa.
+            if (contract.Project?.PiUserId is Guid passedPiUserId)
+            {
+                await _notifier.NotifyAsync(
+                    passedPiUserId,
+                    "DELIVERABLE_PASSED",
+                    "Sản phẩm đã được nghiệm thu",
+                    $"Sản phẩm \"{deliverable.ProductName}\" đã được nghiệm thu ĐẠT.",
+                    actionUrl: "/deliverables",
+                    entityType: "Contract",
+                    entityId: contract.Id.ToString());
+            }
         }
         else if (request.AcceptanceStatus == AcceptanceStatus.Failed)
         {
@@ -147,20 +168,17 @@ public class DeliverableService : IDeliverableService
                 $"Sản phẩm \"{deliverable.ProductName}\" không đạt nghiệm thu. Hợp đồng cần xem xét lại.",
                 $"/api/contracts/{contract.Id}");
 
-            Guid? piUserId = contract.Project?.PiUserId;
-            if (piUserId.HasValue)
+            if (contract.Project?.PiUserId is Guid failedPiUserId)
             {
-                await _notifications.AddAsync(new Notification
-                {
-                    UserId = piUserId.Value,
-                    NotificationType = "DELIVERABLE_FAILED",
-                    Title = "Sản phẩm không đạt nghiệm thu",
-                    Body = $"Sản phẩm \"{deliverable.ProductName}\" không đạt yêu cầu. Hợp đồng đang được xem xét.",
-                    ActionUrl = $"/api/contracts/{contract.Id}",
-                    RelatedEntityType = "Contract",
-                    RelatedEntityId = contract.Id.ToString(),
-                    Priority = "HIGH"
-                });
+                await _notifier.NotifyAsync(
+                    failedPiUserId,
+                    "DELIVERABLE_FAILED",
+                    "Sản phẩm không đạt nghiệm thu",
+                    $"Sản phẩm \"{deliverable.ProductName}\" không đạt yêu cầu. Hợp đồng đang được xem xét.",
+                    actionUrl: "/deliverables",
+                    entityType: "Contract",
+                    entityId: contract.Id.ToString(),
+                    priority: "HIGH");
             }
         }
 
@@ -180,22 +198,17 @@ public class DeliverableService : IDeliverableService
             .Select(ur => ur.UserId)
             .ToListAsync();
 
-        foreach (var uid in staffUserIds)
-        {
-            await _notifications.AddAsync(new Notification
-            {
-                UserId = uid,
-                NotificationType = notificationType,
-                Title = notificationType == "DELIVERABLE_PASSED"
-                    ? "Điều kiện giải ngân đã đáp ứng"
-                    : "Sản phẩm không đạt nghiệm thu",
-                Body = body,
-                ActionUrl = actionUrl,
-                RelatedEntityType = "Contract",
-                RelatedEntityId = contract.Id.ToString(),
-                Priority = "HIGH"
-            });
-        }
+        await _notifier.NotifyManyAsync(
+            staffUserIds,
+            notificationType,
+            notificationType == "DELIVERABLE_PASSED"
+                ? "Điều kiện giải ngân đã đáp ứng"
+                : "Sản phẩm không đạt nghiệm thu",
+            body,
+            actionUrl: actionUrl,
+            entityType: "Contract",
+            entityId: contract.Id.ToString(),
+            priority: "HIGH");
     }
 
     private static DeliverableResponse Map(Domain.Entities.Projects.ProjectDeliverable d) => new()

@@ -18,7 +18,8 @@ public class LogEmailService : IEmailService
         string subject,
         string body,
         string emailType,
-        Guid? recipientUserId = null)
+        Guid? recipientUserId = null,
+        string? actionUrl = null)
     {
         _notifications.AddEmailLog(new EmailLog
         {

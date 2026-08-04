@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddHttpClient<IGeminiService, GeminiService>();
         services.AddScoped<IAiSummaryService, AiSummaryService>();
         services.AddScoped<IEmailService, SmtpEmailService>();
+        services.AddScoped<INotifier, Notifier>();
         services.AddScoped<IDeadlineReminderScanner, DeadlineReminderScanner>();
         services.AddHostedService<DeadlineReminderService>();
         services.AddScoped<DatabaseSeeder>();

@@ -124,7 +124,7 @@ public class ProposalSubmissionTests
         new MasterDataRepository(db),
         new UserRepository(db),
         clock,
-        new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), new FakeClock()),
+        new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock()),
         new ReviewRepository(db));
 
     // ── 1: nộp quá hạn → 409 (InvalidOperationException) ─────────────────────

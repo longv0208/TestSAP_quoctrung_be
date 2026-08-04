@@ -245,7 +245,7 @@ public class ReviewScoringServiceMinutesTests
         await scoring.ApproveMinutesAsync(council.Id, chair.Id); // → council DECIDED, biên bản khóa
 
         var reviewRounds = new FURPMS.Infrastructure.Services.ReviewRoundService(
-            new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), new FakeClock());
+            new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
         await reviewRounds.ReopenAfterResubmitAsync(project.Id);
 
         var reopenedCouncil = await db.ReviewCouncils.FindAsync(council.Id);

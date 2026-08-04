@@ -26,6 +26,31 @@ dotnet run --project FURPMS.API   # BE :5068 tự Migrate + seed
 ```
 Rồi `dotnet run --project FURPMS.API` (hoặc F5 trong Visual Studio). Windows auth → không cần sa/mật khẩu, khỏi lỗi `Login failed`. `sqllocaldb info` để kiểm tra LocalDB; chưa có thì `sqllocaldb create MSSQLLocalDB`.
 
+### (c) Bật EMAIL + AI — secret KHÔNG commit
+`appsettings.json` (đã commit) cố ý để trống `SmtpUsername`/`SmtpPassword` và không có `GeminiAI`. Nguồn đổ giá trị vào **cùng tên key**, khác nhau theo môi trường — không phải sửa code:
+
+| Môi trường | Nguồn | Cách đặt |
+|---|---|---|
+| **Local** | `FURPMS.API/appsettings.Development.json` | đã có trong `.gitignore` (dòng 370–371) → không bao giờ lên git |
+| **Render (prod)** | Environment Variables | tên key thay `:` → **`__`**: `EmailSettings__SmtpUsername`, `EmailSettings__SmtpPassword`, `GeminiAI__ApiKey`, `ConnectionStrings__DefaultConnection`, `JwtSettings__SecretKey`. Đặt 1 lần trên dashboard, không dán lại mỗi lần deploy |
+
+```json
+// FURPMS.API/appsettings.Development.json — tạo tay, mỗi máy tự đặt
+{
+  "EmailSettings": {
+    "SmtpUsername": "<user>@smtp-brevo.com",
+    "SmtpPassword": "<xsmtpsib-...>",
+    // DEV: dồn HẾT mail về 1 hộp thư thật để test được. PROD phải bỏ dòng này.
+    "RedirectAllTo": "ban@gmail.com"
+  },
+  "GeminiAI": { "ApiKey": "<AIza...>", "Model": "gemini-flash-latest" }
+}
+```
+> **Vì sao cần `RedirectAllTo`:** tài khoản seed dùng email **không có thật** (`pi.demo@furpms.edu.vn`…) → đi luồng sẽ không thấy mail nào, tưởng hỏng. Đổi email seed thì hỏng seeder (nó dùng email **làm khóa định danh**: `FirstAsync(u => u.Email == "admin@furpms.edu.vn")`). Nên chuyển hướng ở **tầng gửi**: mọi mail về hộp thư của bạn, tiêu đề ghi `[→ pi.demo@furpms.edu.vn]` để biết ai đáng lẽ nhận. `email_log` vẫn ghi **người nhận thật** nên vẫn trả lời được "đã báo cho PI chưa?".
+> `EmailSettings:FrontendUrl` (mặc định `http://localhost:5173`) dùng để ghép link "Xem chi tiết" trong email — **deploy nhớ đổi** sang URL FE thật, không thì người nhận bấm vào localhost.
+> ⚠️ Mail hiện **rơi vào Spam** vì `FromEmail` là `@gmail.com` gửi qua relay Brevo (SPF/DKIM không khớp domain gmail.com). Đây là giới hạn hạ tầng, không phải lỗi code — demo thì dặn người xem mở thư mục Spam, hoặc đổi sang sender đã verify trong Brevo.
+> Thiếu key thì **không crash**: mail ghi `email_log` trạng thái FAILED, AI báo "chưa cấu hình" và vẫn nhập tay được. Admin có công tắc tổng **`EMAIL_ENABLED`** để tắt gửi mail khi demo (ghi log `SKIPPED`, chuông in-app vẫn chạy).
+
 ### FE
 ```bash
 cd core/FURPMS-Web && cp .env.example .env && npm install && npm run dev  # :5173, trỏ BE :5068

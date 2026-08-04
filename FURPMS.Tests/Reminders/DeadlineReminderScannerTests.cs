@@ -26,7 +26,7 @@ public class NullEmailService : IEmailService
     public List<(string email, string emailType)> Sent { get; } = new();
 
     public Task SendAsync(string recipientEmail, string subject, string body,
-        string emailType, Guid? recipientUserId = null)
+        string emailType, Guid? recipientUserId = null, string? actionUrl = null)
     {
         Sent.Add((recipientEmail, emailType));
         return Task.CompletedTask;

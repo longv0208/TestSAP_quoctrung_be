@@ -246,7 +246,7 @@ public class ContractLifecycleTests
         db.ContractDisbursements.Add(tranche);
         await db.SaveChangesAsync();
 
-        var svc = new DeliverableService(new ContractRepository(db), new UserRepository(db), new NotificationRepository(db), new FakeClock());
+        var svc = new DeliverableService(new ContractRepository(db), new UserRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
         var staffId = Guid.NewGuid();
         var result = await svc.EvaluateAsync(deliverable.Id,
             new Application.DTOs.Contract.EvaluateDeliverableRequest
@@ -304,7 +304,7 @@ public class ContractLifecycleTests
         db.ProjectDeliverables.Add(deliverable);
         await db.SaveChangesAsync();
 
-        var svc = new DeliverableService(new ContractRepository(db), new UserRepository(db), new NotificationRepository(db), new FakeClock());
+        var svc = new DeliverableService(new ContractRepository(db), new UserRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
         await svc.EvaluateAsync(deliverable.Id,
             new Application.DTOs.Contract.EvaluateDeliverableRequest
             {
