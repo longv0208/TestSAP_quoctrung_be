@@ -63,8 +63,10 @@ public class ProposalDocumentUploadTests
             .Build();
 
         var settings = new SystemSettingService(new MasterDataRepository(db));
+        // Test dùng đĩa local (thư mục tạm) — không đụng Cloudinary, không gọi mạng.
+        var storage = new LocalDiskFileStorage(config);
         return (new ProposalDocumentService(
-            new DocumentRepository(db), new ProposalRepository(db), settings, config), proposal.Id);
+            new DocumentRepository(db), new ProposalRepository(db), settings, storage), proposal.Id);
     }
 
     [Fact]

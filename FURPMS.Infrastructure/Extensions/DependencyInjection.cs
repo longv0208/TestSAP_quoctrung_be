@@ -74,6 +74,14 @@ public static class DependencyInjection
         services.AddScoped<IAiSummaryService, AiSummaryService>();
         services.AddScoped<IRubricResolver, RubricResolver>();
         services.AddScoped<IAiAdvisorService, AiAdvisorService>();
+        // Chỗ lưu file: có cấu hình Cloudinary thì dùng, không thì đĩa local.
+        // ⚠️ PRODUCTION (Render) BẮT BUỘC có Cloudinary — filesystem của Render là TẠM,
+        // mỗi lần redeploy/restart là mất sạch file người dùng đã nộp.
+        if (CloudinaryFileStorage.IsConfigured(configuration))
+            services.AddHttpClient<IFileStorage, CloudinaryFileStorage>();
+        else
+            services.AddSingleton<IFileStorage, LocalDiskFileStorage>();
+
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<INotifier, Notifier>();
         services.AddScoped<IDeadlineReminderScanner, DeadlineReminderScanner>();

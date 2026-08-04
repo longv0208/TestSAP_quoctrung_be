@@ -15,20 +15,20 @@ public class ProposalDocumentService : IProposalDocumentService
     private readonly IDocumentRepository _docs;
     private readonly IProposalRepository _proposals;
     private readonly ISystemSettingService _settings;
-    private readonly string _root;
+    private readonly IFileStorage _storage;
 
     public ProposalDocumentService(
         IDocumentRepository docs,
         IProposalRepository proposals,
         ISystemSettingService settings,
-        IConfiguration config)
+        IFileStorage storage)
     {
         _docs = docs;
         _proposals = proposals;
         _settings = settings;
-        // Thư mục lưu file; config "DocumentStorage:RootPath" hoặc mặc định App_Data/uploads.
-        _root = config["DocumentStorage:RootPath"]
-                ?? Path.Combine(Directory.GetCurrentDirectory(), "App_Data", "uploads");
+        // Chỗ lưu file do DI quyết: Cloudinary khi có cấu hình, không thì đĩa local.
+        // Production BẮT BUỘC dùng Cloudinary — Render xoá sạch đĩa mỗi lần redeploy.
+        _storage = storage;
     }
 
     public async Task<ProposalDocumentDto> UploadAsync(
@@ -59,12 +59,7 @@ public class ProposalDocumentService : IProposalDocumentService
                 $"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", allowed)}.");
 
         var blobName = $"proposals/{proposalId}/{Guid.NewGuid():N}{ext}";
-        var fullPath = Path.Combine(_root, blobName.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        await using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
-        {
-            await content.CopyToAsync(fs);
-        }
+        await _storage.SaveAsync(blobName, content, contentType);
 
         var doc = new Document
         {
@@ -74,7 +69,7 @@ public class ProposalDocumentService : IProposalDocumentService
             OriginalFileName = fileName,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
-            StorageContainer = "local",
+            StorageContainer = _storage.Description,
             StorageBlobName = blobName,
             UploadedBy = uploadedBy
         };
@@ -135,11 +130,8 @@ public class ProposalDocumentService : IProposalDocumentService
                                       && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Không tìm thấy tài liệu.");
 
-        var fullPath = Path.Combine(_root, doc.StorageBlobName.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(fullPath))
-            throw new KeyNotFoundException("File không còn trên storage.");
-
-        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+        var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
+            ?? throw new KeyNotFoundException("File không còn trên storage.");
         return (stream, doc.MimeType, doc.OriginalFileName);
     }
 
@@ -153,10 +145,8 @@ public class ProposalDocumentService : IProposalDocumentService
             .FirstOrDefaultAsync();
         if (doc == null) return null;
 
-        var fullPath = Path.Combine(_root, doc.StorageBlobName.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(fullPath)) return null;
-
-        return (await File.ReadAllBytesAsync(fullPath), doc.MimeType, doc.OriginalFileName);
+        var bytes = await _storage.ReadAllBytesAsync(doc.StorageBlobName, doc.StorageUrl);
+        return bytes == null ? null : (bytes, doc.MimeType, doc.OriginalFileName);
     }
 
     public async Task DeleteAsync(Guid proposalId, Guid documentId)
@@ -201,10 +191,7 @@ public class ProposalDocumentService : IProposalDocumentService
             throw new ArgumentException($"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", allowed)}.");
 
         var blobName = $"disbursements/{disbursementId}/{Guid.NewGuid():N}{ext}";
-        var fullPath = Path.Combine(_root, blobName.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        await using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
-            await content.CopyToAsync(fs);
+        await _storage.SaveAsync(blobName, content, contentType);
 
         var doc = new Document
         {
@@ -214,7 +201,7 @@ public class ProposalDocumentService : IProposalDocumentService
             OriginalFileName = fileName,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
-            StorageContainer = "local",
+            StorageContainer = _storage.Description,
             StorageBlobName = blobName,
             UploadedBy = uploadedBy
         };
@@ -240,11 +227,8 @@ public class ProposalDocumentService : IProposalDocumentService
             .FirstOrDefaultAsync(d => d.Id == documentId && d.EntityType == EntityTypeDisbursement && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Không tìm thấy minh chứng.");
 
-        var fullPath = Path.Combine(_root, doc.StorageBlobName.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(fullPath))
-            throw new KeyNotFoundException("File không còn trên storage.");
-
-        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+        var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
+            ?? throw new KeyNotFoundException("File không còn trên storage.");
         return (stream, doc.MimeType, doc.OriginalFileName);
     }
 
@@ -258,7 +242,7 @@ public class ProposalDocumentService : IProposalDocumentService
         var ext = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"progress-reports/{reportId}/{Guid.NewGuid():N}{ext}";
-        await SaveToDiskAsync(blobName, content);
+        await SaveToStorageAsync(blobName, content, contentType);
 
         var doc = new Document
         {
@@ -268,7 +252,7 @@ public class ProposalDocumentService : IProposalDocumentService
             OriginalFileName = fileName,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
-            StorageContainer = "local",
+            StorageContainer = _storage.Description,
             StorageBlobName = blobName,
             UploadedBy = uploadedBy
         };
@@ -293,7 +277,7 @@ public class ProposalDocumentService : IProposalDocumentService
         var doc = await _docs.Query()
             .FirstOrDefaultAsync(d => d.Id == documentId && d.EntityType == EntityTypeProgressReport && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Không tìm thấy file báo cáo.");
-        return OpenStored(doc);
+        return await OpenStoredAsync(doc);
     }
 
     // ── File báo cáo tổng kết (BM09) ───────────────────────────────────────────
@@ -305,7 +289,7 @@ public class ProposalDocumentService : IProposalDocumentService
         var ext = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"final-reports/{contractId}/{Guid.NewGuid():N}{ext}";
-        await SaveToDiskAsync(blobName, content);
+        await SaveToStorageAsync(blobName, content, contentType);
 
         var doc = new Document
         {
@@ -315,7 +299,7 @@ public class ProposalDocumentService : IProposalDocumentService
             OriginalFileName = fileName,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
-            StorageContainer = "local",
+            StorageContainer = _storage.Description,
             StorageBlobName = blobName,
             UploadedBy = uploadedBy
         };
@@ -340,7 +324,7 @@ public class ProposalDocumentService : IProposalDocumentService
         var doc = await _docs.Query()
             .FirstOrDefaultAsync(d => d.Id == documentId && d.EntityType == EntityTypeFinalReport && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Không tìm thấy file báo cáo tổng kết.");
-        return OpenStored(doc);
+        return await OpenStoredAsync(doc);
     }
 
     // Dùng chung cho các luồng upload (kiểm dung lượng + phần mở rộng theo SystemSetting).
@@ -360,20 +344,13 @@ public class ProposalDocumentService : IProposalDocumentService
         return ext;
     }
 
-    private async Task SaveToDiskAsync(string blobName, Stream content)
-    {
-        var fullPath = Path.Combine(_root, blobName.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        await using var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write);
-        await content.CopyToAsync(fs);
-    }
+    private Task SaveToStorageAsync(string blobName, Stream content, string contentType) =>
+        _storage.SaveAsync(blobName, content, contentType);
 
-    private (Stream Stream, string ContentType, string FileName) OpenStored(Document doc)
+    private async Task<(Stream Stream, string ContentType, string FileName)> OpenStoredAsync(Document doc)
     {
-        var fullPath = Path.Combine(_root, doc.StorageBlobName.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(fullPath))
-            throw new KeyNotFoundException("File không còn trên storage.");
-        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+        var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
+            ?? throw new KeyNotFoundException("File không còn trên storage.");
         return (stream, doc.MimeType, doc.OriginalFileName);
     }
 
@@ -396,10 +373,7 @@ public class ProposalDocumentService : IProposalDocumentService
             throw new ArgumentException($"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", allowed)}.");
 
         var blobName = $"contracts/{contractId}/{Guid.NewGuid():N}{ext}";
-        var fullPath = Path.Combine(_root, blobName.Replace('/', Path.DirectorySeparatorChar));
-        Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-        await using (var fs = new FileStream(fullPath, FileMode.Create, FileAccess.Write))
-            await content.CopyToAsync(fs);
+        await _storage.SaveAsync(blobName, content, contentType);
 
         var doc = new Document
         {
@@ -409,7 +383,7 @@ public class ProposalDocumentService : IProposalDocumentService
             OriginalFileName = fileName,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
-            StorageContainer = "local",
+            StorageContainer = _storage.Description,
             StorageBlobName = blobName,
             UploadedBy = uploadedBy
         };
@@ -435,11 +409,8 @@ public class ProposalDocumentService : IProposalDocumentService
             .FirstOrDefaultAsync(d => d.Id == documentId && d.EntityType == EntityTypeContract && !d.IsDeleted)
             ?? throw new KeyNotFoundException("Không tìm thấy tài liệu hợp đồng.");
 
-        var fullPath = Path.Combine(_root, doc.StorageBlobName.Replace('/', Path.DirectorySeparatorChar));
-        if (!File.Exists(fullPath))
-            throw new KeyNotFoundException("File không còn trên storage.");
-
-        Stream stream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+        var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
+            ?? throw new KeyNotFoundException("File không còn trên storage.");
         return (stream, doc.MimeType, doc.OriginalFileName);
     }
 }
