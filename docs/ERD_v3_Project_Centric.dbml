@@ -143,8 +143,8 @@ Table rubric_template {
 Table rubric_template_scope {
   id int [pk, increment]
   template_id int
-  cycle_id guid [note: 'đợt — nullable']
-  track_id int [note: 'lĩnh vực — nullable']
+  cycle_id int [note: 'đợt — 0 = chưa gắn đợt cụ thể']
+  track_id int [note: 'lĩnh vực — 0 = chưa gắn lĩnh vực cụ thể']
   Note: 'PhaseL (01/08) — phạm vi áp dụng của bộ tiêu chí. Bộ KHÔNG có scope = bộ MẶC ĐỊNH (fallback, không bao giờ kẹt khi chấm).'
 
   indexes {

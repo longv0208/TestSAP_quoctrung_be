@@ -2,6 +2,8 @@
 
 > ⭐ **ĐANG Ở ĐÂU? Đọc `PLAN_Week12.md` trước** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P7** (≈17/18 ý thầy, 94%); còn **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
 >
+> ⏸ **Đang chờ user chốt:** `PLAN_Week12.md` → mục **"Chờ user quyết định"** — **Q1** tìm kiếm ngữ nghĩa (bỏ / thay bằng tìm kiếm nâng cao / làm thật) · **Q2** AI cho từng role (tóm tắt cho reviewer, đối chiếu form↔file cho PI). Đừng tự làm, hỏi lại trước.
+>
 > 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `core/FURPMS-Web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
 >
 > 📋 **Rà soát hệ thống + backlog (thừa / chưa ổn / ý tưởng để sau):** **`SYSTEM_REVIEW.md`** — chốt lại đánh giá để không quên (IDOR endpoint con, đa vai, sản phẩm/kỳ báo cáo tự tạo, rich text, lịch/thông báo…). Cập nhật tuần 11.

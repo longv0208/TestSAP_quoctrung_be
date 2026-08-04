@@ -207,6 +207,15 @@ Sau khi sửa code, tự hỏi *"thay đổi này chạm doc nào?"* và cập n
 
 Nguyên tắc: **không để user phát hiện doc lệch rồi mới sửa**. Nếu 1 doc đang mô tả SAI hiện trạng sau thay đổi của mình → tự sửa/đánh dấu ngay cùng lượt. Xóa file docs → sửa luôn cross-ref + mục lục README (đừng để link chết).
 
+### Đầu mỗi phiên — TỰ TRA DOC, đừng hỏi "làm gì tiếp"
+Mỗi phiên Claude mất sạch ngữ cảnh phiên trước; chỉ file này được nạp tự động. Nên khi user hỏi *"giờ làm gì?"* / *"còn gì làm không?"* → **đọc theo thứ tự này TRƯỚC khi trả lời**, không đoán, không hỏi lại user:
+
+1. **`docs/PLAN_Week12.md`** → mục **"Trạng thái tổng"** (P nào ✅, P nào ⬜) + mục **"⏸ Chờ user quyết định"**.
+2. **`docs/SYSTEM_REVIEW.md`** → §2 "Chưa ổn / rủi ro" + §3 backlog.
+3. **`docs/PROGRESS.md`** → % từng nhóm + cột "còn thiếu".
+
+Việc **đang chờ user chốt** thì nhắc lại lựa chọn + khuyến nghị, KHÔNG tự làm.
+
 ### Chuẩn "xong" 1 việc
 - **Build xanh + `dotnet test` xanh** (nêu rõ số pass) TRƯỚC khi coi là xong. Test fail → báo kèm output, không giấu.
 - **Báo tiến độ theo %** sau mỗi việc lớn: đã làm gì · % so với plan/phase · còn gì. Không đợi hỏi.
