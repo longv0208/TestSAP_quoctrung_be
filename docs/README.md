@@ -2,7 +2,7 @@
 
 > ⭐ **ĐANG Ở ĐÂU? Đọc `PLAN_Week12.md` trước** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P7** (≈17/18 ý thầy, 94%); còn **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
 >
-> ⏸ **Đang chờ user chốt:** `PLAN_Week12.md` → mục **"Chờ user quyết định"** — **Q1** tìm kiếm ngữ nghĩa (bỏ / thay bằng tìm kiếm nâng cao / làm thật) · **Q2** AI cho từng role (tóm tắt cho reviewer, đối chiếu form↔file cho PI). Đừng tự làm, hỏi lại trước.
+> ⏸ **Đang chờ user chốt:** `PLAN_Week12.md` → mục **"Chờ user quyết định"** — **Q1** tìm kiếm ngữ nghĩa (bỏ / thay bằng tìm kiếm nâng cao / làm thật) · **Q2** AI cho từng role *(đã xử lý)* · **Q3** chuẩn hoá validate ở FE · **Q4** Google Calendar/Meet (cần đăng ký OAuth, có bẫy refresh token 7 ngày) · **Q5** 🔴 **deploy thật: Render xoá sạch file upload mỗi lần redeploy** — phải đổi sang storage ngoài trước khi deploy. Đừng tự làm, hỏi lại trước.
 >
 > 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `core/FURPMS-Web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
 >

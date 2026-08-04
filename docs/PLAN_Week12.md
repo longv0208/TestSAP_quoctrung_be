@@ -184,6 +184,63 @@ Không chỉ lệch đường dẫn: `AiExtractionResult` của FE khai `keyword
 
 **Nếu chọn A/A+:** nhớ xoá luôn `similarity-check` (chết cả 2 đầu).
 
+### Q3. Validate ở FE — có rồi nhưng KHÔNG đồng đều
+> User nêu 05/08.
+
+**BE: có sẵn** — service ném `ArgumentException` → 400, cộng check constraint ở DB. Không lo.
+
+**FE: mới phủ một nửa.** Có **12 schema zod** (login, đổi mật khẩu, wizard đề cương, 8 màn CRUD của Admin, hợp đồng) / 17 file dùng `useForm`. Nhưng **phần lớn dialog viết tay bằng `useState`, không validate gì** — đánh giá báo cáo tiến độ, xác nhận giải ngân, nộp sản phẩm, lịch báo cáo… Người dùng bấm xong mới ăn 400 từ BE, lỗi hiện bằng **toast chung** chứ không chỉ vào ô sai.
+
+**Việc cần:** rà toàn bộ form, quy ước: form ≥3 trường **hoặc** có ràng buộc số/ngày ⇒ dùng `zod` + `react-hook-form`, **lỗi hiện ngay dưới ô**. Form 1–2 trường thì giữ nguyên cho nhẹ.
+**Ưu tiên 🟡 trung bình** — không chặn luồng, nhưng là thứ thầy nhìn thấy ngay khi bấm thử.
+
+### Q4. Google Meet + Google Calendar — thực ra là **MỘT** việc
+> User nêu 05/08. Cậu đoán đúng: hai cái này gắn với nhau.
+
+**Không có "API tạo link Meet" riêng để gọi cho nhanh.** Cách chuẩn là gọi **Google Calendar API** tạo sự kiện kèm `conferenceData.createRequest` → Google trả về link Meet. Nên làm Calendar = được luôn Meet, không phải 2 đầu việc.
+
+**Phải đăng ký (khác Gemini, không chỉ 1 API key):**
+1. Google Cloud project → bật **Google Calendar API**.
+2. Tạo **OAuth 2.0 Client ID** (loại *Web application*) + cấu hình **OAuth consent screen**.
+3. Lưu `ClientId` / `ClientSecret` vào env như các secret khác.
+
+**2 cái bẫy phải biết TRƯỚC khi quyết làm:**
+- ⚠️ **Service account KHÔNG tạo được link Meet** với Gmail thường — cần Google Workspace + domain-wide delegation. Dùng gmail cá nhân thì phải đi luồng **OAuth người dùng đồng ý**, rồi **lưu + tự làm mới refresh token**.
+- ⚠️ App để ở trạng thái **"Testing"** thì **refresh token hết hạn sau 7 ngày** → demo tuần sau là gãy. Muốn bền phải chuyển "In production"; scope Calendar thuộc nhóm **nhạy cảm** nên có thể phải qua xác minh.
+
+**Khó ở đâu:** lời gọi API thì dễ; **OAuth + lưu/refresh token + xử lý hết hạn** mới là phần việc thật. Ước lượng 1–2 ngày nếu suôn, và **có rủi ro tắc ở khâu consent screen**.
+
+**Khuyến nghị:** để **nice-to-have**, làm sau cùng. Hiện Staff dán link thủ công vẫn chạy đủ luồng (rule #17). Đổi lấy 1–2 ngày + rủi ro gãy demo thì không đáng, trừ khi đã xong hết việc cốt lõi.
+
+### Q5. Deploy thật (Vercel + Render) — **lưu file là vấn đề lớn nhất**
+> User nêu 05/08. Đây KHÔNG phải "có thể gặp", mà là **chắc chắn gặp**.
+
+| # | Vấn đề | Mức |
+|---|---|---|
+| 1 | ✅ **ĐÃ XỬ 05/08 — chuyển sang Cloudinary.** ~~Render dùng filesystem TẠM, redeploy là mất sạch file.~~ Xem mục bên dưới. | xong |
+| 2 | 🔴 **Không đính kèm nhiều file một lần.** Rà FE: **7 ô chọn file, 0 ô có `multiple`** ⇒ PI phải chọn & upload từng file một. | cao |
+| 3 | 🟠 **Render free ngủ sau ~15 phút** không ai gọi → request đầu chờ cỡ 1 phút. Demo phải "đánh thức" BE trước khi thầy vào. | cao |
+| 4 | 🟡 Secret nhập tay trên Render dashboard: `ConnectionStrings__DefaultConnection`, `JwtSettings__SecretKey`, `GeminiAI__ApiKey`, `EmailSettings__SmtpUsername/SmtpPassword`, `EmailSettings__FrontendUrl`. Đặt **1 lần**, không phải mỗi lần deploy. | ok |
+| 5 | 🟡 FE Vercel: đổi env var xong **phải redeploy** (Vite nhúng lúc build, không đọc lúc chạy). | ok |
+| 6 | 🟡 CORS: BE mặc định `AllowAnyOrigin` nếu không cấu hình `Cors:AllowedOrigins`. Có cấu hình thì nhớ thêm origin của Vercel. | ok |
+
+### ✅ #1 đã xử — Cloudinary (05/08)
+
+Tách **`IFileStorage`**: `CloudinaryFileStorage` (có cấu hình `Cloudinary:*` thì dùng) · `LocalDiskFileStorage` (không có thì về đĩa local như cũ). `ProposalDocumentService` bỏ **toàn bộ** thao tác đĩa trực tiếp (10 chỗ) → gọi qua lớp này. **Không cần migration.**
+
+**🔒 Quyết định bảo mật — đã kiểm chứng, không phải phỏng đoán:** thử upload rồi tải lại thì **URL Cloudinary tải được mà KHÔNG cần đăng nhập**, kể cả kiểu `authenticated` (chữ ký nằm sẵn trong URL, không hết hạn). Đề cương/hợp đồng là tài liệu mật ⇒
+- URL Cloudinary **chỉ tồn tại phía server**, dựng lại từ `StorageBlobName` mỗi lần cần — **không lưu vào `Document.StorageUrl`**, vì cột đó đang chứa URL tải của BE và **đi thẳng ra FE** (suýt rò rỉ).
+- Người dùng luôn tải qua `/documents/{id}/download` để BE còn `[Authorize]` + kiểm chủ sở hữu.
+- Tên file là GUID nên không đoán được.
+
+**2 quirk .NET mất thời gian nhất** (ghi lại để khỏi mò lại): `MultipartFormDataContent` mặc định (a) gắn `Content-Type: text/plain; charset=utf-8` cho từng field và (b) ghi `name=api_key` **không có dấu nháy** ⇒ Cloudinary bỏ qua hết field, báo *"Upload preset must be specified when using unsigned upload"* (nghe như thiếu preset, thực ra là **không đọc được api_key**). Phải gỡ `ContentType` và tự thêm nháy quanh tên field.
+
+**Đã test thật qua BE:** upload 200 → tải có token 200 & **khớp từng byte** (104 903) → tải **không token 401** → file **nằm thật trên Cloudinary** → **AI đọc file từ Cloudinary** để đối chiếu vẫn chạy (6 điểm lệch).
+
+**Cấu hình:** local ở `appsettings.Development.json`; Render đặt env `Cloudinary__CloudName`, `Cloudinary__ApiKey`, `Cloudinary__ApiSecret`, `Cloudinary__Folder`. **Bỏ mục này đi là tự động quay về đĩa local**, không gãy.
+
+**Còn lại:** #2 (cho chọn nhiều file) → #3 (đánh thức BE trước khi demo).
+
 ### Q2. AI cho từng role — hiện đang LỆCH so với nhu cầu thật
 > Rà 04/08 khi user hỏi *"đặt mình vào từng role xem họ cần gì"*.
 
@@ -219,10 +276,34 @@ Không chỉ lệch đường dẫn: `AiExtractionResult` của FE khai `keyword
 - 🟠 **Báo cáo tiến độ ↔ giải ngân** (Đạt → mở đợt sau) — nay P5 đụng tới, gộp làm chung.
 - 🟡 Rich text (thuyết minh/biên bản) · reschedule sau gửi mời · seed dữ liệu thật (bỏ "12") · vòng đóng thủ công thay vì tự đóng.
 
-## Trạng thái tổng (cập nhật 04/08)
-✅ **P0 · P1 · P2 · P3 · P4 · P5 · P6 · P7** — xong, BE **100/100 test xanh**, FE `tsc` 0 lỗi, build production OK, i18n vi=en=1341.
-⬜ **P8** (AI: hoàn thiện flow + gợi ý chấm điểm) — user chủ động hoãn.
-→ **≈17/18 ý thầy góp ý (94%)**.
+## Trạng thái tổng (cập nhật 05/08)
+✅ **P0 · P1 · P2 · P3 · P4 · P5 · P6 · P7** — xong.
+🟡 **P8 (AI)** — xong bước 1–3 (Đường B, đối chiếu form↔file, góp ý, tóm tắt cho reviewer, gợi ý chấm điểm). Còn `/ai/search` (**chờ user chốt — §Q1**), `suggest-reviewers`, xoá `similarity-check`.
+→ **18/18 ý thầy góp ý đã có phần hiện thực** (P8 còn phần đuôi).
+
+**Verify:** BE **100/100 test xanh** · FE `tsc` 0 lỗi · build production OK · i18n **vi=en=1367**.
+
+## ✅ E2E thật (05/08) — đã chạy app + Chrome + gọi API thật
+
+**Login 4 role (Admin/Staff/PI/Reviewer): sạch** — không console error, không API ≥400.
+
+**4 tính năng AI đã gọi thật với dữ liệu thật, chất lượng dùng được:**
+| Tính năng | Kết quả | Thời gian |
+|---|---|---|
+| Đối chiếu form ↔ file | ✅ bắt trúng 5 điểm lệch (form nói phát hiện gian lận, file lại là SRS của FURPMS) | ~19s |
+| Góp ý đề cương | ✅ 4 ý đúng trọng tâm ("kinh phí 0 VND chưa hợp lý", "tên đề tài cần đặt lại") | ~10s |
+| Tóm tắt | ✅ tiếng Việt trôi chảy; lần sau mở màn đọc **cache**, không tốn quota | ~10s |
+| Gợi ý chấm điểm | ✅ đủ 5 tiêu chí, điểm hợp lý + lý do, không vượt thang | ~21s |
+
+> ⏱ **10–21 giây mỗi lần gọi** — chậm. Demo nên **bấm trước** cho vào cache, đừng bấm live trước mặt thầy.
+
+### 🔴 Lỗi tìm được khi test thật (đã sửa)
+**Gemini KHÔNG nhận file `.docx`** — trả 400 `Unsupported MIME type`. Mà .docx là định dạng phổ biến nhất của đề cương ⇒ "đối chiếu form↔file" **hỏng với đúng loại file hay dùng nhất**. `ProposalExtractionService` vốn đã xử lý đúng (PDF gửi thẳng, .docx bóc text bằng OpenXml rồi gửi) nhưng service AI mới lại gửi thô. → Gom về **`GeminiFileInput.AskAboutFileAsync`** dùng chung cho cả hai.
+
+### ⚠️ Chặn demo — thiếu DỮ LIỆU, không phải lỗi code
+1. **Chưa có bộ tiêu chí loại `ACCEPTANCE`** ⇒ mọi hội đồng **Nghiệm thu** hiện ra *"Chưa cấu hình tiêu chí chấm"*, **không chấm được**, và nút AI gợi ý điểm cũng không hiện (nằm sau nhánh có tiêu chí). → Admin vào **Tiêu chí chấm → Bộ tiêu chí** tạo 1 bộ `ACCEPTANCE` (hoặc sao chép bộ Xét duyệt rồi đổi loại).
+2. **Vòng REVIEW đang `PENDING`** ⇒ màn chấm hiện *"Vòng chưa mở"*. Staff phải **mở vòng** thì reviewer mới chấm được.
+3. **File upload nằm ở `FURPMS.API/App_Data/uploads` THEO THƯ MỤC CHẠY BE.** Chuyển từ repo cũ sang `FURPMS_BEv2` mà không chép `App_Data` sang thì **mọi tài liệu đã upload đều 404** (DB dùng chung container nên vẫn trỏ tới file cũ). Đã chép 9 file sang BEv2.
 
 ## Thứ tự đề xuất
 **P0 (lỗi nghiệm thu + nối mạch)** → **P1 (upload PDF + Staff xem file mới chấm)** → **P2 (số đợt linh hoạt + gia hạn)** → **P3 (nhắc hạn)** → **P6 (dashboard PI)** → **P7 (chuẩn hoá ngôn ngữ)** → **P4 (rubric group)** → **P5 (giải ngân ↔ sản phẩm)** → **P8 (AI)**.

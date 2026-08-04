@@ -47,6 +47,10 @@ Rồi `dotnet run --project FURPMS.API` (hoặc F5 trong Visual Studio). Windows
 }
 ```
 > **Vì sao cần `RedirectAllTo`:** tài khoản seed dùng email **không có thật** (`pi.demo@furpms.edu.vn`…) → đi luồng sẽ không thấy mail nào, tưởng hỏng. Đổi email seed thì hỏng seeder (nó dùng email **làm khóa định danh**: `FirstAsync(u => u.Email == "admin@furpms.edu.vn")`). Nên chuyển hướng ở **tầng gửi**: mọi mail về hộp thư của bạn, tiêu đề ghi `[→ pi.demo@furpms.edu.vn]` để biết ai đáng lẽ nhận. `email_log` vẫn ghi **người nhận thật** nên vẫn trả lời được "đã báo cho PI chưa?".
+> 📦 **Chỗ lưu file:** có cấu hình `Cloudinary:*` ⇒ lưu lên **Cloudinary**; không có ⇒ về **đĩa local** (`App_Data/uploads`). Production (Render) **bắt buộc** dùng Cloudinary: env `Cloudinary__CloudName`, `Cloudinary__ApiKey`, `Cloudinary__ApiSecret`, `Cloudinary__Folder`.
+> ⚠️ **Chỉ áp dụng khi lưu ĐĨA LOCAL:** file nằm ở `FURPMS.API/App_Data/uploads`, THEO THƯ MỤC CHẠY BE. Đổi sang clone/repo khác mà không chép `App_Data` sang thì **mọi tài liệu cũ đều 404** (DB vẫn trỏ tới các file đó). `App_Data` đã gitignore nên git không mang giúp — phải chép tay.
+> ⚠️ **Gemini không nhận `.docx` inline** (400 `Unsupported MIME type`). Mọi chỗ đưa file cho AI phải qua **`GeminiFileInput.AskAboutFileAsync`** — nó tự bóc text .docx bằng OpenXml, chỉ PDF/ảnh mới gửi thẳng bytes.
+>
 > `EmailSettings:FrontendUrl` (mặc định `http://localhost:5173`) dùng để ghép link "Xem chi tiết" trong email — **deploy nhớ đổi** sang URL FE thật, không thì người nhận bấm vào localhost.
 > ⚠️ Mail hiện **rơi vào Spam** vì `FromEmail` là `@gmail.com` gửi qua relay Brevo (SPF/DKIM không khớp domain gmail.com). Đây là giới hạn hạ tầng, không phải lỗi code — demo thì dặn người xem mở thư mục Spam, hoặc đổi sang sender đã verify trong Brevo.
 > Thiếu key thì **không crash**: mail ghi `email_log` trạng thái FAILED, AI báo "chưa cấu hình" và vẫn nhập tay được. Admin có công tắc tổng **`EMAIL_ENABLED`** để tắt gửi mail khi demo (ghi log `SKIPPED`, chuông in-app vẫn chạy).

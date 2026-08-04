@@ -103,8 +103,12 @@ Tổng kinh phí: {p.TotalBudget:#,##0} VND");
         if (file == null)
             return new AiConsistencyResultDto { HasFile = false };
 
-        var raw = await _gemini.GenerateFromInlineDataAsync(
+        // Gemini KHÔNG nhận .docx inline (400 Unsupported MIME type) — GeminiFileInput
+        // tự chọn: PDF gửi thẳng bytes, .docx/.txt bóc text ra rồi gửi như văn bản.
+        var raw = await GeminiFileInput.AskAboutFileAsync(
+            _gemini,
             file.Value.Content,
+            file.Value.FileName,
             file.Value.ContentType,
             $@"Đây là FILE đề cương gốc do chủ nhiệm đề tài nộp. Dưới đây là thông tin họ đã ĐIỀN vào biểu mẫu trên hệ thống.
 Hãy đối chiếu và chỉ ra những chỗ THIẾU hoặc LỆCH giữa biểu mẫu và file.
