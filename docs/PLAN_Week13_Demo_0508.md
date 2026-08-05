@@ -93,8 +93,8 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | C5 | **Hồ sơ nghiệm thu phải chi tiết TỪNG LẦN báo cáo tiến độ**: ai chấm · role gì · bao nhiêu điểm · xem lại được **tất cả file của các lần trước** | [B2-14] | ⬜ | Hiện dossier mới trả % + đánh giá của Staff, **không có** người chấm/role/điểm từng lần, cũng chưa gom file các kỳ |
 | C6 | **Chưa có giải ngân đợt CUỐI trước khi chốt nghiệm thu (kết thúc hợp đồng)** | [B2-16] | ⬜ | BM05 Điều 4.2: *"Đợt 4: giải ngân kinh phí còn lại sau khi đề tài được công nhận kết quả Đạt"*. Phải nối: nghiệm thu Đạt → mở đợt cuối → giải ngân → mới cho đóng hợp đồng |
 | C7 | **Từng đợt sản phẩm sau khi xong phải ĐÓNG lại** | [B1] | ✅ **XONG 06/08** | Sản phẩm nghiệm thu ĐẠT nay không nộp lại được (409). Xem D5 |
-| C8 | **Page "Tiến trình đề tài" quá sơ sài** — hiện chỉ có `"abc06 Hợp đồng 06"`. Phải có **tên đề tài · ai là PI · mô tả đề tài** | [B2-17] | ⬜ | |
-| C9 | **Tab "Báo cáo tổng kết" ở page hợp đồng: đổi tên trường "Duyệt (chuyên viên)" → "Nội dung kiểm tra"** | [B2-12] | ⬜ | Sửa nhãn i18n, việc nhỏ |
+| C8 | **Page "Tiến trình đề tài" quá sơ sài** | [B2-17] | ✅ **XONG 06/08** | Mỗi dòng nay có: tên đề tài · số hợp đồng · **chủ nhiệm** · **lĩnh vực** · **thời gian thực hiện**. Lấy từ `useMyContractsQuery` (thêm map `proposalById`) nên không phát sinh request mới |
+| C9 | **Đổi nhãn "Duyệt (Chuyên viên)" → "Nội dung kiểm tra"** | [B2-12] | ✅ **XONG 06/08** | `contract.finalReport.reviewStaff` ở cả vi lẫn en |
 
 ---
 
@@ -165,7 +165,7 @@ Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
 6. ~~**E3** full tiếng Việt (status badge) · **E4** light mode mặc định~~ ✅
 7. ~~**A1** nền tảng họp chỉ online/offline~~ ✅
 8. ~~**A4 + A5** thống kê pass/fail từng người chấm~~ ✅
-9. **C8** trang tiến trình đề tài · **C9** đổi nhãn · **E6** gom filter
+9. ~~**C8** trang tiến trình đề tài · **C9** đổi nhãn~~ ✅ · **E6** gom filter
 
 **Nhóm 3 — AI** *(gộp làm một đợt, vì cùng đụng prompt + luồng)*
 10. **B1 + B2 + B3 + B4 + B5** đọc file, tự chạy trước, prompt có ưu/nhược, gợi ý bám tiêu chí
