@@ -18,14 +18,15 @@ public class RubricCriteriaController : ControllerBase
     private static readonly Dictionary<int, string> TypeMap = new()
     {
         { 1, "REVIEW" },
-        { 2, "PROGRESS_CHECK" },
+        // 2 = PROGRESS_CHECK đã BỎ (rule #16): báo cáo tiến độ do Staff duyệt thẳng,
+        // không lập hội đồng nên không có phiếu chấm. Đã kiểm: ProgressReportService
+        // không hề tham chiếu rubric. Giữ số 3 cho ACCEPTANCE để FE cũ không lệch.
         { 3, "ACCEPTANCE" },
     };
     // Reverse: TemplateType → roundType key used by FE (old "ProposalReview" etc.)
     private static readonly Dictionary<string, string> RoundTypeKey = new()
     {
         { "REVIEW",         "ProposalReview" },
-        { "PROGRESS_CHECK", "ProgressCheck" },
         { "ACCEPTANCE",     "Acceptance" },
     };
 
@@ -50,7 +51,7 @@ public class RubricCriteriaController : ControllerBase
     public async Task<IActionResult> Create([FromBody] SaveCriterionRequest request)
     {
         if (!TypeMap.TryGetValue(request.RoundType, out var templateType))
-            throw new ArgumentException($"roundType must be 1, 2, or 3.");
+            throw new ArgumentException($"roundType chỉ nhận 1 (Xét duyệt) hoặc 3 (Nghiệm thu) — rule #16.");
 
         // Find or create the template for this round type
         var template = await _repo.RubricTemplates.FirstOrDefaultAsync(t => t.TemplateType == templateType);
