@@ -67,6 +67,8 @@ public class ContractService : IContractService
         var project = proposal.Project;
         var totalAmount = proposal.Budget?.TotalAmount ?? 0m;
 
+        ValidateMaxExtension(request.MaxExtensionMonths, proposal.DurationMonths);
+
         var sideA = await _settings.GetStringAsync(
             SystemSettingKeys.ContractSideARepresentative,
             SystemSettingKeys.DefaultContractSideARepresentative);
@@ -106,6 +108,24 @@ public class ContractService : IContractService
     }
 
     /// <summary>
+    /// QĐ543 **Điều 10 khoản 4**: *"Gia hạn tối đa 1/2 tổng thời gian thực hiện của đề tài được
+    /// phê duyệt"*. Trần phụ thuộc từng đề tài, KHÔNG phải con số 6 tháng cố định — 6 chỉ đúng khi
+    /// đề tài dài 12 tháng (Mẫu 1 giới hạn "không quá 12 tháng" nên 6 là ca hay gặp nhất).
+    /// </summary>
+    private static void ValidateMaxExtension(int requested, int durationMonths)
+    {
+        if (requested < 0)
+            throw new ArgumentException("Số tháng gia hạn tối đa không được âm.");
+        if (durationMonths <= 0) return;   // đề cương chưa ghi thời gian → không có gì để đối chiếu
+
+        var cap = durationMonths / 2;
+        if (requested > cap)
+            throw new ArgumentException(
+                $"Gia hạn tối đa không được quá 1/2 thời gian thực hiện (QĐ543 Điều 10.4). " +
+                $"Đề tài {durationMonths} tháng ⇒ tối đa {cap} tháng, đang nhập {requested}.");
+    }
+
+    /// <summary>
     /// Sửa hợp đồng. Trước đây không hề có endpoint này: Staff gõ sai số HĐ hay ngày là **kẹt
     /// vĩnh viễn**, chỉ còn cách tạo hợp đồng mới đè lên.
     ///
@@ -122,8 +142,9 @@ public class ContractService : IContractService
             throw new ArgumentException("Số hợp đồng không được để trống.");
         if (request.EndDate <= request.StartDate)
             throw new ArgumentException("Ngày kết thúc phải sau ngày bắt đầu.");
-        if (request.MaxExtensionMonths < 0)
-            throw new ArgumentException("Số tháng gia hạn tối đa không được âm.");
+        // Trần gia hạn suy từ thời gian thực hiện của đề cương hiện hành của đề tài.
+        ValidateMaxExtension(request.MaxExtensionMonths,
+            contract.Project.Proposals.FirstOrDefault()?.DurationMonths ?? 0);
 
         // Số HĐ là thứ đối chiếu với bản giấy — trùng số thì không tra ra được hợp đồng nào là hợp đồng nào.
         var number = request.ContractNumber.Trim();

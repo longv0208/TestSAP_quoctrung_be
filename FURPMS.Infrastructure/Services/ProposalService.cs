@@ -574,6 +574,7 @@ public class ProposalService : IProposalService
         TrackName = p.Project?.CycleTrack?.Track?.Name ?? "—",
         PrincipalInvestigatorName = p.Project?.PiUser?.FullName ?? "—",
         TotalBudget = p.Budget?.TotalAmount ?? 0m,
+        DurationMonths = p.DurationMonths,
         CreatedAt = p.CreatedAt,
         SubmittedAt = p.SubmittedAt
     };

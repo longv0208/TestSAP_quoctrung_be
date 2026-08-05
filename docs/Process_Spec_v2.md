@@ -123,8 +123,8 @@ Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
 |---|---|
 | **Ai tham gia** | PI (nộp báo cáo, yêu cầu thay đổi), Staff (duyệt báo cáo — không cần hội đồng) |
 | **Sản phẩm đầu ra** | `ProgressReport[]`; `AmendmentRequest` (nếu có) |
-| **Văn bản QĐ543** | Báo cáo tiến độ định kỳ; Form gia hạn (gia hạn tối đa 6 tháng) |
-| **Rule** | Staff duyệt báo cáo tiến độ trực tiếp, không cần hội đồng. Amendment validate theo QĐ543 (gia hạn ≤6 tháng, v.v.) — không phải form trắng. Chữ ký số: ngoài scope |
+| **Văn bản QĐ543** | Báo cáo tiến độ định kỳ; Form gia hạn (**tối đa 1/2 thời gian thực hiện** — QĐ543 Điều 10.4; đề tài 12 tháng ⇒ 6 tháng) |
+| **Rule** | Staff duyệt báo cáo tiến độ trực tiếp, không cần hội đồng. Amendment validate theo QĐ543 (gia hạn ≤ **1/2 thời gian thực hiện**, v.v.) — không phải form trắng. Chữ ký số: ngoài scope |
 
 ### Giai đoạn 8 — Nghiệm thu
 
@@ -286,6 +286,6 @@ Dùng cho review 2 (tuần 7–8). Kiểm tra từng loại trước khi nộp:
 | Khóa biên bản (TK→CT) | `CouncilDecision` đã có | Status LOCKED + revision = **epic tương lai** |
 | Mời hàng loạt + deadline | `CouncilMember.InvitationToken/TokenExpiresAt/Confirmed/Declined` **đã có** | "Gửi đồng loạt" UI + email batch = **epic tương lai** |
 | Pin version biểu mẫu | `RubricTemplate` đã có | Pin `RubricTemplateId` lúc tạo HĐ = **epic tương lai** |
-| Amendment validate QĐ543 | `AmendmentRequest`+`AmendmentCategory` **đã có** | Validate gia hạn ≤6 tháng, v.v. = **epic tương lai** |
+| Amendment validate QĐ543 | `AmendmentRequest`+`AmendmentCategory` **đã có** | Validate gia hạn ≤ 1/2 thời gian thực hiện: ✅ **đã enforce 05/08** ở `ContractService.ValidateMaxExtension` (tạo + sửa hợp đồng) |
 
 > **Kết luận:** Không cần migration mới. Các delta đều là **service/orchestration layer** — implement theo từng epic sau review 2.

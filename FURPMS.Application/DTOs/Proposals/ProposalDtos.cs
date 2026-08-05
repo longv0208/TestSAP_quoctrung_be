@@ -48,6 +48,11 @@ public class ProposalSummaryDto
     public string TrackName { get; set; } = null!;
     public string PrincipalInvestigatorName { get; set; } = null!;
     public decimal TotalBudget { get; set; }
+    /// <summary>
+    /// Thời gian thực hiện. Cần ngay ở DANH SÁCH vì màn tạo hợp đồng phải suy ra mức gia hạn
+    /// tối đa (QĐ543 Điều 10.4: tối đa **1/2** tổng thời gian thực hiện) khi Staff chọn đề tài.
+    /// </summary>
+    public int DurationMonths { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? SubmittedAt { get; set; }
 }

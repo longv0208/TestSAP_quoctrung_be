@@ -325,6 +325,33 @@ Ký từng giai đoạn đã có `ContractPhase` lo (phase nằm **trong** một
 cần một hợp đồng. Nay lọc bỏ đề tài đã có hợp đồng, kèm dòng "Đã ẩn N đề tài vì đã có hợp đồng"
 để không ai tưởng mất dữ liệu.
 
+
+### 📏 Trần gia hạn: doc nội bộ ghi SAI, đã sửa (05/08)
+`Process_Spec_v2.md` ghi *"gia hạn tối đa 6 tháng"*. Tra văn bản gốc `QD_543...docx`,
+**Điều 10 khoản 4** nguyên văn: *"Gia hạn tối đa **1/2 tổng thời gian thực hiện** của đề tài được
+phê duyệt"*. 6 tháng chỉ là ca riêng khi đề tài dài 12 tháng (Mẫu 1: "Thời gian thực hiện không
+quá 12 tháng") — hay gặp nên bị chép thành luật.
+
+Nay: `ProposalSummaryDto` trả thêm `DurationMonths` → form tạo hợp đồng **tự điền** trần khi chọn
+đề tài, kèm dòng giải thích; BE chặn ở cả tạo lẫn sửa (`ValidateMaxExtension`). Kiểm bằng API:
+đề tài 12 tháng, nhập 9 → 400 kèm câu nêu rõ trần.
+
+### ⬜ BM05 còn thiếu phần "BÊN B" — cần user quyết
+Đối chiếu mẫu BM05 trong QĐ543 với form + bản Word đang sinh:
+
+| Mục BM05 | Hiện có? |
+|---|---|
+| Số HĐ (`…/QLKH-FEHO`) · tên đề tài · thời gian · tổng kinh phí · đại diện Bên A | ✅ |
+| Điều 2 sản phẩm · Điều 4 chia 4 đợt 30/30/30/còn lại | ✅ (deliverables + generate lịch giải ngân) |
+| **Mã số đề tài** (Điều 1) | ❌ |
+| **Bên B: đơn vị công tác, điện thoại, địa chỉ** | ❌ (User có `Phone`, chưa đưa vào HĐ) |
+| **Bên B: số tài khoản + ngân hàng** | ❌ không có cột nào trong DB |
+| **Bên B: số CMND/CCCD + ngày cấp + nơi cấp** | ❌ không có cột nào trong DB |
+| Bản Word: mới có bảng tóm tắt + ô ký, **chưa có Điều 1–7 đầy đủ** | ⚠️ |
+
+⏸ **Chờ quyết định:** thêm nhóm trường định danh/ngân hàng của Bên B (cần migration + màn hồ sơ cá
+nhân cho PI khai) hay chấp nhận để trống trong bản Word rồi ký tay điền vào.
+
 ## 📌 DANH SÁCH VIỆC — rà CRUD toàn hệ thống (05/08)
 
 ### A. 🔴 Sai vai — panel viết cho vai này bị tái dùng cho vai khác
