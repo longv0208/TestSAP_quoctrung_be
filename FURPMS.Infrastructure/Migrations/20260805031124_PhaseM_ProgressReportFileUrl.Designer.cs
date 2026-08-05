@@ -4,6 +4,7 @@ using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FURPMS.Infrastructure.Migrations
 {
     [DbContext(typeof(FURPMSDbContext))]
-    partial class FURPMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260805031124_PhaseM_ProgressReportFileUrl")]
+    partial class PhaseM_ProgressReportFileUrl
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

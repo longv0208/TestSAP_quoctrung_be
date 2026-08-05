@@ -11,6 +11,12 @@ public class ProgressReport
     // Tên đợt do Staff đặt (vd "Giữa kỳ", "Đợt 1 - Quý I"). Null → FE hiện "Kỳ {số}".
     // Thầy 29/07: không fix cứng số đợt/tên đợt, Staff chỉnh linh hoạt.
     public string? RoundName { get; set; }
+
+    /// <summary>
+    /// Link báo cáo do PI dán, dùng THAY cho upload khi file quá lớn (giống sản phẩm).
+    /// Staff cần xem được bản báo cáo mới đánh giá — file hoặc link đều được, miễn có một đường.
+    /// </summary>
+    public string? ReportFileUrl { get; set; }
     public DateOnly ReportingPeriodStart { get; set; }
     public DateOnly ReportingPeriodEnd { get; set; }
     public string CompletedContent { get; set; } = null!;

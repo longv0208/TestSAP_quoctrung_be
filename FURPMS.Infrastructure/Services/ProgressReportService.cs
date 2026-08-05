@@ -187,6 +187,9 @@ public class ProgressReportService : IProgressReportService
         report.ExpenditureToDate = request.ExpenditureToDate;
         report.NextPeriodPlan = request.NextPeriodPlan;
         report.PiRecommendations = request.PiRecommendations;
+        // Bỏ trống thì GIỮ link cũ — nộp lại mà không dán lại link không được mất bản cũ.
+        if (!string.IsNullOrWhiteSpace(request.ReportFileUrl))
+            report.ReportFileUrl = request.ReportFileUrl.Trim();
 
         // Bảng tiến độ theo hoạt động (BM06): gửi lên thì THAY toàn bộ bảng cũ.
         if (request.Items != null)
@@ -294,6 +297,7 @@ public class ProgressReportService : IProgressReportService
         ContractId = r.ContractId,
         ReportRound = r.ReportRound,
         RoundName = r.RoundName,
+        ReportFileUrl = r.ReportFileUrl,
         ReportingPeriodStart = r.ReportingPeriodStart.ToString("yyyy-MM-dd"),
         ReportingPeriodEnd = r.ReportingPeriodEnd.ToString("yyyy-MM-dd"),
         OverallCompletionPct = r.OverallCompletionPct,

@@ -17,6 +17,8 @@ public class ProgressReportSummaryDto
     public Guid ContractId { get; set; }
     public int ReportRound { get; set; }
     public string? RoundName { get; set; }   // tên đợt Staff đặt; null → FE hiện "Kỳ {số}"
+    /// <summary>Link báo cáo PI dán thay cho upload (file quá lớn).</summary>
+    public string? ReportFileUrl { get; set; }
     public string ReportingPeriodStart { get; set; } = null!;
     public string ReportingPeriodEnd { get; set; } = null!;
     public decimal OverallCompletionPct { get; set; }
@@ -73,6 +75,8 @@ public class UpdateProgressReportRequest
     public decimal ExpenditureToDate { get; set; }
     public string? NextPeriodPlan { get; set; }
     public string? PiRecommendations { get; set; }
+    /// <summary>Link báo cáo — dùng THAY upload khi file quá lớn. Bỏ trống thì giữ giá trị cũ.</summary>
+    public string? ReportFileUrl { get; set; }
     /// <summary>Bảng tiến độ theo từng hoạt động (BM06). Gửi lên = thay toàn bộ bảng cũ.</summary>
     public List<CreateProgressReportItemRequest>? Items { get; set; }
 }
