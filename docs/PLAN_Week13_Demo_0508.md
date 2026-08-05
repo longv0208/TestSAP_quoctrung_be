@@ -65,7 +65,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | A8 | **Không đủ số thành viên chấm thì KHÔNG được lưu biên bản** | [B2-BR] | ⬜ | Đối chiếu `MinMembersRequired` của hội đồng với số phiếu đã nộp |
 | A9 | **Tổng số thành viên hội đồng phải là số LẺ và > 3** | [B2-8] | ⬜ | Hiện chỉ có `MinMembersRequired`/`MaxMembersAllowed`, **không kiểm tính chẵn lẻ**. ⚠️ Lưu ý: QĐ543 Điều 8.2 ghi *"hội đồng 3–5 người"* — "lẻ và >3" nghĩa là **đúng 5**. Cần chốt lại: 5 cố định, hay `{5, 7, 9…}` |
 | A10 | **Điểm chấm là số nguyên hay thập phân?** | [B2-BR] | ❓ | Hiện `decimal`. Phải chốt và validate thống nhất cả BE lẫn ô nhập ở FE |
-| A11 | **Ràng buộc tổng điểm khi chỉnh sửa bộ tiêu chí** — tổng phải = 100, hiện tạo được **hơn 100** | *(cả 2 bản)* [B1-22] · [B2-BR] | ⬜ **lỗi thật** | Không tìm thấy chỗ nào cộng `MaxScore` các tiêu chí để đối chiếu 100. Phải chặn ở cả **thêm** lẫn **sửa** tiêu chí, và ở cả **sao chép bộ** |
+| A11 | **Ràng buộc tổng điểm khi chỉnh sửa bộ tiêu chí** | *(cả 2 bản)* [B1-22] · [B2-BR] | ✅ **XONG 06/08** | Tra nguyên văn: QĐ543 **BM03** có 5 mục 10+20+40+20+10, dòng cuối ghi **"Cộng 100"**. Dữ liệu thật đang có bộ **125 điểm**. Nay: `POST/PUT` tiêu chí vượt trần → **400**; **nộp phiếu chấm bằng bộ chưa cộng đủ → 409** (cổng chặn thật, vì bộ phải xây dần mới đủ 100); DTO trả `totalCriteriaScore`/`isTotalValid`, FE hiện "125/100 — chưa dùng chấm được" ngay ở danh sách. Kiểm bằng API: thêm 120 → 400 · 60 ok → thêm 50 → 400 · sửa 60→60 vẫn 200 (không tự tính trùng) · đủ 100 → `isTotalValid=true` |
 
 ---
 
@@ -138,6 +138,19 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | F6 | **Viết doc** | [B1] | 🔶 | Đã có bộ docs khá dày. Cần hỏi rõ thầy muốn loại doc nào (SRS? báo cáo đồ án? doc kỹ thuật?) |
 
 ---
+
+
+### 📌 Phát hiện khi tra QĐ543 cho A11: **phiếu nghiệm thu KHÔNG chấm điểm**
+- **BM03** (thẩm định đề cương) = bảng điểm 5 mục, **Cộng 100**.
+- **BM11** (đánh giá nghiệm thu) = **không có thang điểm nào**, chỉ `☐ Đạt` / `☐ Không Đạt` + lý do.
+
+Nghĩa là vòng **REVIEW** chấm điểm, vòng **ACCEPTANCE** chỉ Đạt/Không đạt — hệ thống đang làm
+đúng (`AcceptanceEvaluation` là pass/fail). ⚠️ Nhưng dữ liệu hiện có một bộ tiêu chí tên
+*"Phiếu đánh giá nghiệm thu (BM12)"* gắn 100 điểm — **sai tên và sai bản chất**, cần rà lại.
+
+Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
+- *"Tham dự của **ít nhất 2/3** số thành viên dưới sự chủ trì của Chủ tịch"*
+- *"và sự tham dự của **thành viên phản biện**"*
 
 ## 🔢 Thứ tự đề xuất
 

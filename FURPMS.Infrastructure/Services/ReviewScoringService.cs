@@ -101,6 +101,19 @@ public class ReviewScoringService : IReviewScoringService
             .FirstOrDefaultAsync(t => t.Id == request.TemplateId)
             ?? throw new KeyNotFoundException($"Rubric template {request.TemplateId} not found.");
 
+        /*
+         * Bộ tiêu chí phải CỘNG ĐÚNG MaxTotalScore mới được đem chấm.
+         * QĐ543 BM03 ghi rõ dòng "Cộng 100" — bộ 60 điểm hay 125 điểm thì mọi con số suy ra sau
+         * đó (điểm trung bình hội đồng, tỷ lệ %) đều vô nghĩa. Chặn ở ĐÂY chứ không chặn lúc
+         * thêm tiêu chí, vì bộ phải xây dần từng mục mới đủ 100.
+         */
+        var totalCriteria = template.Criteria.Where(c => c.IsActive).Sum(c => c.MaxScore);
+        if (totalCriteria != template.MaxTotalScore)
+            throw new InvalidOperationException(
+                $"Bộ tiêu chí \"{template.Name}\" đang cộng được {totalCriteria:0.##}/{template.MaxTotalScore:0.##} điểm " +
+                "nên chưa dùng để chấm được (QĐ543 BM03: phiếu chấm phải cộng đúng tổng điểm). " +
+                "Nhờ phòng QLKH chỉnh lại bộ tiêu chí trước.");
+
         // Validate all criteria provided
         var criterionIds = template.Criteria.Select(c => c.Id).ToHashSet();
         var providedIds = request.ScoreDetails.Select(d => d.CriterionId).ToHashSet();

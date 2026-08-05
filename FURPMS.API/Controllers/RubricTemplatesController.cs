@@ -239,6 +239,7 @@ public class RubricTemplatesController : ControllerBase
             throw new ArgumentException("Tên tiêu chí là bắt buộc.");
         if (request.MaxScore <= 0)
             throw new ArgumentException("Điểm tối đa phải lớn hơn 0.");
+        EnsureTotalWithinCap(tpl, addingScore: request.MaxScore);
 
         var criterion = new RubricCriterion
         {
@@ -262,8 +263,18 @@ public class RubricTemplatesController : ControllerBase
         var c = await _repo.RubricCriteria.FirstOrDefaultAsync(x => x.Id == criterionId && x.TemplateId == id)
             ?? throw new KeyNotFoundException("Tiêu chí không thuộc bộ này.");
 
+        var tpl = await _repo.RubricTemplates.Include(t => t.Criteria)
+            .FirstOrDefaultAsync(t => t.Id == id)
+            ?? throw new KeyNotFoundException("Không tìm thấy bộ tiêu chí.");
+
         if (!string.IsNullOrWhiteSpace(request.CriterionName)) c.CriterionName = request.CriterionName.Trim();
-        if (request.MaxScore > 0) c.MaxScore = request.MaxScore;
+        if (request.MaxScore > 0)
+        {
+            // Trừ điểm CŨ của chính tiêu chí này ra rồi mới cộng điểm mới, không thì sửa
+            // 20 → 20 cũng bị coi là vượt trần.
+            EnsureTotalWithinCap(tpl, addingScore: request.MaxScore, excludeCriterionId: c.Id);
+            c.MaxScore = request.MaxScore;
+        }
         if (request.Sequence.HasValue) c.Sequence = request.Sequence.Value;
         if (request.IsActive.HasValue) c.IsActive = request.IsActive.Value;
 
@@ -330,6 +341,28 @@ public class RubricTemplatesController : ControllerBase
         return Ok(ApiResponse<object>.Ok(Map(copy), "Đã sao chép bộ tiêu chí."));
     }
 
+    /// <summary>
+    /// QĐ543 **BM03** (Phiếu đánh giá thẩm định Đề cương): 5 mục 10 + 20 + 40 + 20 + 10, dòng
+    /// cuối ghi **"Cộng 100"**. Tổng điểm các tiêu chí vì vậy không được vượt `MaxTotalScore`.
+    ///
+    /// Trước đây không có chỗ nào kiểm: dữ liệu thật đang có một bộ **125 điểm** — chấm xong
+    /// mọi tỷ lệ phần trăm và điểm trung bình đều sai, mà không ai biết.
+    /// (Không chặn khi tổng còn THIẾU, vì bộ tiêu chí phải xây dần từng mục mới đủ.)
+    /// </summary>
+    private static void EnsureTotalWithinCap(RubricTemplate tpl, decimal addingScore, int? excludeCriterionId = null)
+    {
+        var current = tpl.Criteria
+            .Where(c => c.IsActive && c.Id != excludeCriterionId)
+            .Sum(c => c.MaxScore);
+
+        if (current + addingScore > tpl.MaxTotalScore)
+            throw new ArgumentException(
+                $"Tổng điểm các tiêu chí không được vượt {tpl.MaxTotalScore:0.##} " +
+                $"(QĐ543 BM03 — phiếu chấm cộng đúng {tpl.MaxTotalScore:0.##} điểm). " +
+                $"Hiện đã dùng {current:0.##}, còn lại {tpl.MaxTotalScore - current:0.##} điểm, " +
+                $"đang nhập {addingScore:0.##}.");
+    }
+
     /// <param name="includeInactive">
     /// Màn QUẢN LÝ cần thấy cả tiêu chí đã tắt để bật lại — trước đây lọc bỏ nên tiêu chí
     /// bị tắt tự động (do đã có điểm chấm) biến mất vĩnh viễn, không có đường khôi phục.
@@ -341,6 +374,12 @@ public class RubricTemplatesController : ControllerBase
         t.TemplateType,
         t.Name,
         t.MaxTotalScore,
+        // Tổng điểm các tiêu chí ĐANG BẬT. QĐ543 BM03 quy định phiếu chấm đề cương có 5 mục
+        // 10+20+40+20+10 = "Cộng 100" ⇒ tổng phải KHỚP MaxTotalScore, không được vượt cũng
+        // không được thiếu. Trả sẵn ra đây để màn quản lý hiện "đang 60/100" thay vì để người
+        // dùng tự cộng nhẩm.
+        TotalCriteriaScore = t.Criteria.Where(c => c.IsActive).Sum(c => c.MaxScore),
+        IsTotalValid = t.Criteria.Where(c => c.IsActive).Sum(c => c.MaxScore) == t.MaxTotalScore,
         t.AppliesBasic,
         t.AppliesApplied,
         t.IsActive,

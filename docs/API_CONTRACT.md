@@ -665,6 +665,14 @@ Key hiện có:
 - Một số sub-resource (research-contents, expected-products, labor details) BE đã có nhưng FE cũ chưa dùng hết — Swagger có đủ.
 - Khi cần biết chính xác field của 1 request/response: mở **Swagger**, mục tương ứng có schema + ví dụ.
 
+### Bộ tiêu chí — ràng buộc tổng điểm (mới 06/08)
+`GET /api/rubric-templates` nay trả thêm **`totalCriteriaScore`** (tổng điểm các tiêu chí đang bật)
+và **`isTotalValid`** (`totalCriteriaScore === maxTotalScore`).
+
+- `POST`/`PUT` tiêu chí → **400** nếu tổng vượt `maxTotalScore` (QĐ543 **BM03**: 10+20+40+20+10 = *"Cộng 100"*). Sửa một tiêu chí thì **trừ điểm cũ của chính nó** ra trước khi cộng điểm mới.
+- **Không** chặn khi tổng còn thiếu — bộ phải xây dần từng mục mới đủ.
+- `POST /api/review-scoring/councils/{id}/scores` → **409** nếu bộ tiêu chí chưa cộng đúng tổng. Đây mới là cổng chặn thật: bộ 60 hay 125 điểm thì điểm trung bình và mọi tỷ lệ % suy ra sau đó đều vô nghĩa.
+
 ### Tóm tắt AI đề xuất (Gemini) — ✅ ĐÃ CÓ
 | Method | Path | Mô tả |
 |---|---|---|
