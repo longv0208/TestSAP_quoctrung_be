@@ -37,7 +37,8 @@ public class CouncilMeetingService : ICouncilMeetingService
         Id = m.Id,
         CouncilId = m.CouncilId,
         Title = m.Title,
-        Platform = m.Platform,
+        // Bản ghi cũ còn GOOGLE_MEET/TEAMS/ZOOM — quy về ONLINE khi đọc, khỏi phải migration.
+        Platform = m.Platform == MeetingPlatform.InPerson ? MeetingPlatform.InPerson : MeetingPlatform.Online,
         MeetingLink = m.MeetingLink,
         Location = m.Location,
         ScheduledAt = m.ScheduledAt,
@@ -97,8 +98,8 @@ public class CouncilMeetingService : ICouncilMeetingService
             CouncilId = councilId,
             Title = request.Title,
             Platform = platform,
-            MeetingLink = platform == "IN_PERSON" ? null : request.MeetingLink,
-            Location = platform == "IN_PERSON" ? request.Location : null,
+            MeetingLink = platform == MeetingPlatform.InPerson ? null : request.MeetingLink,
+            Location = platform == MeetingPlatform.InPerson ? request.Location : null,
             ScheduledAt = request.ScheduledAt,
             DurationMinutes = request.DurationMinutes,
             Agenda = request.Agenda,
@@ -123,13 +124,23 @@ public class CouncilMeetingService : ICouncilMeetingService
         if (request.DurationMinutes <= 0)
             throw new ArgumentException("Thời lượng họp phải lớn hơn 0 phút.");
 
-        var validPlatforms = new[] { "IN_PERSON", "GOOGLE_MEET", "TEAMS", "ZOOM" };
+        /*
+         * Chỉ còn 2 hình thức: ONLINE / IN_PERSON (thầy 05/08 — cả 2 bản note đều nêu:
+         * "chỉ cần ghi onl hay offline thay vì ghi onl meet hay onl microsoft team").
+         * Nền tảng cụ thể không phải việc của hệ thống — Staff dán link nào cũng được.
+         *
+         * Dữ liệu CŨ vẫn còn GOOGLE_MEET/TEAMS/ZOOM nên map về ONLINE thay vì migration,
+         * và vẫn nhận các giá trị đó ở request để FE/bản cũ không gãy.
+         */
         var platform = request.Platform.ToUpperInvariant().Replace(" ", "_");
-        if (!validPlatforms.Contains(platform))
-            platform = "IN_PERSON";
+        platform = platform switch
+        {
+            "IN_PERSON" or "OFFLINE" => MeetingPlatform.InPerson,
+            _ => MeetingPlatform.Online,   // ONLINE, GOOGLE_MEET, TEAMS, ZOOM, giá trị lạ…
+        };
 
         // Họp trực tiếp bắt buộc có địa điểm; họp online thì bỏ địa điểm, giữ link (rule #17).
-        if (platform == "IN_PERSON" && string.IsNullOrWhiteSpace(request.Location))
+        if (platform == MeetingPlatform.InPerson && string.IsNullOrWhiteSpace(request.Location))
             throw new ArgumentException("Họp trực tiếp phải nhập địa điểm.");
 
         return platform;
@@ -153,8 +164,8 @@ public class CouncilMeetingService : ICouncilMeetingService
 
         meeting.Title = request.Title;
         meeting.Platform = platform;
-        meeting.MeetingLink = platform == "IN_PERSON" ? null : request.MeetingLink;
-        meeting.Location = platform == "IN_PERSON" ? request.Location : null;
+        meeting.MeetingLink = platform == MeetingPlatform.InPerson ? null : request.MeetingLink;
+        meeting.Location = platform == MeetingPlatform.InPerson ? request.Location : null;
         meeting.ScheduledAt = request.ScheduledAt;
         meeting.DurationMinutes = request.DurationMinutes;
         meeting.Agenda = request.Agenda;
@@ -304,7 +315,8 @@ public class CouncilMeetingService : ICouncilMeetingService
         Id = m.Id,
         CouncilId = m.CouncilId,
         Title = m.Title,
-        Platform = m.Platform,
+        // Bản ghi cũ còn GOOGLE_MEET/TEAMS/ZOOM — quy về ONLINE khi đọc, khỏi phải migration.
+        Platform = m.Platform == MeetingPlatform.InPerson ? MeetingPlatform.InPerson : MeetingPlatform.Online,
         MeetingLink = m.MeetingLink,
         Location = m.Location,
         ScheduledAt = m.ScheduledAt,

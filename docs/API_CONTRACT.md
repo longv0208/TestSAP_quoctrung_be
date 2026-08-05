@@ -665,6 +665,9 @@ Key hiện có:
 - Một số sub-resource (research-contents, expected-products, labor details) BE đã có nhưng FE cũ chưa dùng hết — Swagger có đủ.
 - Khi cần biết chính xác field của 1 request/response: mở **Swagger**, mục tương ứng có schema + ví dụ.
 
+### Hình thức họp — chỉ còn 2 giá trị (mới 06/08)
+`platform` nay chỉ nhận/trả **`IN_PERSON`** hoặc **`ONLINE`**. Giá trị cũ `GOOGLE_MEET`/`TEAMS`/`ZOOM` **vẫn nhận được** ở request và được map về `ONLINE`; khi đọc cũng quy về `ONLINE` — **không cần migration**. Offline vẫn bắt buộc `location`, online giữ `meetingLink`.
+
 ### Lịch chấm theo đề tài — phải nằm trong buổi họp (mới 06/08)
 `PUT /api/councils/{id}/slots` nay **400** khi:
 - Hội đồng **chưa có buổi họp** nào (phải đặt lịch họp trước).

@@ -55,7 +55,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 
 | # | Việc | Nguồn | Trạng thái hiện tại | Ghi chú thực thi |
 |---|---|---|---|---|
-| A1 | **Lên lịch họp: nền tảng chỉ còn `online` / `offline`** — bỏ Google Meet / MS Teams / Zoom | *(cả 2 bản)* [B1] · [B2-1] | ⬜ BE đang có 4 giá trị: `IN_PERSON`, `GOOGLE_MEET`, `TEAMS`, `ZOOM` (`CouncilMeetingService.ValidateAndNormalize`) | Gộp về 2 giá trị. Cân nhắc **giữ cột cũ**, chỉ map `GOOGLE_MEET/TEAMS/ZOOM → ONLINE` khi đọc, để không phải migration dữ liệu cũ. Bỏ luôn nút "Tạo link Google Meet" trên form nếu không còn phân biệt nền tảng |
+| A1 | **Lên lịch họp: nền tảng chỉ còn `online` / `offline`** | *(cả 2 bản)* [B1] · [B2-1] | ✅ **XONG 06/08** | Chỉ còn `IN_PERSON` / `ONLINE` (hằng `MeetingPlatform`). **Không migration**: giá trị cũ `GOOGLE_MEET`/`TEAMS`/`ZOOM` được map về `ONLINE` cả khi ghi lẫn khi đọc — kiểm bằng API: 9 buổi họp cũ đọc ra 5 `IN_PERSON` + 4 `ONLINE`. FE bỏ dropdown 3 lựa chọn và **gỡ hẳn** nút "Tạo link Google Meet" (gắn với nền tảng cụ thể mà nay không còn phân biệt) |
 | A2 | **Validate lịch chấm phải nằm TRONG khung giờ buổi họp** | *(cả 2 bản)* [B1] · [B2-2] | ✅ **XONG 06/08** | Chặn 4 ca: chưa có buổi họp · slot ngoài khung · slot tràn ra ngoài vì quá dài · **hai đề tài chồng giờ nhau** (hội đồng chỉ chấm được một đề tài một lúc). Kiểm bằng API với buổi họp 20/08 09:30–11:00: slot 07:00 → 400 · slot 10:30 dài 60′ (tràn 11:30) → 400 · slot 09:45 dài 30′ → 200 |
 | A3 | **Thư ký cũng được chấm điểm** | [B1] | ❓ cần xác nhận | Rule #11 hiện tại: *"Reviewer = mọi thành viên hội đồng; chức danh chỉ là field"* ⇒ về nguyên tắc Thư ký chấm được. Phải kiểm màn reviewer có chặn theo `MemberRole == Secretary` không |
 | A4 | **Màn Thư ký: hiện bao nhiêu người chấm, bao nhiêu Đạt / bao nhiêu Không đạt** | *(cả 2 bản)* [B1] · [B2-7] | 🔶 | 05/08 đã sửa: điểm từng thành viên nay hiện đúng tên (trước hiện `—: 58.0`), và thêm ô "Số liệu cuộc họp" tính tại chỗ. **Còn thiếu: đếm số phiếu Đạt / Không đạt** |
@@ -117,8 +117,8 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 |---|---|---|---|---|
 | E1 | **Lĩnh vực: cho chọn NHIỀU lĩnh vực cùng lúc**, thay vì chọn 1 → OK → chọn tiếp | [B1] | ⬜ | Màn gắn lĩnh vực vào đợt. Đổi sang multi-select |
 | E2 | **Sửa lại cách hiển thị năm học** — `2025-2026`, hoặc chỉ 1 năm dương `2026` | [B1] | ⬜ | Entity đang có `CycleYear` (int) + `SemesterCode` (string). Phải chốt định dạng rồi thống nhất mọi nơi hiển thị |
-| E3 | **Giao diện tiếng Việt phải FULL tiếng Việt** — còn chỗ để nguyên `passed` | [B1] | ⬜ **lỗi thật** | Đó là các **status badge** đang render thẳng giá trị enum của BE. Phải map toàn bộ status qua i18n, không hiện chuỗi thô |
-| E4 | **Mặc định để màu trắng (light mode)** | [B2-6] | ⬜ | Đang mặc định theo hệ thống hoặc dark. Đổi default sang light |
+| E3 | **Giao diện tiếng Việt phải FULL tiếng Việt** — còn chỗ để nguyên `passed` | [B1] | ✅ **XONG 06/08** | Đúng là `StatusBadge` render **thẳng** giá trị enum của BE (`{status}`), nên mọi nơi đều hiện `PASSED`, `IN_PROGRESS`, `PENDING_SIGNATURE`… Nay tra bảng `status.*` — **42 nhãn** phủ hết enum trong `DomainStatus.cs`; key thiếu thì vẫn hiện enum để lộ ra mà bổ sung, không hiện trống |
+| E4 | **Mặc định để màu trắng (light mode)** | [B2-6] | ✅ **XONG 06/08** | `ui.store` mặc định `"system"` — máy chấm để dark thì cả hệ thống hiện tối. Đổi sang `"light"` |
 | E5 | **UI/UX phải sửa lại, cải thiện nhiều** | [B1] | ❓ chung chung | Cần hỏi lại bạn ghi note xem thầy chỉ cụ thể màn nào. Các điểm cụ thể đã tách thành E1–E4, C8, F5 |
 | E6 | **Page "Tiêu chí chấm": gom nhóm bộ lọc** — filter năm, filter Ứng dụng/Cơ bản; cái nào cùng filter thì nhóm lại | [B2-18] | ⬜ | |
 | E7 | **Chuẩn bị DATA DEMO chuẩn thật**: sẵn 1 đợt có **nhiều đề tài**, **nhiều proposal đã nộp** | [B2-3] | ⬜ | Mở rộng `DatabaseSeeder` (vẫn phải idempotent) |
@@ -162,8 +162,8 @@ Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
 5. ~~**A2** lịch chấm phải nằm trong khung giờ họp~~ ✅
 
 **Nhóm 2 — thầy nhìn thấy ngay khi demo**
-6. **E3** full tiếng Việt (status badge) · **E4** light mode mặc định
-7. **A1** nền tảng họp chỉ online/offline
+6. ~~**E3** full tiếng Việt (status badge) · **E4** light mode mặc định~~ ✅
+7. ~~**A1** nền tảng họp chỉ online/offline~~ ✅
 8. **A4 + A5** thống kê pass/fail từng người chấm (2 màn)
 9. **C8** trang tiến trình đề tài · **C9** đổi nhãn · **E6** gom filter
 

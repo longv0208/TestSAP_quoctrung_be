@@ -79,6 +79,16 @@ public static class CouncilMemberRole
     public const string Member = "Member";      // Thành viên
 }
 
+/// <summary>
+/// Hình thức họp — chỉ 2 giá trị (thầy 05/08). Nền tảng cụ thể (Meet/Teams/Zoom) không còn
+/// phân biệt; dữ liệu cũ được map về ONLINE khi đọc/ghi.
+/// </summary>
+public static class MeetingPlatform
+{
+    public const string InPerson = "IN_PERSON";
+    public const string Online = "ONLINE";
+}
+
 public static class MeetingStatus
 {
     public const string Scheduled = "SCHEDULED";
