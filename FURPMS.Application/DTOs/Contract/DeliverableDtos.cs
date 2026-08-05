@@ -14,13 +14,22 @@ public class DeliverableResponse
     public bool IsCompleted { get; set; }
     public DateTime? SubmittedAt { get; set; }
     public string? FileUrl { get; set; }
+    /// <summary>Minh chứng thử nghiệm (QĐ543 Điều 13.1).</summary>
+    public string? TrialEvidenceUrl { get; set; }
     public string? QualityAssessment { get; set; }
 }
 
 public class SubmitDeliverableRequest
 {
+    /// <summary>Đường dẫn tải bản sản phẩm — nay là URL download của BE sau khi upload.</summary>
     public string FileUrl { get; set; } = null!;
     public string? Description { get; set; }
+
+    /// <summary>
+    /// Minh chứng thử nghiệm (QĐ543 Điều 13.1). Entity đã có cột này từ đầu nhưng form
+    /// chưa bao giờ cho nhập ⇒ hồ sơ nghiệm thu thiếu.
+    /// </summary>
+    public string? TrialEvidenceUrl { get; set; }
 }
 
 // Staff định nghĩa 1 sản phẩm phải nộp cho hợp đồng (đề cương không có trường sản phẩm cấu trúc → nhập tay).

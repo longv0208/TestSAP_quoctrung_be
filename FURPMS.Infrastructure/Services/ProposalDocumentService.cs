@@ -280,6 +280,59 @@ public class ProposalDocumentService : IProposalDocumentService
         return await OpenStoredAsync(doc);
     }
 
+    // ── File SẢN PHẨM + minh chứng thử nghiệm (QĐ543 Điều 13.1) ───────────────
+    // Sản phẩm là chỗ CUỐI CÙNG còn bắt dán URL — đề cương, báo cáo tiến độ, báo cáo
+    // tổng kết, hợp đồng đều đã upload file thật. `DocumentCategory` phân biệt bản
+    // sản phẩm với minh chứng thử nghiệm (entity có `TrialEvidenceUrl` nhưng form
+    // chưa bao giờ cho nhập ⇒ thiếu hồ sơ nghiệm thu).
+    private const string EntityTypeDeliverable = "Deliverable";
+
+    public async Task<ProposalDocumentDto> UploadForDeliverableAsync(
+        int deliverableId, Stream content, string fileName, string contentType, long length,
+        Guid uploadedBy, bool isTrialEvidence)
+    {
+        var ext = await AssertUploadAllowedAsync(fileName, length);
+
+        var blobName = $"deliverables/{deliverableId}/{Guid.NewGuid():N}{ext}";
+        await SaveToStorageAsync(blobName, content, contentType);
+
+        var doc = new Document
+        {
+            EntityType = EntityTypeDeliverable,
+            EntityId = deliverableId.ToString(),
+            DocumentCategory = isTrialEvidence ? "TRIAL_EVIDENCE" : "DELIVERABLE",
+            OriginalFileName = fileName,
+            FileSizeBytes = length,
+            MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
+            StorageContainer = _storage.Description,
+            StorageBlobName = blobName,
+            UploadedBy = uploadedBy
+        };
+        doc.StorageUrl = $"/api/deliverables/{deliverableId}/documents/{doc.Id}/download";
+
+        await _docs.AddAsync(doc);
+        await _docs.SaveChangesAsync();
+        return Map(doc);
+    }
+
+    public async Task<IEnumerable<ProposalDocumentDto>> ListForDeliverableAsync(int deliverableId)
+    {
+        var docs = await _docs.Query()
+            .Where(d => d.EntityType == EntityTypeDeliverable
+                        && d.EntityId == deliverableId.ToString() && !d.IsDeleted)
+            .OrderByDescending(d => d.UploadedAt)
+            .ToListAsync();
+        return docs.Select(Map);
+    }
+
+    public async Task<(Stream Stream, string ContentType, string FileName)> DownloadDeliverableDocAsync(Guid documentId)
+    {
+        var doc = await _docs.Query()
+            .FirstOrDefaultAsync(d => d.Id == documentId && d.EntityType == EntityTypeDeliverable && !d.IsDeleted)
+            ?? throw new KeyNotFoundException("Không tìm thấy file sản phẩm.");
+        return await OpenStoredAsync(doc);
+    }
+
     // ── File báo cáo tổng kết (BM09) ───────────────────────────────────────────
     private const string EntityTypeFinalReport = "FinalReport";
 

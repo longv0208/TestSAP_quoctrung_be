@@ -36,6 +36,13 @@ public interface IProposalDocumentService
     Task<ProposalDocumentDto> UploadForProgressReportAsync(
         Guid reportId, Stream content, string fileName, string contentType, long length, Guid uploadedBy);
     Task<IEnumerable<ProposalDocumentDto>> ListForProgressReportAsync(Guid reportId);
+
+    // Sản phẩm + minh chứng thử nghiệm (QĐ543 Điều 13.1) — chỗ cuối cùng còn dán URL.
+    Task<ProposalDocumentDto> UploadForDeliverableAsync(
+        int deliverableId, Stream content, string fileName, string contentType, long length,
+        Guid uploadedBy, bool isTrialEvidence);
+    Task<IEnumerable<ProposalDocumentDto>> ListForDeliverableAsync(int deliverableId);
+    Task<(Stream Stream, string ContentType, string FileName)> DownloadDeliverableDocAsync(Guid documentId);
     Task<(Stream Stream, string ContentType, string FileName)> DownloadProgressReportDocAsync(Guid documentId);
 
     // BM09 — file báo cáo tổng kết: PI upload PDF thay vì dán URL (góp ý thầy 29/07).
