@@ -152,6 +152,63 @@ Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
 - *"Tham dự của **ít nhất 2/3** số thành viên dưới sự chủ trì của Chủ tịch"*
 - *"và sự tham dự của **thành viên phản biện**"*
 
+
+## 🧩 Bốn câu treo — đã tra nguồn, chốt hướng (06/08)
+
+### D1 — "nộp báo cáo phải qua một thời gian mới cho nộp lần 2"
+Nguyên văn [B1]: *"Nộp báo cáo thì phải được duyệt xong phải qua 1 tg mới cho nộp lần 2, hiện tại
+đang có thể nộp 2 lần cùng lúc."*
+
+Đọc lại code thì **"nộp 2 lần cùng lúc"** không phải lỗi thời gian mà là: PI nộp kỳ 1 xong **nộp
+luôn kỳ 2** dù kỳ 2 chưa tới hạn, vì `SubmitAsync` không kiểm gì về kỳ.
+
+⇒ **Đề xuất (không cần thầy chốt con số ngày):** chặn theo **KỲ**, không theo số ngày —
+*"kỳ N chỉ nộp được khi kỳ N-1 đã được Staff đánh giá, và đã tới `reportingPeriodStart` của kỳ N"*.
+Bám đúng QĐ543 Điều 10 (báo cáo **định kỳ**) và tránh bịa ra con số ngày không có trong văn bản.
+
+### B6 — "AI chạy local" = **DỰ PHÒNG khi mất mạng**, không phải đổi hẳn mô hình
+Cách hiểu của user (xác nhận 06/08): thầy lo **demo gãy vì Gemini không vào được**, chứ không phải
+lo chi phí (đang dùng free tier).
+
+Hiện trạng: `GeminiService` gặp lỗi mạng/quota là **ném `InvalidOperationException` → 409**, cả
+tính năng chết, không có đường lui.
+
+⇒ **Đề xuất 3 lớp, rẻ hơn hẳn dựng mô hình local:**
+1. **Sinh sẵn + cache** (đã có `llm_outputs`): tóm tắt tạo từ lúc PI nộp / Staff mở vòng chấm ⇒
+   lúc demo chỉ đọc DB, **không gọi mạng**. Đây là lớp quan trọng nhất.
+2. **Suy biến êm**: Gemini lỗi mà đã có bản cache thì trả bản cache kèm cờ `stale`, thay vì 409.
+3. Chỉ khi vẫn thấy thiếu thì mới tính tới mô hình local (Ollama…) — nhưng cần máy đủ mạnh và
+   chất lượng tiếng Việt của mô hình nhỏ kém hơn Gemini rõ rệt.
+
+### C3 — thu thập số tài khoản / CCCD của Bên B: làm sao cho đúng
+BM05 **có** các mục này nên không thu thập thì không xuất được hợp đồng. Nhưng cẩm nang Capstone
+cảnh báo đúng nhóm lỗi này: *"thu thập thông tin quá mức cần thiết (CCCD khi không cần)"* và
+*"nhập một trường định danh thì hệ thống hiển thị luôn thông tin cá nhân → có thể dò người khác"*.
+
+⇒ **Cách làm chuẩn, gói gọn:**
+- **Thu đúng lúc cần**: chỉ hỏi khi lập hợp đồng, KHÔNG hỏi lúc đăng ký tài khoản.
+- **Chính chủ tự khai**: PI nhập trong hồ sơ cá nhân; Staff **không** gõ hộ.
+- **Che khi hiển thị**: chỉ hiện 4 số cuối (`****1234`); bản đầy đủ chỉ đổ vào file Word lúc xuất.
+- **Giới hạn quyền đọc**: chỉ PI (của chính mình) + Staff/Admin.
+- **Ghi log truy cập** vào `audit_log` — cẩm nang khuyên có mục *Legal & Compliance* trong tài liệu.
+- ⚠️ **Điều 7.2/7.3** nói hợp đồng ký qua **Econtract**, và *"ủy quyền cho Trường ĐH FPT khai báo
+  thông tin định danh để cấp chứng thư số"* ⇒ CCCD là để **cấp chữ ký số**, có căn cứ rõ ràng.
+
+### F4 — "phụ lục" là **PHỤ LỤC HỢP ĐỒNG**
+Tra QĐ543: chữ "Phụ lục" xuất hiện đúng 1 lần và là *"Phụ lục 02"* — bảng thù lao hội đồng của
+**chính quy định**, không phải của hợp đồng. Nhưng **Điều 6.1 của BM05** ghi:
+
+> *"Trong quá trình thực hiện Hợp đồng, nếu một trong hai bên có yêu cầu **sửa đổi, bổ sung nội
+> dung** … phải thông báo cho bên kia ít nhất 15 ngày…"*
+
+Sửa đổi hợp đồng đã ký thì phải ký **phụ lục hợp đồng** — đó là mắt xích hệ thống đang thiếu:
+- **BM07 / `AmendmentRequest`** = *đơn xin* thay đổi (đã có, đã duyệt được).
+- **Phụ lục hợp đồng** = *văn bản kết quả* hai bên ký sau khi duyệt (**chưa có**).
+
+⇒ **Đề xuất:** duyệt đơn gia hạn/điều chỉnh xong thì sinh **phụ lục .docx** (số phụ lục, hợp đồng
+gốc số mấy, điều khoản nào đổi, giá trị cũ → mới, hiệu lực) — dùng lại đúng cơ chế xuất Word của
+C1, rồi upload bản ký làm minh chứng như hợp đồng gốc. **Gộp vào C1 làm một đợt.**
+
 ## 🔢 Thứ tự đề xuất
 
 **Nhóm 1 — lỗi nghiệp vụ thật, sai kết quả** *(làm trước)*
