@@ -209,6 +209,68 @@ Sửa đổi hợp đồng đã ký thì phải ký **phụ lục hợp đồng*
 gốc số mấy, điều khoản nào đổi, giá trị cũ → mới, hiệu lực) — dùng lại đúng cơ chế xuất Word của
 C1, rồi upload bản ký làm minh chứng như hợp đồng gốc. **Gộp vào C1 làm một đợt.**
 
+
+## 🗂 BACKLOG HỢP NHẤT — note KHÔNG phải toàn bộ (06/08)
+
+Note của nhóm chỉ là **1 trong 4 nguồn việc**. Gộp hết lại để không sót:
+
+### Nguồn 1 — note demo 05/08 (file này): 43 việc, **xong 18**
+### Nguồn 2 — `PLAN_Week12.md` §"DANH SÁCH VIỆC" (rà CRUD 05/08)
+| Việc | Trạng thái |
+|---|---|
+| Hợp đồng SỬA + XOÁ | ✅ 05/08 |
+| Lịch họp SỬA + XOÁ | ✅ 06/08 |
+| **Rà `DisbursementsPanel` + `SettlementPanel`** xem có sai vai như 3 panel kia | ⬜ |
+| **XOÁ**: sản phẩm · kỳ báo cáo · thành viên đề tài | ⬜ |
+| **XOÁ master data** (5 màn Admin: đơn vị · loại sản phẩm · vai trò nhân sự · hạng mục chi · cấu hình tài chính) | ⬜ |
+| **Chốt 4 loại điều chỉnh** (kinh phí/nội dung/thành viên/khác) + quan hệ với BM07 | ⬜ **gấp hơn** từ khi merge PR #1 — nay cả 2 cơ chế đều có UI |
+| **4 việc UI lớn**: màn quản lý hội đồng CRUD · gom nhóm + số liệu ở màn Xét duyệt · **trang chi tiết đề tài** (gỡ bớt khỏi sheet hợp đồng đang ngột ngạt) · lọc danh sách hợp đồng theo đề tài đã qua vòng 1 | ⬜ |
+
+### Nguồn 3 — `README.md` §"Code chưa làm / làm dở"
+| Việc | Ghi chú |
+|---|---|
+| **Pin biểu mẫu chấm theo version** (rule #13: *"biểu mẫu pin version active tại thời điểm tạo đề tài"*) | ⬜ Cần migration. **Liên quan trực tiếp tới B6**: đổi bộ tiêu chí giữa chừng thì gợi ý chấm đã cache bị lệch |
+| Dropdown loại đề tài ở form nộp còn cứng 2 lựa chọn | ⬜ chỉ là hiển thị |
+| Thùng rác toàn hệ thống (mới làm mẫu ở ResearchType) | ⬜ để sau |
+| i18n incremental các màn cũ | 🔶 |
+
+### Nguồn 4 — `PLAN_Week12.md` §"Chờ user quyết định" (Q1–Q5)
+| | Việc | Trạng thái |
+|---|---|---|
+| Q1 | Tìm kiếm ngữ nghĩa: bỏ / thay bằng tìm kiếm nâng cao / làm thật | ⏸ **khuyến nghị: bỏ, thay bằng tìm kiếm nâng cao** |
+| Q2 | AI theo từng role | ✅ đã xử lý |
+| Q3 | Chuẩn hoá validate ở FE (12 schema zod / 17 form) | ⬜ |
+| Q4 | Google Calendar + Meet | ⏸ khuyến nghị để cuối — ⚠️ **A1 đã gộp nền tảng còn online/offline nên việc này càng ít giá trị** |
+| Q5 | Deploy: ① storage ✅ Cloudinary · ② **không upload nhiều file một lần** (7 ô chọn file, 0 ô có `multiple`) · ③ Render ngủ sau 15′ | ⬜ ② và ③ |
+
+**Tổng còn lại ≈ 40 đầu việc** trên cả 4 nguồn.
+
+## 📅 Làm rõ: LỊCH HỌP vs LỊCH CHẤM (06/08)
+
+| | Là gì | Có trong QĐ543? |
+|---|---|---|
+| **Lịch họp** (`CouncilMeeting`) | Buổi họp của hội đồng: ngày/giờ, thời lượng, địa điểm hoặc link | ✅ **BM04/BM12 mục 4–5**: *"Thời gian họp: … h, ngày … "* + *"Địa điểm"* |
+| **Lịch chấm** (slot con — `CouncilProjectAssignment.SlotStartAt`) | Khung giờ **từng đề tài** bên trong buổi họp: 9:00 đề tài A, 9:30 đề tài B | ❌ **KHÔNG có**. Nguồn duy nhất là **rule #17** (thầy Đức tuần 10) |
+
+**Quan hệ:** 1 lịch họp → N lịch chấm, mỗi lịch chấm 1 đề tài. Chỉ có nghĩa khi hội đồng chấm
+**≥2 đề tài** trong một buổi; hội đồng 1 đề tài thì slot trùng luôn buổi họp ⇒ thừa.
+
+**Gate gửi thư mời** chỉ kiểm 3 thứ: có Chủ tịch · có Thư ký · **có lịch họp**. Slot KHÔNG nằm
+trong gate ⇒ không tạo slot vẫn gửi mời được (đúng như user quan sát).
+
+### ⚠️ Vấn đề thứ tự do user phát hiện — có thật
+Hội đồng được tạo **kèm sẵn đề tài** (`CreateCouncilAsync` bắt buộc `proposalId`; đường
+"package" ở review-board nhận `ProjectIds[]` nhiều đề tài). Nhưng:
+
+- Staff đặt **lịch họp** (giờ + **thời lượng**) rồi **mới** gán thêm đề tài 2, 3 vào hội đồng đó.
+- **Không có gì kiểm** buổi họp có đủ dài cho số đề tài hay không, cũng không nhắc chia lại slot
+  khi thêm đề tài. Buổi họp 90 phút gán 5 đề tài vẫn lưu được.
+
+**Đề xuất:**
+1. Gán thêm đề tài vào hội đồng đã có lịch họp ⇒ **cảnh báo** nếu tổng slot đã đặt + đề tài mới
+   vượt thời lượng buổi họp (cảnh báo, không chặn — rule #17 cho đổi lịch bất kỳ lúc nào).
+2. **Ẩn phần lịch chấm khi hội đồng chỉ có 1 đề tài** — bớt rối cho ca thường gặp nhất.
+
 ## 🔢 Thứ tự đề xuất
 
 **Nhóm 1 — lỗi nghiệp vụ thật, sai kết quả** *(làm trước)*
