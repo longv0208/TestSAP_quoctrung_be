@@ -665,6 +665,14 @@ Key hiện có:
 - Một số sub-resource (research-contents, expected-products, labor details) BE đã có nhưng FE cũ chưa dùng hết — Swagger có đủ.
 - Khi cần biết chính xác field của 1 request/response: mở **Swagger**, mục tương ứng có schema + ví dụ.
 
+### Biên bản hội đồng — điều kiện họp hợp lệ (mới 06/08)
+`PUT /api/review-scoring/councils/{id}/minutes` (Thư ký lưu nháp) và
+`POST /api/review-scoring/councils/{id}/minutes/approve` (Chủ tịch chốt) nay **409** khi:
+- Số phiếu đã nộp **< 2/3 số thành viên** hội đồng (làm tròn LÊN — hội đồng 5 người cần 4 phiếu). Nguồn: **QĐ543 Điều 8.3.b** / **Điều 12.3.b** — *"tham dự của ít nhất 2/3 số thành viên"*, và *"các thành viên tham dự họp cần đánh giá thẩm định"* nên số phiếu = số người dự.
+- Hội đồng **NGHIỆM THU** mà **chưa có phiếu nào của thành viên phản biện** (Điều 12.3.b: *"và sự tham dự của thành viên phản biện"*).
+
+Chốt biên bản còn **tự đóng mọi buổi họp** của hội đồng (`status → COMPLETED`, set `actualEndAt`) — trước đây buổi họp kẹt ở `SCHEDULED` vĩnh viễn nên lịch vẫn hiện như sắp họp dù đề tài đã có kết quả.
+
 ### Bộ tiêu chí — ràng buộc tổng điểm (mới 06/08)
 `GET /api/rubric-templates` nay trả thêm **`totalCriteriaScore`** (tổng điểm các tiêu chí đang bật)
 và **`isTotalValid`** (`totalCriteriaScore === maxTotalScore`).

@@ -9,6 +9,7 @@ using FURPMS.Infrastructure.Data;
 using FURPMS.Infrastructure.Repositories;
 using FURPMS.Infrastructure.Services;
 using FURPMS.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.Tests.Review;
 
@@ -78,13 +79,67 @@ public class CouncilMinutesTests
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
 
-        db.Set<CouncilMember>().AddRange(
-            new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = CouncilMemberRole.Chair, Status = CouncilMemberStatus.Confirmed },
-            new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = sec.Id, MemberRole = CouncilMemberRole.Secretary, Status = CouncilMemberStatus.Confirmed },
-            new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = member.Id, MemberRole = CouncilMemberRole.Member, Status = CouncilMemberStatus.Confirmed });
+        var chairMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = CouncilMemberRole.Chair, Status = CouncilMemberStatus.Confirmed };
+        var secMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = sec.Id, MemberRole = CouncilMemberRole.Secretary, Status = CouncilMemberStatus.Confirmed };
+        var plainMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = member.Id, MemberRole = CouncilMemberRole.Member, Status = CouncilMemberStatus.Confirmed };
+        db.Set<CouncilMember>().AddRange(chairMember, secMember, plainMember);
+
+        // QĐ543 Điều 8.3.b: họp phải có ít nhất 2/3 thành viên dự và người dự phải chấm.
+        // Hội đồng 3 người ⇒ cần ≥ 2 phiếu, không thì không lưu/chốt được biên bản.
+        db.ProposalReviewScores.AddRange(
+            new ProposalReviewScore { CouncilId = council.Id, ProjectId = project.Id, EvaluatorMemberId = chairMember.Id, TemplateId = 1, SubmittedAt = DateTime.UtcNow, IsValidBallot = true },
+            new ProposalReviewScore { CouncilId = council.Id, ProjectId = project.Id, EvaluatorMemberId = plainMember.Id, TemplateId = 1, SubmittedAt = DateTime.UtcNow, IsValidBallot = true });
 
         await db.SaveChangesAsync();
         return (council, chair.Id, sec.Id, member.Id, proposal);
+    }
+
+    // ── QĐ543 Điều 8.3.b: chưa đủ 2/3 thành viên chấm thì KHÔNG lưu/chốt được biên bản ──
+    [Fact]
+    public async Task SaveMinutes_NotEnoughBallots_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, _, secId, _, _) = await SeedAsync(db);
+
+        // Hội đồng 3 người ⇒ cần ≥2 phiếu. Bỏ bớt 1 để còn 1 phiếu.
+        var one = await db.ProposalReviewScores.FirstAsync(s => s.CouncilId == council.Id);
+        db.ProposalReviewScores.Remove(one);
+        await db.SaveChangesAsync();
+
+        var svc = MakeService(db);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+            {
+                Result = ReviewResult.Approved,
+                CouncilComments = "OK"
+            }));
+        Assert.Contains("1/3", ex.Message);
+    }
+
+    // Chủ tịch cũng không chốt được biên bản khi thiếu phiếu — chặn ở cả hai đầu.
+    [Fact]
+    public async Task ApproveMinutes_NotEnoughBallots_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, chairId, secId, _, _) = await SeedAsync(db);
+        var svc = MakeService(db);
+
+        // Lưu nháp khi còn đủ phiếu…
+        await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "OK"
+        });
+
+        // …rồi một phiếu bị gỡ (vd Staff thay người) — chốt phải bị chặn.
+        var one = await db.ProposalReviewScores.FirstAsync(s => s.CouncilId == council.Id);
+        db.ProposalReviewScores.Remove(one);
+        await db.SaveChangesAsync();
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ApproveMinutesAsync(council.Id, chairId));
+
+        var decision = await db.CouncilDecisions.FirstAsync(d => d.CouncilId == council.Id);
+        Assert.Null(decision.FinalizedAt);   // chặn mà vẫn khoá thì coi như không chặn
     }
 
     // ── 1: Thư ký soạn nháp → proposal CHƯA đổi, council vẫn FORMING, chưa khóa ──

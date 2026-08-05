@@ -2,6 +2,7 @@ using FURPMS.Tests.Reminders;
 using FURPMS.Application.DTOs.ReviewScoring;
 using FURPMS.Domain.Entities.Proposals;
 using FURPMS.Domain.Entities.Review;
+using FURPMS.Infrastructure.Data;
 using FURPMS.Domain.Entities.Users;
 using FURPMS.Infrastructure.Repositories;
 using FURPMS.Infrastructure.Services;
@@ -57,6 +58,24 @@ public class ReviewScoringServiceMinutesTests
     private static ReviewScoringService MakeService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
         new(new ReviewRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new FakeClock());
 
+    /// <summary>
+    /// Seed phiếu đã nộp cho các thành viên — cần vì QĐ543 Điều 8.3.b bắt buộc ≥2/3 thành viên
+    /// dự họp (và người dự phải chấm) thì mới lưu/chốt được biên bản.
+    /// </summary>
+    private static void SeedBallots(FURPMSDbContext db, Guid councilId, Guid projectId, params CouncilMember[] members)
+    {
+        foreach (var m in members)
+            db.ProposalReviewScores.Add(new ProposalReviewScore
+            {
+                CouncilId = councilId,
+                ProjectId = projectId,
+                EvaluatorMemberId = m.Id,
+                TemplateId = 1,
+                SubmittedAt = DateTime.UtcNow,
+                IsValidBallot = true
+            });
+    }
+
     [Fact]
     public async Task ApproveMinutes_SingleProjectRound_SyncsProjectRoundAndClosesRound()
     {
@@ -76,8 +95,11 @@ public class ReviewScoringServiceMinutesTests
         var council = new ReviewCouncil { Id = Guid.NewGuid(), RoundId = round.Id, CouncilType = "REVIEW", CreatedBy = Guid.NewGuid() };
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" });
+        var chairMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" };
+        var secMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" };
+        db.CouncilMembers.AddRange(chairMember, secMember);
+        // QĐ543 Điều 8.3.b: phải có ít nhất 2/3 thành viên dự họp và người dự phải chấm.
+        SeedBallots(db, council.Id, project.Id, chairMember, secMember);
         await db.SaveChangesAsync();
 
         var service = MakeService(db);
@@ -121,8 +143,11 @@ public class ReviewScoringServiceMinutesTests
         var council = new ReviewCouncil { Id = Guid.NewGuid(), RoundId = round.Id, CouncilType = "ACCEPTANCE", CreatedBy = Guid.NewGuid() };
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" });
+        var chairMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" };
+        var secMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" };
+        db.CouncilMembers.AddRange(chairMember, secMember);
+        // QĐ543 Điều 8.3.b: phải có ít nhất 2/3 thành viên dự họp và người dự phải chấm.
+        SeedBallots(db, council.Id, project.Id, chairMember, secMember);
         await db.SaveChangesAsync();
 
         var service = MakeService(db);
@@ -154,8 +179,11 @@ public class ReviewScoringServiceMinutesTests
         var council = new ReviewCouncil { Id = Guid.NewGuid(), RoundId = round.Id, CouncilType = "REVIEW", CreatedBy = Guid.NewGuid() };
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = projectA.Id });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" });
+        var chairMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" };
+        var secMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" };
+        db.CouncilMembers.AddRange(chairMember, secMember);
+        // QĐ543 Điều 8.3.b: phải có ít nhất 2/3 thành viên dự họp và người dự phải chấm.
+        SeedBallots(db, council.Id, projectA.Id, chairMember, secMember);
         await db.SaveChangesAsync();
 
         var service = MakeService(db);
@@ -191,8 +219,11 @@ public class ReviewScoringServiceMinutesTests
         var council = new ReviewCouncil { Id = Guid.NewGuid(), RoundId = round.Id, CouncilType = "REVIEW", CreatedBy = Guid.NewGuid() };
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" });
+        var chairMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" };
+        var secMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" };
+        db.CouncilMembers.AddRange(chairMember, secMember);
+        // QĐ543 Điều 8.3.b: phải có ít nhất 2/3 thành viên dự họp và người dự phải chấm.
+        SeedBallots(db, council.Id, project.Id, chairMember, secMember);
         await db.SaveChangesAsync();
 
         var service = MakeService(db);
@@ -234,8 +265,10 @@ public class ReviewScoringServiceMinutesTests
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
         var chairMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = chair.Id, MemberRole = "Chair", Status = "CONFIRMED" };
-        db.CouncilMembers.Add(chairMember);
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" });
+        var secMember2 = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" };
+        db.CouncilMembers.AddRange(chairMember, secMember2);
+        // Hội đồng 2 người ⇒ cần đủ 2 phiếu (QĐ543 Điều 8.3.b: ≥2/3, làm tròn lên).
+        SeedBallots(db, council.Id, project.Id, secMember2);
         // Điểm cũ của 1 ủy viên — phải được GIỮ sau khi reopen.
         db.ProposalReviewScores.Add(new ProposalReviewScore { CouncilId = council.Id, ProjectId = project.Id, EvaluatorMemberId = chairMember.Id, TemplateId = 1, SubmittedAt = DateTime.UtcNow, IsValidBallot = true });
         await db.SaveChangesAsync();
@@ -258,7 +291,8 @@ public class ReviewScoringServiceMinutesTests
         Assert.Equal("OPEN", pr.Status);
         Assert.Null(pr.Result);
 
-        Assert.Equal(1, await db.ProposalReviewScores.CountAsync(s => s.CouncilId == council.Id)); // điểm cũ còn nguyên
+        // Reopen KHÔNG được xoá điểm — cả 2 phiếu (Chủ tịch + Thư ký) phải còn nguyên.
+        Assert.Equal(2, await db.ProposalReviewScores.CountAsync(s => s.CouncilId == council.Id));
     }
 
     // P5 (BM04 II.1 — cách ghi Q&A): Thư ký lưu danh sách hỏi–đáp; lưu lại lần 2 THAY TOÀN BỘ (không cộng dồn).
@@ -280,7 +314,9 @@ public class ReviewScoringServiceMinutesTests
         var council = new ReviewCouncil { Id = Guid.NewGuid(), RoundId = round.Id, CouncilType = "REVIEW", CreatedBy = Guid.NewGuid() };
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" });
+        var secOnly = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" };
+        db.CouncilMembers.Add(secOnly);
+        SeedBallots(db, council.Id, project.Id, secOnly);
         await db.SaveChangesAsync();
 
         var service = MakeService(db);
@@ -333,7 +369,9 @@ public class ReviewScoringServiceMinutesTests
         var council = new ReviewCouncil { Id = Guid.NewGuid(), RoundId = round.Id, CouncilType = "REVIEW", CreatedBy = Guid.NewGuid() };
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
-        db.CouncilMembers.Add(new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" });
+        var secOnly = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = secretary.Id, MemberRole = "Secretary", Status = "CONFIRMED" };
+        db.CouncilMembers.Add(secOnly);
+        SeedBallots(db, council.Id, project.Id, secOnly);
         await db.SaveChangesAsync();
 
         var service = MakeService(db);

@@ -241,6 +241,7 @@ public class ReviewScoringService : IReviewScoringService
             throw new ForbiddenException("Chỉ Thư ký hội đồng được soạn biên bản.");
 
         var projectIdM = await ResolveProjectIdAsync(councilId, request.ProjectId);
+        await AssertQuorumAsync(council, projectIdM, "lưu biên bản");
         var (total, attending, valid, invalid, avg) = await ComputeTallyAsync(council, councilId, projectIdM);
 
         var decision = await _review.Decisions
@@ -334,8 +335,23 @@ public class ReviewScoringService : IReviewScoringService
                 "Hội đồng có nhiều biên bản nháp (nhiều đề tài) — duyệt từng biên bản qua API theo đề tài.");
         var decision = drafts[0];
 
+        await AssertQuorumAsync(council, decision.ProjectId, "chốt biên bản");
+
         decision.ChairUserId = chairUserId;
         decision.FinalizedAt = _clock.UtcNow;      // duyệt = khóa
+
+        // Chủ tịch chốt biên bản = buổi họp đã diễn ra xong. Trước đây buổi họp kẹt ở SCHEDULED
+        // vĩnh viễn (không ai bấm Bắt đầu/Kết thúc), nên lịch vẫn hiện như sắp họp dù đề tài đã
+        // có kết quả. Mọi thứ khác (đề tài, vòng, hội đồng) đều đã đổi trạng thái, riêng buổi họp
+        // thì không.
+        var openMeetings = await _review.Meetings
+            .Where(m => m.CouncilId == council.Id && m.Status != MeetingStatus.Completed)
+            .ToListAsync();
+        foreach (var m in openMeetings)
+        {
+            m.ActualEndAt ??= _clock.UtcNow;
+            m.Status = MeetingStatus.Completed;
+        }
 
         await MarkDecidedIfAllProjectsFinalizedAsync(council, decision.ProjectId);
 
@@ -415,6 +431,61 @@ public class ReviewScoringService : IReviewScoringService
             council.Status = CouncilStatus.Decided;
             council.UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    /// <summary>
+    /// Điều kiện họp hợp lệ theo QĐ543 — **Điều 8.3.b** (Hội đồng Xét duyệt) và **Điều 12.3.b**
+    /// (Hội đồng Nghiệm thu):
+    ///
+    /// > *"Tham dự của **ít nhất 2/3 số thành viên** dưới sự chủ trì của Chủ tịch Hội đồng"*
+    /// > *"…và **sự tham dự của thành viên phản biện**"* (riêng nghiệm thu)
+    /// > *"các thành viên tham dự họp **cần đánh giá thẩm định** đề cương (Biểu mẫu 03)"*
+    ///
+    /// Vì thành viên dự họp bắt buộc phải chấm, số phiếu đã nộp chính là thước đo số người dự.
+    /// Trước đây không kiểm gì: 1 người chấm trong hội đồng 5 người vẫn chốt được biên bản, mà
+    /// biên bản là căn cứ đổi trạng thái đề tài.
+    /// </summary>
+    private async Task AssertQuorumAsync(ReviewCouncil council, Guid projectId, string action)
+    {
+        var total = council.Members.Count;
+        if (total == 0)
+            throw new InvalidOperationException($"Hội đồng chưa có thành viên nào — không thể {action}.");
+
+        var submitted = await _review.ReviewScores
+            .Where(sc => sc.CouncilId == council.Id && sc.ProjectId == projectId && sc.SubmittedAt != null)
+            .Select(sc => sc.EvaluatorMemberId)
+            .ToListAsync();
+
+        // 2/3 làm tròn LÊN: hội đồng 5 người thì cần 4, không phải 3 (3.33 → 4).
+        var required = (int)Math.Ceiling(total * 2m / 3m);
+        if (submitted.Count < required)
+            throw new InvalidOperationException(
+                $"Chưa đủ số thành viên chấm để {action}: mới có {submitted.Count}/{total} phiếu, " +
+                $"cần ít nhất {required} (QĐ543 Điều 8.3.b — tham dự ít nhất 2/3 số thành viên).");
+
+        // Nghiệm thu bắt buộc có phản biện dự họp (Điều 12.3.b).
+        var isAcceptance = await IsAcceptanceCouncilAsync(council);
+        if (isAcceptance)
+        {
+            var opponentIds = council.Members
+                .Where(m => RoleIs(m.MemberRole, CouncilMemberRole.Opponent))
+                .Select(m => m.Id)
+                .ToHashSet();
+            if (opponentIds.Count > 0 && !submitted.Any(opponentIds.Contains))
+                throw new InvalidOperationException(
+                    $"Hội đồng nghiệm thu phải có thành viên phản biện dự họp và cho ý kiến " +
+                    $"(QĐ543 Điều 12.3.b) — chưa có phiếu nào của phản biện, không thể {action}.");
+        }
+    }
+
+    private async Task<bool> IsAcceptanceCouncilAsync(ReviewCouncil council)
+    {
+        if (!council.RoundId.HasValue) return false;
+        var type = await _review.ReviewRounds
+            .Where(r => r.Id == council.RoundId.Value)
+            .Select(r => r.RoundType)
+            .FirstOrDefaultAsync();
+        return string.Equals(type, "ACCEPTANCE", StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<(int Total, int Attending, int Valid, int Invalid, decimal? Avg)> ComputeTallyAsync(
