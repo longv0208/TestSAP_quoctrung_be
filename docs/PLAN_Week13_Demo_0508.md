@@ -73,10 +73,10 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 
 | # | Việc | Nguồn | Trạng thái | Ghi chú thực thi |
 |---|---|---|---|---|
-| B1 | **AI phải đọc FILE đề cương PI nộp**, không chỉ đọc các trường gõ trên web | *(cả 2 bản)* [B1] · [B2-4] | ⬜ **đúng như đã ghi 05/08** | `AiSummaryService.BuildPrompt` chỉ ghép từ trường cấu trúc, DTO trả `source: "textFields"`. Ống dẫn đọc file **đã có sẵn** (`GeminiFileInput`: PDF gửi inline, .docx bóc text OpenXml) — chỉ cần nối |
-| B2 | **AI đọc file VÀ tên/nội dung đề tài để SO SÁNH hai bên** | [B2-4] | 🔶 | Đã có `/ai/proposals/{id}/consistency` (đối chiếu form ↔ file) từ 04/08 nhưng **tách rời** khỏi tóm tắt. Ý thầy: tóm tắt cũng phải dựa trên cả hai nguồn |
-| B3 | **Tóm tắt AI TỰ CHẠY trước khi vào màn chấm** — bỏ nút "Tạo tóm tắt" | *(cả 2 bản)* [B1] · [B2-4] | ⬜ | Hiện phải bấm nút. Cần sinh sẵn (lúc PI nộp, hoặc lúc Staff mở vòng chấm) rồi cache vào `llm_outputs` — reviewer mở màn là có ngay, không chờ và không tốn quota lặp |
-| B4 | **Prompt tóm tắt phải trả kết quả tốt hơn**, gồm đủ: **tên đề tài · tóm tắt thông tin · ưu điểm · nhược điểm** | [B2-5] | ⬜ | Prompt hiện tại yêu cầu 5–7 câu văn xuôi, **không tách ưu/nhược**. Phải đổi sang trả cấu trúc để FE render thành mục |
+| B1 | **AI phải đọc FILE đề cương PI nộp** | *(cả 2 bản)* [B1] · [B2-4] | ✅ **XONG 06/08** | Nối `GetLatestProposalFileAsync` + `GeminiFileInput` vào tóm tắt. Kiểm bằng Gemini thật: `source` trả về `file+form`, `sourceFileName` = tên file .docx PI nộp |
+| B2 | **AI đọc file VÀ form để SO SÁNH hai bên** | [B2-4] | ✅ **XONG 06/08** | Prompt v2 lấy file làm nguồn CHÍNH rồi đối chiếu với form; chỗ lệch đưa vào `weaknesses`. Kiểm thật: AI tự bắt được *"có sự không đồng nhất nghiêm trọng giữa thông tin biểu mẫu (phát hiện gian lận giao dịch dùng LSTM) và nội dung file đính kèm (hệ thống quản lý nghiên cứu)"* |
+| B3 | **Tóm tắt AI TỰ CHẠY trước khi vào màn chấm** | *(cả 2 bản)* [B1] · [B2-4] | ✅ **XONG 06/08** | `AiSummaryCard` thêm cờ `autoGenerate`, bật ở **màn chấm điểm**: chưa có bản cache thì tự gọi 1 lần khi mở. Màn PI vẫn để tự bấm — không gọi Gemini mỗi lần PI mở đề cương của mình |
+| B4 | **Prompt trả đủ tên đề tài · tóm tắt · ưu điểm · nhược điểm** | [B2-5] | ✅ **XONG 06/08** | Prompt v2 trả JSON `{title, summary, strengths[], weaknesses[]}`. Lưu vào `llm_outputs.Content` (gộp thêm `source`/`sourceFileName` để **khỏi migration**); `Map` đọc được cả bản v1 văn xuôi lẫn v2 JSON. FE render thành mục Ưu điểm / Nhược điểm |
 | B5 | **Gợi ý chấm điểm phải bám đúng bộ tiêu chí** | [B2-4] | 🔶 | Đã có `/ai/…/scoring-suggestion`. Cần kiểm: có truyền đúng bộ tiêu chí của **vòng đó** (3 tầng `IRubricResolver`) vào prompt không, và điểm gợi ý có nằm trong `MaxScore` từng tiêu chí không |
 | B6 | **AI chạy local thay vì phụ thuộc server** | [B1] | ❓ **cần cân nhắc kỹ** | Nghĩa là chạy mô hình cục bộ (Ollama…) thay Gemini. Đổi được nhưng: máy demo phải đủ RAM/VRAM, chất lượng tiếng Việt của mô hình nhỏ **kém hơn Gemini rõ rệt**, và tốn thời gian dựng. Ưu điểm: không phụ thuộc mạng/quota lúc demo. **Đề xuất: giữ Gemini, thêm cache** (B3 đã giải quyết phần lớn nỗi lo "demo gãy vì mạng") — nhưng đây là ý thầy nên cần hỏi lại rõ động cơ |
 
@@ -168,7 +168,7 @@ Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
 9. ~~**C8** trang tiến trình đề tài · **C9** đổi nhãn~~ ✅ · ~~**E6** gom filter~~ ✅
 
 **Nhóm 3 — AI** *(gộp làm một đợt, vì cùng đụng prompt + luồng)*
-10. **B1 + B2 + B3 + B4 + B5** đọc file, tự chạy trước, prompt có ưu/nhược, gợi ý bám tiêu chí
+10. ~~**B1 + B2 + B3 + B4**~~ ✅ · **B5** gợi ý chấm bám tiêu chí — còn lại
 
 **Nhóm 4 — hợp đồng & nghiệm thu** *(nặng nhất, cần migration)*
 11. **C1 + C2 + C3** dựng lại bản Word đủ mẫu BM05 + nhóm trường Bên B
