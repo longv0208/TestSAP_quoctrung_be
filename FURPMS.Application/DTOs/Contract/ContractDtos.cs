@@ -49,6 +49,22 @@ public class ContractDetailResponse
     public DateTime UpdatedAt { get; set; }
 }
 
+/// <summary>
+/// Sửa hợp đồng đã tạo. Chỉ mở các trường Staff **gõ tay lúc tạo** — số HĐ, phạm vi, thời hạn,
+/// đại diện Bên A, link HĐ điện tử. KHÔNG cho sửa `ProposalId` (đổi đề tài = hợp đồng khác hẳn,
+/// phải xoá tạo lại) và KHÔNG cho sửa `TotalAmount` (lấy từ dự toán đề cương, rule #15 không quản tiền).
+/// </summary>
+public class UpdateContractRequest
+{
+    public string ContractNumber { get; set; } = null!;
+    public string? ScopeTitle { get; set; }
+    public DateOnly StartDate { get; set; }
+    public DateOnly EndDate { get; set; }
+    public int MaxExtensionMonths { get; set; } = 6;
+    public string? SideARepresentative { get; set; }
+    public string? EcontractUrl { get; set; }
+}
+
 public class CreateContractRequest
 {
     public Guid ProposalId { get; set; }

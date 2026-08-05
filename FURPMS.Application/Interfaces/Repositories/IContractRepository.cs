@@ -22,6 +22,9 @@ public interface IContractRepository : IRepository<Contract>
     Task AddProgressReportAsync(ProgressReport report);
     void AddProgressReportItemsRange(IEnumerable<ProgressReportItem> items);
     void RemoveProgressReportItemsRange(IEnumerable<ProgressReportItem> items);
+    // Xoá hợp đồng nhập nhầm: các bảng con do hệ thống tự sinh phải dọn theo, không có FK cascade.
+    void RemoveDisbursementsRange(IEnumerable<ContractDisbursement> items);
+    void RemoveProgressReportsRange(IEnumerable<ProgressReport> items);
     Task AddFinalReportAsync(FinalReport report);
     Task AddSettlementAsync(ContractSettlement settlement);
 }

@@ -320,7 +320,7 @@ những cái sau là **thiếu thật, chặn nghiệp vụ**:
 
 | Thực thể | Thiếu | Hậu quả |
 |---|---|---|
-| **Hợp đồng** | ❌ **không có cả SỬA lẫn XOÁ** (`ContractsController` chỉ có GET/POST/sign) | Staff tạo hợp đồng sai là **kẹt vĩnh viễn**, chỉ có cách tạo cái mới |
+| ~~**Hợp đồng**~~ | ✅ **XONG 05/08** — `PUT /contracts/{id}` + `DELETE /contracts/{id}`, FE có menu Sửa/Xoá ở danh sách | Đã kiểm bằng API: sửa 200 (giữ nguyên `originalEndDate` khi HĐ đã gia hạn) · ngày sai 400 · xoá HĐ ACTIVE 409 · xoá HĐ chưa ký 200 rồi GET lại 404 (lịch giải ngân dọn theo, không lỗi khoá ngoại) |
 | **Sản phẩm** | ❌ xoá | Thêm nhầm không gỡ được |
 | **Thành viên đề tài** | ❌ xoá | Không loại được thành viên |
 | **Kỳ báo cáo tiến độ** | ❌ xoá | Staff sinh thừa kỳ là kẹt |
@@ -339,7 +339,7 @@ những cái sau là **thiếu thật, chặn nghiệp vụ**:
 - Lỗi im lặng khi gia hạn ghi chữ thay vì số (xem mục ở trên).
 
 ### E. Thứ tự đề xuất
-1. **Hợp đồng: thêm SỬA + XOÁ** — đang chặn nghiệp vụ nặng nhất.
+1. ~~**Hợp đồng: thêm SỬA + XOÁ**~~ ✅ xong 05/08.
 2. **Rà nốt 2 panel còn lại** (giải ngân, quyết toán) xem có sai vai.
 3. **Xoá**: sản phẩm · kỳ báo cáo · lịch họp · thành viên đề tài.
 4. **Xoá master data** (5 màn Admin).

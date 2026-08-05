@@ -105,6 +105,106 @@ public class ContractService : IContractService
         return await GetByIdAsync(contract.Id);
     }
 
+    /// <summary>
+    /// Sửa hợp đồng. Trước đây không hề có endpoint này: Staff gõ sai số HĐ hay ngày là **kẹt
+    /// vĩnh viễn**, chỉ còn cách tạo hợp đồng mới đè lên.
+    ///
+    /// Chỉ sửa phần "giấy tờ" Staff tự gõ. Không đụng `TotalAmount` (lấy từ dự toán đề cương) và
+    /// không đụng `ProjectId`.
+    /// </summary>
+    public async Task<ContractDetailResponse> UpdateAsync(Guid contractId, UpdateContractRequest request)
+    {
+        var contract = await QueryWithProject()
+            .FirstOrDefaultAsync(c => c.Id == contractId)
+            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+
+        if (string.IsNullOrWhiteSpace(request.ContractNumber))
+            throw new ArgumentException("Số hợp đồng không được để trống.");
+        if (request.EndDate <= request.StartDate)
+            throw new ArgumentException("Ngày kết thúc phải sau ngày bắt đầu.");
+        if (request.MaxExtensionMonths < 0)
+            throw new ArgumentException("Số tháng gia hạn tối đa không được âm.");
+
+        // Số HĐ là thứ đối chiếu với bản giấy — trùng số thì không tra ra được hợp đồng nào là hợp đồng nào.
+        var number = request.ContractNumber.Trim();
+        if (await _contracts.Query().AnyAsync(c => c.Id != contractId && c.ContractNumber == number))
+            throw new InvalidOperationException($"Số hợp đồng \"{number}\" đã tồn tại.");
+
+        /*
+         * OriginalEndDate là mốc để biết "đã gia hạn hay chưa" (FE hiện nhãn "Đã gia hạn — hạn gốc…").
+         * Nếu hợp đồng CHƯA từng gia hạn thì Staff sửa hạn ở đây là **sửa cho đúng**, phải dời cả
+         * hạn gốc — không thì màn hình sẽ báo "đã gia hạn" trong khi chẳng ai xin gia hạn cả.
+         * Đã gia hạn rồi thì giữ nguyên hạn gốc để không xoá dấu vết.
+         */
+        var neverExtended = contract.EndDate == contract.OriginalEndDate;
+
+        contract.ContractNumber = number;
+        contract.ScopeTitle = request.ScopeTitle;
+        contract.StartDate = request.StartDate;
+        contract.EndDate = request.EndDate;
+        if (neverExtended) contract.OriginalEndDate = request.EndDate;
+        contract.MaxExtensionMonths = request.MaxExtensionMonths;
+        contract.SideARepresentative = request.SideARepresentative;
+        contract.EcontractUrl = request.EcontractUrl;
+        contract.UpdatedAt = DateTime.UtcNow;
+
+        await _contracts.SaveChangesAsync();
+        return await GetByIdAsync(contractId);
+    }
+
+    /// <summary>
+    /// Xoá hợp đồng nhập nhầm. **Chỉ khi chưa ký** — ký rồi là đã có hiệu lực pháp lý, xoá đi
+    /// thì mất luôn dấu vết; muốn dừng thì dùng chấm dứt (`TerminatedAt`), không phải xoá.
+    ///
+    /// Chặn tiếp nếu PI đã bắt đầu làm việc trên hợp đồng đó (nộp sản phẩm / báo cáo tiến độ /
+    /// báo cáo tổng kết / đã có quyết toán hoặc đơn điều chỉnh) — xoá là mất trắng công của người ta.
+    /// </summary>
+    public async Task DeleteAsync(Guid contractId)
+    {
+        var contract = await _contracts.Query()
+            .FirstOrDefaultAsync(c => c.Id == contractId)
+            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+
+        if (contract.Status != ContractStatus.PendingSignature)
+            throw new InvalidOperationException(
+                $"Hợp đồng đã ở trạng thái \"{contract.Status}\" — chỉ xoá được hợp đồng CHƯA KÝ. " +
+                "Hợp đồng đang hiệu lực thì dùng chấm dứt hợp đồng.");
+
+        var blockers = new List<string>();
+        if (await _contracts.Deliverables.AnyAsync(d => d.ContractId == contractId && d.SubmittedAt != null))
+            blockers.Add("đã có sản phẩm được nộp");
+        if (await _contracts.ProgressReports.AnyAsync(r => r.ContractId == contractId && r.SubmittedAt != null))
+            blockers.Add("đã có báo cáo tiến độ được nộp");
+        // FinalReport gắn theo ĐỀ TÀI (không có cột ContractId) — vẫn phải chặn, vì xoá hợp đồng
+        // là kéo theo mất lịch giải ngân/kỳ báo cáo mà bản tổng kết đang tổng hợp lên.
+        if (await _contracts.FinalReports.AnyAsync(r => r.ProjectId == contract.ProjectId))
+            blockers.Add("đã có báo cáo tổng kết");
+        if (await _contracts.Settlements.AnyAsync(s => s.ContractId == contractId))
+            blockers.Add("đã có quyết toán");
+        if (await _contracts.Amendments.AnyAsync(a => a.ContractId == contractId))
+            blockers.Add("đã có đơn đề nghị điều chỉnh");
+        if (blockers.Count > 0)
+            throw new InvalidOperationException(
+                $"Không xoá được hợp đồng: {string.Join(", ", blockers)}.");
+
+        // Sản phẩm KHÔNG xoá theo — nó thuộc về đề tài, chỉ gỡ khỏi hợp đồng để hợp đồng sau gắn lại.
+        var deliverables = await _contracts.Deliverables.Where(d => d.ContractId == contractId).ToListAsync();
+        foreach (var d in deliverables) d.ContractId = null;
+
+        // Lịch giải ngân + kỳ báo cáo là do hệ thống tự sinh cho hợp đồng này, không có ý nghĩa
+        // khi đứng một mình. FK không cascade nên phải xoá tay, không thì SaveChanges nổ.
+        var reports = await _contracts.ProgressReports.Where(r => r.ContractId == contractId).ToListAsync();
+        var reportIds = reports.Select(r => r.Id).ToList();
+        _contracts.RemoveProgressReportItemsRange(
+            await _contracts.ProgressReportItems.Where(i => reportIds.Contains(i.ReportId)).ToListAsync());
+        _contracts.RemoveProgressReportsRange(reports);
+        _contracts.RemoveDisbursementsRange(
+            await _contracts.Disbursements.Where(d => d.ContractId == contractId).ToListAsync());
+
+        _contracts.Remove(contract);
+        await _contracts.SaveChangesAsync();
+    }
+
     public async Task<ContractDetailResponse> SignAsync(Guid contractId, Guid signedBy)
     {
         var contract = await QueryWithProject()

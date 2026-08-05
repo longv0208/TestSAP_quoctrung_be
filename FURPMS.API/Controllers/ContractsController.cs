@@ -70,6 +70,26 @@ public class ContractsController : ControllerBase
         return Ok(ApiResponse<ContractDetailResponse>.Ok(result));
     }
 
+    // Staff gõ sai số HĐ / ngày lúc tạo thì phải sửa được — trước đây chỉ có GET/POST/sign nên
+    // nhập nhầm là kẹt vĩnh viễn.
+    [ProducesResponseType(typeof(ApiResponse<ContractDetailResponse>), StatusCodes.Status200OK)]
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateContractRequest request)
+    {
+        var result = await _contracts.UpdateAsync(id, request);
+        return Ok(ApiResponse<ContractDetailResponse>.Ok(result, "Đã cập nhật hợp đồng."));
+    }
+
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _contracts.DeleteAsync(id);
+        return Ok(ApiResponse.Ok("Đã xoá hợp đồng."));
+    }
+
     [ProducesResponseType(typeof(ApiResponse<ContractDetailResponse>), StatusCodes.Status200OK)]
     [HttpPost("{id:guid}/sign")]
     [Authorize(Roles = "Admin,Staff")]
