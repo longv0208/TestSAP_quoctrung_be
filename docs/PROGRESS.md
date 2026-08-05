@@ -1,6 +1,6 @@
 # FURPMS Backend — Tiến độ theo nhóm chức năng
 
-> Ảnh chụp % hoàn thiện **so với phạm vi đồ án** (không phải "phần mềm hoàn hảo"). Đây là **ước lượng có cơ sở** (38 controller, Phase A→L đã code, **100/100 test**, luồng core đã E2E) — KHÔNG phải số đo tự động. Cập nhật: **2026-08-05** (sau demo thầy 29/07).
+> Ảnh chụp % hoàn thiện **so với phạm vi đồ án** (không phải "phần mềm hoàn hảo"). Đây là **ước lượng có cơ sở** (38 controller, Phase A→L đã code, **106/106 test**, luồng core đã E2E) — KHÔNG phải số đo tự động. Cập nhật: **2026-08-06** (sau demo thầy 05/08 — xem `PLAN_Week13_Demo_0508.md`).
 >
 > Contract (`API_CONTRACT.md` §3–§10) liệt kê "BE cung cấp gì" theo đúng 8 nhóm dưới đây; file này bổ sung cột **% + còn thiếu**.
 
@@ -16,6 +16,18 @@
 | 8 | **Hạ tầng nền** | Middleware, JWT, Email/SMTP, DeadlineReminder, Gemini, Seeder | 90% | **04/08:** SMTP Brevo đã chạy thật (mail vào Spam do `FromEmail` là @gmail gửi qua relay — giới hạn hạ tầng); Gemini key mới đã test 200. Còn: `/ai/search` (semantic) + `/ai/suggest-reviewers` chưa có |
 
 **Tổng thể ≈ 88–92%** cho phạm vi capstone. Lõi (đề cương → xét duyệt → hợp đồng → giải ngân → **nghiệm thu → COMPLETED**) chạy thông end-to-end.
+
+## Đối chiếu góp ý thầy (demo 05/08) — `PLAN_Week13_Demo_0508.md`
+**43 đầu việc**, xong **13** (≈30%) trong ngày 06/08. Hết **nhóm 1 (lỗi nghiệp vụ)** và
+**nhóm 2 (thứ thầy nhìn thấy ngay)**, trừ D1 đang chờ chốt "bao lâu mới cho nộp lại".
+
+Xong: A1 hình thức họp còn online/offline · A2 lịch chấm trong khung giờ họp · A4+A5 kết quả bỏ
+phiếu BM12 mục 10.1 · A6 (vốn đã có) · A7 đóng buổi họp khi chốt biên bản · A8 quorum 2/3 +
+phản biện · A11 tổng điểm bộ tiêu chí · C7+D5 đóng sản phẩm đã nghiệm thu · C8 trang tiến trình ·
+C9 đổi nhãn · E3 full tiếng Việt · E4 light mode · E6 gom bộ lọc · F3 trần gia hạn Điều 10.4.
+
+Còn: nhóm AI (B1–B6) · hợp đồng BM05 (C1–C3) · hồ sơ nghiệm thu (C4–C6) · data demo + kịch bản
+(E7, E8, F5) · và **8 câu chờ thầy chốt** (nay còn 7 — A9 đã tự giải bằng Điều 8.2/12.2).
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).
