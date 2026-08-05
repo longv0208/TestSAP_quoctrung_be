@@ -171,8 +171,12 @@ public class ProgressReportService : IProgressReportService
         if (report.Contract.Project.PiUserId != userId)
             throw new ForbiddenException("Only the PI may edit this report.");
 
-        if (report.Status != ProgressReportStatus.Draft)
-            throw new InvalidOperationException($"Report is '{report.Status}'; only DRAFT reports can be edited.");
+        // Cho sửa đến khi Staff ĐÃ ĐÁNH GIÁ, không phải khoá ngay lúc nộp.
+        // Khoá ngay lúc nộp là bất nhất với sản phẩm (cho nộp lại tới khi ĐẠT) và báo cáo
+        // tổng kết (cho nộp lại + yêu cầu chỉnh sửa) — PI lỡ sai một chữ là kẹt luôn.
+        if (!string.IsNullOrWhiteSpace(report.EvaluationResult))
+            throw new InvalidOperationException(
+                "Kỳ báo cáo này đã được đánh giá — không sửa được nữa. Liên hệ phòng QLKH nếu cần điều chỉnh.");
 
         if (request.OverallCompletionPct is < 0 or > 100)
             throw new ArgumentException("OverallCompletionPct must be between 0 and 100.");

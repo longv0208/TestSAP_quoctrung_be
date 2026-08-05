@@ -92,6 +92,9 @@ public class DeliverableService : IDeliverableService
 
         d.FileUrl = request.FileUrl;
         d.Description = request.Description ?? d.Description;
+        // Chỉ ghi đè khi PI thật sự nộp minh chứng mới — nộp lại mà bỏ trống thì giữ bản cũ.
+        if (!string.IsNullOrWhiteSpace(request.TrialEvidenceUrl))
+            d.TrialEvidenceUrl = request.TrialEvidenceUrl;
         d.SubmittedAt = _clock.UtcNow;
         d.AcceptanceStatus = AcceptanceStatus.Pending;
         await _contracts.SaveChangesAsync();
@@ -229,6 +232,7 @@ public class DeliverableService : IDeliverableService
         IsCompleted = d.IsCompleted,
         SubmittedAt = d.SubmittedAt,
         FileUrl = d.FileUrl,
+        TrialEvidenceUrl = d.TrialEvidenceUrl,
         QualityAssessment = d.QualityAssessment
     };
 }

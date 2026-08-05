@@ -85,9 +85,22 @@ public class AcceptanceEvaluationService : IAcceptanceEvaluationService
             return ToDto(updated);
         }
 
+        // Phiếu nghiệm thu gắn với ĐỀ TÀI (Phase B). Trước đây service không hề gán
+        // ProjectId ⇒ rơi vào Guid.Empty ⇒ INSERT vi phạm khoá ngoại tới bảng projects,
+        // và mọi lần bấm "Nộp đánh giá" đều ăn 500 "An unexpected error occurred".
+        var projectId = await _review.ProjectAssignments
+            .Where(a => a.CouncilId == councilId)
+            .Select(a => a.ProjectId)
+            .FirstOrDefaultAsync();
+
+        if (projectId == Guid.Empty)
+            throw new InvalidOperationException(
+                "Hội đồng này chưa được gán đề tài nào — chưa thể nộp phiếu nghiệm thu.");
+
         var eval = new AcceptanceEvaluation
         {
             CouncilId = councilId,
+            ProjectId = projectId,
             EvaluatorMemberId = member.Id,
             Result = request.Result,
             FailReason = request.Result == EvaluationResult.Pass ? null : request.FailReason,

@@ -161,6 +161,107 @@ Không chỉ lệch đường dẫn: `AiExtractionResult` của FE khai `keyword
 
 ---
 
+## 🔍 Rà màn "Tiêu chí chấm" + "Báo cáo tiến độ / Nghiệm thu" (05/08)
+
+### ✅ Đã sửa
+| Vấn đề | Sự thật tìm được |
+|---|---|
+| **Không tạo/xoá được bộ tiêu chí** | P4 xây phần gắn đợt/lĩnh vực lên trên API vốn chỉ cho **1 bộ mỗi loại vòng**: `POST /rubric-criteria` tìm bộ bằng `FirstOrDefault(TemplateType == loại)` ⇒ tiêu chí **luôn rơi vào bộ đầu tiên**, bộ "Sao chép" vĩnh viễn rỗng, không thể có 2 bộ REVIEW khác nội dung. → Thêm `POST /rubric-templates`, `DELETE /rubric-templates/{id}`, và **CRUD tiêu chí theo bộ** (`/rubric-templates/{id}/criteria`). Chặn xoá bộ đã dùng chấm (409, bảo TẮT thay vì xoá); tiêu chí đã có điểm thì chỉ tắt. |
+| **Bộ `PROGRESS_CHECK` nằm chình ình** | Loại vòng này **chết theo rule #16** (báo cáo tiến độ do Staff duyệt thẳng). Đã kiểm: `ProgressReportService` có **0** tham chiếu rubric ⇒ xoá **không ảnh hưởng** Staff duyệt hay PI điền. Đã xoá dữ liệu + bỏ khỏi `TypeMap`. |
+| **Hai phần rời rạc trên trang** | Bảng phẳng "Tất cả tiêu chí" sửa được nhưng không biết thuộc bộ nào; bộ ở trên thì không sửa được tiêu chí. → **Gộp làm một**: mỗi bộ tự quản tiêu chí, thu gọn/mở rộng được. |
+| **DTO thiếu `isActive` + lọc mất tiêu chí đã tắt** | FE gạch ngang toàn bộ tiêu chí; và tiêu chí bị tắt tự động **biến mất vĩnh viễn**, không có đường bật lại. → Màn quản lý trả cả tiêu chí tắt + nút "Bật lại"; màn chấm vẫn chỉ lấy tiêu chí bật. |
+| **Cột "Loại vòng" hiện `Final`** | Nhãn tiếng Anh hardcode (`ROUND_TYPE_LABELS`), không qua i18n. → dùng chung `reviewBoard.type.*`. |
+| 🔴 **Staff KHÔNG thấy PI viết gì trong báo cáo tiến độ** | `GET /progress-reports` chỉ trả **bản tóm tắt** (%, trạng thái). Chi tiết (nội dung đã/chưa hoàn thành, kế hoạch kỳ sau, kiến nghị, bảng hoạt động BM06) nằm ở `GET /progress-reports/{id}` — **BE có sẵn, FE chưa nơi nào gọi**. Staff mở dialog đánh giá chỉ thấy ô chấm ⇒ "PI điền một đống mà chả thấy gì". → Thêm `useProgressReportQuery`, dialog hiện đủ nội dung + bảng hoạt động. |
+
+### ✅ Hội đồng NGHIỆM THU giờ có HỒ SƠ để chấm (05/08)
+**Câu hỏi gốc:** *"người chấm nghiệm thu nên thấy cái gì? Đâu thể chỉ như lần đầu chấm."* — đúng.
+Trước đó màn chấm nghiệm thu hiện **y hệt vòng 1**: chỉ đề cương + file. Người chấm không có
+căn cứ nào ngoài buổi họp trực tiếp.
+
+Theo `Process_Spec_v2` §Giai đoạn 8, sản phẩm đầu ra của giai đoạn nghiệm thu là
+**`ProgressReport[]` · `ProjectDeliverable[]` · `FinalReport`** — đó chính là thứ hội đồng phải đọc.
+
+→ Thêm **`GET /api/councils/{councilId}/proposals/{proposalId}/dossier`** + tab **"Hồ sơ nghiệm thu"**
+(chỉ hiện ở vòng ACCEPTANCE), gồm:
+- **Báo cáo tiến độ từng kỳ** — %, kỳ, **kết quả Staff đã đánh giá** (PASS/CONDITIONAL/FAIL) + nhận xét.
+- **Sản phẩm** — trạng thái nghiệm thu từng cái, ngày nộp, có file hay không, nhận xét chất lượng.
+- **Báo cáo tổng kết (BM09)** — trạng thái, ngày nộp, có file hay không.
+- Dòng tóm tắt đầu bảng: số hợp đồng · **sản phẩm đạt / tổng** · số kỳ báo cáo.
+
+**Vì sao endpoint riêng thay vì mở endpoint hợp đồng:** các endpoint hợp đồng chỉ mở cho PI/Staff;
+nới cho reviewer sẽ cho họ xem hợp đồng của **mọi** đề tài. Endpoint này gác đúng phạm vi —
+**chỉ thành viên của hội đồng đó** (hoặc Admin/Staff), khác đi trả **403**.
+
+> Về "chỉ PASS/FAIL đã ổn chưa": **ổn**. Chấm điểm theo tiêu chí (BM11) và kết luận đạt/không đạt
+> là 2 việc khác nhau và đều đã có. Thiếu sót nằm ở **thông tin để chấm**, không phải ở cách chấm.
+
+### ✅ Nộp điểm xong không bị đá ra ngoài (05/08)
+`RubricScoringForm` gọi `navigate(ASSIGNED_REVIEWS)` ngay sau khi nộp ⇒ muốn xem lại/sửa điểm
+phải mò vào lại từ đầu. Đã bỏ điều hướng, ở nguyên trang.
+
+### ✅ Báo cáo tiến độ phía PI (05/08)
+- 🔴 **4 khoá i18n bị THIẾU** ⇒ giao diện hiện thô `reports.due`, `reports.joinLink` (khoá `joinLink` có tồn tại nhưng ở **namespace khác**). Đã bổ sung.
+- **Ô chọn hợp đồng chỉ hiện trơ số ("04")** — không ai đoán được đó là gì. Nay có nhãn "Hợp đồng" + hiện `HĐ số 04 — <tên đề tài>`.
+- **Nộp xong không xem lại được** → thêm nút "Xem bài đã nộp", tái dùng `ProgressReportDetailView` (component **dùng chung** cho cả Staff lẫn PI, tránh 2 bản).
+- **Nộp xong khoá cứng** (`UpdateAsync` chỉ cho `DRAFT`) — bất nhất với sản phẩm (nộp lại tới khi ĐẠT) và báo cáo tổng kết (nộp lại + yêu cầu chỉnh sửa); PI lỡ sai một chữ là kẹt. → Nay **sửa được tới khi Staff ĐÃ đánh giá**; đánh giá xong mới khoá. *(Xử luôn mục #10 của `SYSTEM_REVIEW` §2.)*
+
+### ✅ Nộp sản phẩm: upload file thật + minh chứng thử nghiệm (05/08)
+Sản phẩm là chỗ **CUỐI CÙNG** còn bắt dán URL (form chỉ có ô *"Đường dẫn file"*), trong khi đề cương ·
+báo cáo tiến độ · báo cáo tổng kết · hợp đồng đều đã upload thật. Và entity có sẵn **`TrialEvidenceUrl`**
+nhưng form **chưa bao giờ cho nhập** ⇒ hồ sơ nghiệm thu thiếu theo **QĐ543 Điều 13.1**.
+- BE: `POST/GET /api/deliverables/{id}/documents` + `/download` (Document polymorphic `EntityType="Deliverable"`,
+  `DocumentCategory` phân biệt `DELIVERABLE` vs `TRIAL_EVIDENCE`) · `SubmitDeliverableRequest` + `TrialEvidenceUrl` ·
+  DTO trả thêm `trialEvidenceUrl`. Nộp lại mà bỏ trống minh chứng thì **giữ bản cũ**, không xoá trắng.
+- FE: 2 ô **chọn file** (sản phẩm bắt buộc, minh chứng tuỳ chọn) — upload trước, lấy URL download của BE rồi mới submit.
+
+### ✅ PI xin điều chỉnh / gia hạn (05/08)
+BE **đã cho phép PI tạo từ lâu** (`POST /contracts/{id}/amendments` chỉ cần là chủ hợp đồng; chỉ
+duyệt/từ chối mới giới hạn Staff/Admin) — nhưng FE **chỉ có màn bên `staff/contracts`** nên PI không
+có đường vào, luồng coi như tắc. → Thêm trang **`/my-amendments`** (nav Faculty): xem yêu cầu đã gửi
++ trạng thái + ý kiến phòng QLKH, và dialog gửi yêu cầu mới (loại điều chỉnh · nội dung · giá trị
+hiện tại→đề nghị · lý do). Bao gồm **xin gia hạn** (QĐ543: tối đa 6 tháng).
+
+### 🔴 2 lỗi chặn test, đã sửa (05/08)
+1. **Chấm nghiệm thu PASS/FAIL luôn 500.** `AcceptanceEvaluationService` **không bao giờ gán `ProjectId`**
+   ⇒ rơi vào `Guid.Empty` ⇒ INSERT vi phạm khoá ngoại `fk_acceptance_evaluations_projects_project_id`.
+   Nay lấy project từ `CouncilProjectAssignment`; hội đồng chưa gán đề tài thì báo lỗi rõ thay vì 500.
+   *(Đã test: hội đồng chưa chốt biên bản → **200**; hội đồng đã chốt → **409** đúng rule #12.)*
+2. **Upload chết khi mạng/DNS tới Cloudinary hỏng** ("không reach được server"). Nay **tự rơi về đĩa local**;
+   đọc lại vẫn chạy vì `OpenAsync` đã có nhánh dự phòng đọc đĩa. Người dùng không bị chặn nộp bài.
+
+### 📋 Việc user nêu 05/08 — chưa làm, ghi lại để không rơi
+1. **Quản lý hội đồng chưa phải CRUD.** Màn "Hội đồng" hiện chỉ là **danh sách đề cương** y hệt màn "Xét duyệt đề cương"
+   (cùng cột, cùng nút) ⇒ **thừa và gây nhầm**. Cần đổi thành nơi quản lý **chính các hội đồng**: xem/thêm/sửa/xoá hội đồng
+   đã tạo, thành viên, lịch họp.
+2. **Màn "Xét duyệt đề cương" cần gom nhóm + số liệu.** Hiện đổ phẳng 9 dòng. Cần: **nhóm theo đợt**, và vài con số
+   tổng quan (bao nhiêu đợt đang mở, mỗi đợt bao nhiêu đề tài, bao nhiêu đã duyệt/chờ).
+3. **Đổi tên nút "Xét duyệt" → "Xem chi tiết"** và mở ra **trang chi tiết đề tài** gom: đề cương · tiến độ · sản phẩm ·
+   nghiệm thu. Hiện các thông tin này **nằm rải trong sheet Hợp đồng** — user thấy sheet đó "ngột ngạt".
+   → Cân nhắc **chuyển bớt từ Hợp đồng sang trang chi tiết đề tài**; Hợp đồng chỉ giữ phần thuộc về hợp đồng
+   (ký, giải ngân, điều chỉnh, quyết toán).
+4. **Màn Hợp đồng chỉ nên hiện đề tài đã qua vòng xét duyệt** (đã sang giai đoạn tiến độ/nghiệm thu) — cần kiểm lại
+   điều kiện lọc hiện tại.
+5. **"Đề tài được phân công" sắp xếp lộn xộn** — gom nhóm theo loại vòng/trạng thái, hoặc sắp theo hạn / ngày họp gần nhất.
+6. **Nộp sản phẩm: có nên BẮT BUỘC file không?** User đề nghị cho **chọn 1 trong 2**: upload file *hoặc* dán link
+   (file quá lớn thì upload không nổi). → Nên: giữ upload làm mặc định, thêm tab/ô "dán link" thay thế;
+   validate "phải có ít nhất một trong hai".
+7. **🔴 "Báo cáo tổng kết" đang nằm trong màn HỢP ĐỒNG của Staff** — form *"Nộp báo cáo tổng kết"* với ô chọn file
+   hiện ra ở tab của **Staff**, nhưng theo QĐ543 người nộp BM09 là **PI**. PI đã có trang riêng `/final-reports`.
+   → Bên Staff chỉ nên **XEM + yêu cầu chỉnh sửa**, không phải nộp hộ.
+8. **Sau khi nghiệm thu Đạt + Chủ tịch chốt biên bản thì sao?** Hiện: đề tài → `COMPLETED` (đã nối ở P0.2).
+   Nhưng **không có màn nào nói cho ai biết** điều đó. → Cần: PI thấy **tiến trình đề tài của chính mình**
+   (mốc + trạng thái, giống timeline hợp đồng nhưng theo đề tài), và bước cuối cùng còn lại là **quyết toán/thanh lý**
+   (`ContractSettlement` có endpoint nhưng chưa kiểm end-to-end).
+9. **Tóm tắt AI bên PI có cần không?** — Đang có ở cả màn PI lẫn màn chấm. PI là người **viết** đề cương nên
+   ít giá trị; cân nhắc **bỏ ở màn PI**, giữ ở màn người chấm (nơi thật sự cần đọc nhanh). Giữ lại phần
+   **"Đối chiếu với file đề cương"** ở màn PI vì cái đó mới giúp PI phát hiện sai sót.
+
+### ⬜ Tìm ra nhưng CHƯA sửa (cần quyết định/ưu tiên)
+1. 🔴 **Nộp sản phẩm quá sơ sài so với QĐ543 Điều 13.1.** Entity `ProjectDeliverable` có `ScientificRequirements`, **`TrialEvidenceUrl`** (minh chứng thử nghiệm), `Notes` — nhưng `SubmitDeliverableRequest` **chỉ nhận `FileUrl` + `Description`**. Tệ hơn: `FileUrl` là **URL dán tay**, trong khi báo cáo tiến độ / tổng kết / hợp đồng đều đã chuyển sang **upload file thật**. → Cần: `POST /deliverables/{id}/documents` (tái dùng `Document` polymorphic) + ô minh chứng thử nghiệm.
+2. 🔴 **PI không xin được điều chỉnh / gia hạn.** BE **đã cho phép** (`POST /contracts/{id}/amendments` chỉ `[Authorize]` + kiểm chủ hợp đồng; chỉ approve/reject mới giới hạn Staff/Admin). Nhưng **FE chỉ có màn ở `features/staff/contracts`** — PI không có đường vào. Tab "Điều chỉnh" bên Staff = nơi **duyệt/từ chối** yêu cầu đổi phạm vi / kinh phí / thời gian / nhân sự (gồm cả **xin gia hạn**).
+3. 🟡 **CRUD sản phẩm**: Staff tạo/sửa được, nhưng **không có endpoint xoá** sản phẩm đã tạo nhầm.
+4. 🟡 **Màn "Đề tài được phân công" sắp xếp lộn xộn** — cần gom nhóm (theo loại vòng / trạng thái) hoặc sắp theo hạn/ngày họp gần nhất, thay vì đổ ra một mạch.
+
 ## ⏸ Chờ user quyết định (đừng tự làm — hỏi lại rồi mới làm)
 
 ### Q1. Tìm kiếm ngữ nghĩa (semantic) — LÀM, THAY, hay BỎ?

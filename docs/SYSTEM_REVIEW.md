@@ -43,7 +43,7 @@ Không phải thứ gì cũng nên cấu hình được. Mấy mã sau **là log
 7. **🟡 AI phụ thuộc Gemini config** — thiếu key thì nút AI (trích xuất/tóm tắt/semantic) hỏng; nên fallback rõ. (AI để phase sau.)
 8. **🟡 Thuật ngữ** — **vi đã chuẩn "đề cương"** (tuần 11); **en + docs còn lẫn** "proposal/đề xuất".
 9. **🟡 Test** — 90 test cấp service; **chưa E2E UI** thường xuyên. Seed mỏng → demo dễ vấp.
-10. **🟡 Báo cáo tiến độ khóa quá gắt** — nộp xong **KHÓA cứng** (UpdateAsync chỉ cho DRAFT), dù còn trong hạn `dueDate` & chưa ai đánh giá → PI lỡ sai không sửa được. **KHÔNG nhất quán** với sản phẩm (cho nộp lại đến khi ĐẠT) + báo cáo tổng kết (cho re-submit + request-revision). **Cần:** cho PI sửa/nộp lại kỳ báo cáo **khi chưa bị Staff đánh giá** (đánh giá xong mới khóa).
+10. ✅ **ĐÃ XỬ 05/08 — báo cáo tiến độ khóa quá gắt** — nộp xong **KHÓA cứng** (UpdateAsync chỉ cho DRAFT), dù còn trong hạn `dueDate` & chưa ai đánh giá → PI lỡ sai không sửa được. **KHÔNG nhất quán** với sản phẩm (cho nộp lại đến khi ĐẠT) + báo cáo tổng kết (cho re-submit + request-revision). **Cần:** cho PI sửa/nộp lại kỳ báo cáo **khi chưa bị Staff đánh giá** (đánh giá xong mới khóa).
 11. **🟡 Form nộp sản phẩm thiếu trường** — chỉ có `fileUrl` + `description`. Entity `ProjectDeliverable` **đã có** `TrialEvidenceUrl` (minh chứng thử nghiệm) + `ScientificRequirements` nhưng form không cho nhập → chưa đủ hồ sơ nghiệm thu (QĐ543 Điều 13.1). **Cần:** thêm ô minh chứng thử nghiệm khi nộp sản phẩm.
 
 ## 3. 💡 Ý tưởng để sau (backlog)

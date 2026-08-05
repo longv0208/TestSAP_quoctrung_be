@@ -105,17 +105,30 @@ public class CloudinaryFileStorage : IFileStorage
         Field("api_key", _apiKey);
         Field("signature", Sign(signed));
 
-        using var resp = await _http.PostAsync(
-            $"https://api.cloudinary.com/v1_1/{_cloudName}/raw/upload", form, ct);
-        var body = await resp.Content.ReadAsStringAsync(ct);
+        HttpResponseMessage resp;
+        try
+        {
+            resp = await _http.PostAsync(
+                $"https://api.cloudinary.com/v1_1/{_cloudName}/raw/upload", form, ct);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            // Mất mạng / DNS hỏng ⇒ KHÔNG chặn người dùng nộp bài. Lưu tạm xuống đĩa;
+            // đọc lại vẫn chạy vì OpenAsync đã có nhánh dự phòng đọc từ đĩa.
+            ms.Position = 0;
+            return await _legacyDisk.SaveAsync(blobName, ms, contentType, ct);
+        }
 
-        if (!resp.IsSuccessStatusCode)
-            throw new InvalidOperationException(
-                $"Không tải được file lên Cloudinary ({(int)resp.StatusCode}): {Trim(body)}");
+        using (resp)
+        {
+            var body = await resp.Content.ReadAsStringAsync(ct);
+            if (!resp.IsSuccessStatusCode)
+                throw new InvalidOperationException(
+                    $"Không tải được file lên Cloudinary ({(int)resp.StatusCode}): {Trim(body)}");
+        }
 
         // Cố ý KHÔNG trả secure_url của Cloudinary ra ngoài: caller ghi giá trị này vào
         // Document.StorageUrl, mà cột đó lại đi thẳng tới FE.
-        _ = body;
         return new StoredFile(blobName, DeliveryUrl(blobName));
     }
 
