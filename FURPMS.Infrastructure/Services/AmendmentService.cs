@@ -162,7 +162,11 @@ public class AmendmentService : IAmendmentService
         Status = a.Status,
         RequestedAt = a.RequestedAt,
         OldValue = a.OldValue,
-        NewValue = a.NewValue
+        NewValue = a.NewValue,
+        // PI xem "Đơn của tôi" chỉ gọi danh sách — thiếu 2 dòng này thì đơn bị từ chối
+        // mà không biết vì sao.
+        ReviewerComments = a.ReviewerComments,
+        ReviewedAt = a.ReviewedAt
     };
 
     private static AmendmentDetailResponse MapDetail(AmendmentRequest a) => new()

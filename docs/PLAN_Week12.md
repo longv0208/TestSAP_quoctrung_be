@@ -352,6 +352,33 @@ Nay: `ProposalSummaryDto` trả thêm `DurationMonths` → form tạo hợp đ�
 ⏸ **Chờ quyết định:** thêm nhóm trường định danh/ngân hàng của Bên B (cần migration + màn hồ sơ cá
 nhân cho PI khai) hay chấp nhận để trống trong bản Word rồi ký tay điền vào.
 
+
+### 🔴🔴 FE **chưa từng được typecheck** — phát hiện 05/08
+`tsconfig.json` ở gốc là **solution-style** (`"files": []` + `references`), nên `tsc --noEmit`
+không nạp file nào; còn `npm run build` = `vite build` dùng esbuild — chỉ **bóc** kiểu chứ **không
+kiểm**. Kiểm chứng: cố tình viết `const x: number = "chuoi"` → tsc **im lặng**.
+
+Nghĩa là mọi câu "typecheck xanh" trước đó **không có giá trị**. Chạy đúng lệnh
+(`tsc -p tsconfig.app.json --noEmit`) ra **43 lỗi**, trong đó có lỗi làm hỏng chức năng thật:
+
+| Lỗi | Hậu quả |
+|---|---|
+| `originalFileName` (BE trả `fileName`) ở 3 file | Tên file đính kèm hiện `undefined` |
+| `ProgressReport` thiếu `items` | Bảng BM06 không prefill được khi PI sửa |
+| `MyAmendmentsPage` dùng `reviewNotes` (đúng: `reviewerComments`) | PI **không thấy lý do Staff từ chối đơn** |
+| `useProposalAi` còn `onError` (TanStack Query **v5 đã bỏ**) | Kiểu trả về suy ra `{}` ⇒ cả `AiSummaryCard` hỏng kiểu |
+| `ApiResponse` thiếu type argument ở 8 chỗ | — |
+| Mock `SummaryResult`/`AiExtractionResult` theo shape CŨ | Chạy mock mode là crash |
+| `watch` dùng trước khi khai báo trong `CreateContractSheet` | **Trắng cả trang /contracts** (TDZ) |
+
+Đã sửa hết → **0 lỗi**. Chốt lại: `npm run build` nay **chạy typecheck trước** rồi mới build, và
+thêm `npm run typecheck`. Từ giờ "build xanh" mới thật sự có nghĩa.
+
+### 🔴 Link báo cáo tiến độ: danh sách có, chi tiết KHÔNG (sửa 05/08)
+`ReportFileUrl` chỉ được map ở `MapSummary`, quên `MapDetail`. Dialog đánh giá của Staff đọc
+**chi tiết** ⇒ luôn thấy null ⇒ báo đỏ "PI chưa nộp file báo cáo" và **khoá nút Lưu đánh giá**,
+dù PI đã nộp link hẳn hoi. Kiểm bằng API: danh sách trả `'abc.com'` còn chi tiết trả `None`.
+
 ## 📌 DANH SÁCH VIỆC — rà CRUD toàn hệ thống (05/08)
 
 ### A. 🔴 Sai vai — panel viết cho vai này bị tái dùng cho vai khác

@@ -12,14 +12,18 @@ public class AmendmentListResponse
     public DateTime RequestedAt { get; set; }
     public string? OldValue { get; set; }
     public string? NewValue { get; set; }
+    /// <summary>
+    /// Lý do Staff duyệt/từ chối. Nằm ở DANH SÁCH chứ không chỉ ở chi tiết: màn "Đơn của tôi" của
+    /// PI chỉ gọi danh sách, thiếu field này thì đơn bị từ chối mà PI không biết vì sao.
+    /// </summary>
+    public string? ReviewerComments { get; set; }
+    public DateTime? ReviewedAt { get; set; }
 }
 
 public class AmendmentDetailResponse : AmendmentListResponse
 {
     public decimal? ChangePercentage { get; set; }
     public bool RequiresRectorApproval { get; set; }
-    public string? ReviewerComments { get; set; }
-    public DateTime? ReviewedAt { get; set; }
 }
 
 public class CreateAmendmentRequest

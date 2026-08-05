@@ -316,6 +316,10 @@ public class ProgressReportService : IProgressReportService
         ContractId = r.ContractId,
         ReportRound = r.ReportRound,
         RoundName = r.RoundName,
+        // Phải map ở CẢ HAI mapper. Thiếu ở đây thì danh sách trả link mà chi tiết trả null —
+        // dialog đánh giá của Staff đọc chi tiết nên báo "PI chưa nộp file" và khoá nút lưu,
+        // dù PI đã nộp link hẳn hoi.
+        ReportFileUrl = r.ReportFileUrl,
         ReportingPeriodStart = r.ReportingPeriodStart.ToString("yyyy-MM-dd"),
         ReportingPeriodEnd = r.ReportingPeriodEnd.ToString("yyyy-MM-dd"),
         CompletedContent = r.CompletedContent,
