@@ -130,12 +130,34 @@ FURPMS.API/
   Controllers/    ~37 controllers (Auth, Users, Cycles, Proposals, ReviewBoard, Councils, Contracts, …)
   Middleware/     GlobalExceptionMiddleware.cs
 ```
-## Active Spec Documents (đọc `docs/README.md` §"Thứ tự đọc" để biết đọc theo trình tự nào)
+## Active Spec Documents
+
+> 📇 **Mục lục đầy đủ, xếp theo tác dụng: `docs/00_INDEX.md`** — mở file đó để biết doc nào dùng khi nào.
+
 - **Nghiệp vụ:** `docs/Process_Spec_v2.md` ← đọc trước khi code bất kỳ flow nào.
 - **API (bản giao kèo FE↔BE):** `docs/API_CONTRACT.md` — 8 nhóm chức năng; nguồn chính xác nhất vẫn là Swagger `:5068/swagger`.
 - **Tiến độ BE:** `docs/PROGRESS.md` — % từng nhóm + việc nên làm tiếp.
 - **Dữ liệu:** `docs/ERD_v3_Project_Centric.dbml` (sơ đồ DB duy nhất) · `docs/DB_Redesign_v3_PostReview2.md` (lý do refactor).
+- **Việc đang làm:** `docs/PLAN_Week13_Demo_0508.md` (mới nhất) → `docs/PLAN_Week12.md`.
 - Read relevant spec section BEFORE implementing any feature.
+
+### ⚖️ QĐ 543 là NGUỒN SỰ THẬT — bắt buộc đối chiếu (chốt 06/08)
+
+`docs/QD_543_DHFPT_Quy_dinh_quan_ly_de_tai_NCKH_clean.docx` là **văn bản pháp quy của trường**.
+Code không khớp với nó là **code sai**, không phải "khác biệt thiết kế".
+
+**Bắt buộc, không cần nhắc lại:**
+1. Trước khi code/sửa bất kỳ luồng nghiệp vụ, **quyết định ràng buộc, hoặc trả lời câu hỏi nghiệp vụ** → mở file .docx đó ra tra **nguyên văn**, đừng dựa vào trí nhớ hay doc trung gian.
+2. Doc trung gian (`Process_Spec_v2.md`, `QD543_Compliance.md`, `CLAUDE.md`…) **có thể chép sai**. Đã dính 1 lần: `Process_Spec_v2.md` ghi *"gia hạn tối đa 6 tháng"* trong khi **Điều 10.4** nguyên văn là *"gia hạn tối đa **1/2 tổng thời gian thực hiện**"* (6 chỉ đúng khi đề tài 12 tháng). Khi văn bản gốc và doc nội bộ lệch nhau → **văn bản gốc thắng**, và phải sửa doc nội bộ ngay trong cùng lượt.
+3. Khi trích dẫn, ghi rõ **Điều/khoản hoặc số biểu mẫu** (vd "QĐ543 Điều 10.4", "BM12 mục 10.1") để người sau kiểm lại được.
+4. Bảng map biểu mẫu ↔ code: `docs/QD543_Compliance.md` §2. Sửa code chạm biểu mẫu thì cập nhật bảng này.
+
+Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
+
+### 📕 Cẩm nang tránh lỗi Capstone — soi trước mỗi mốc Review
+`docs/Cam-nang-tranh-loi-Capstone-SE.pdf`. Hai điều rút ra phải áp dụng liên tục khi code:
+- **Không hardcode tham số nghiệp vụ.** Cẩm nang nói rõ *"sửa file appsettings rồi restart vẫn bị coi là hardcode"* — tham số phải nằm trong DB, có màn Admin sửa, sửa xong hiệu lực ngay. Câu hỏi kinh điển lúc bảo vệ: *"đổi con số này từ 70% lên 80%, demo ngay đi"*.
+- **Mọi `if` nghiệp vụ trong code phải có một Business Rule tương ứng, và ngược lại.** Lỗi hay bị bắt nhất: BR ghi một đằng, code không kiểm tra (vd tổng điểm bộ tiêu chí = 100 nhưng tạo được 120).
 
 ## Business Rule Decisions (không được tự đoán)
 

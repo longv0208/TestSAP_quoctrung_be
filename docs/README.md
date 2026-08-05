@@ -1,5 +1,7 @@
 # FURPMS — Mục lục tài liệu & Việc còn lại
 
+> 📇 **Không biết mở doc nào? → `00_INDEX.md`** — mục lục xếp theo tác dụng (5 tầng): tầng 1 là nguồn sự thật phải tuân theo (QĐ543), tầng 2 là việc đang làm, tầng 5 là lịch sử chỉ tra khi cần.
+>
 > 🆕 **MỚI NHẤT — `PLAN_Week13_Demo_0508.md`**: gộp 2 bản note của nhóm sau buổi demo với thầy **chiều 05/08/2026** — **43 đầu việc** chia 6 nhóm (hội đồng/chấm/biên bản · AI · hợp đồng-nghiệm thu-giải ngân · báo cáo · UI-i18n-data demo · business rule) + thứ tự đề xuất + **8 câu phải hỏi lại thầy/nhóm trước khi làm**. Đọc file này TRƯỚC `PLAN_Week12.md`.
 >
 > ⭐ **Nền trước đó: `PLAN_Week12.md`** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P7** (≈17/18 ý thầy, 94%); còn **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
@@ -113,6 +115,8 @@
 | File | Nội dung |
 |---|---|
 | `DB_Redesign_v3_PostReview2.md` | **★ Thiết kế DB v3 Project-centric theo biên bản Review 2** (a)–(e) → schema đích · bảng thay đổi từng thực thể · roadmap code Phase A/B · câu hỏi mở Q1–Q5. |
+| `00_INDEX.md` | **📇 MỤC LỤC — mở đầu tiên.** Xếp 26 file trong `docs/` theo 5 tầng tác dụng + đối chiếu cẩm nang tránh lỗi Capstone với hiện trạng dự án. |
+| `Cam-nang-tranh-loi-Capstone-SE.pdf` | Cẩm nang tránh lỗi bảo vệ Capstone (19 tr.): 6 nguyên nhân không đạt, lỗi hardcode/AI/BR, checklist D-14/D-7. |
 | `PLAN_Week13_Demo_0508.md` | **★★ Góp ý demo 05/08/2026** — bản gộp 2 note của nhóm, 43 đầu việc, đánh dấu ✅/🔶/⬜/❓ từng mục + mục "phải hỏi lại". |
 | `PLAN_Week12.md` | **★ Kế hoạch sau demo thầy 29/07** — P0–P8 + trạng thái từng mục + việc làm thêm ngoài kế hoạch. |
 | `ERD_v3_Project_Centric.dbml` | **★ ERD hiện hành (đã áp Phase A→L)** — dán vào dbdiagram.io (**62 bảng**: +project, cycle_track, project_round, council_project_assignment, contract_phase). **Sơ đồ DB DUY NHẤT** (các bản .dbml/.sql cũ đã xóa 15/07 — xem git nếu cần lịch sử). |
