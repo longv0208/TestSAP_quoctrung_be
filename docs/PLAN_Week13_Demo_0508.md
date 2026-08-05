@@ -9,6 +9,33 @@
 
 ---
 
+
+## ✅ Đã trộn PR #1 của nhóm (06/08) — lấp 4 lỗ hổng có sẵn trong doc
+
+PR `immanhdung/FURPMS-Web#1` "4 module ưu tiên" tách nhánh từ `c4b929f` (13 ngày trước) nên `dev`
+đã đi rất xa. Trộn lại chỉ xung đột 2 file (`AppRouter.tsx`, `nav.ts`) — **cả hai bên chỉ THÊM
+mục, không ai sửa của ai** nên giữ cả hai.
+
+| Module PR mang vào | Lỗ hổng nó lấp |
+|---|---|
+| `AcademicProfileCard` + `/users/{id}/profile` | **Lý lịch khoa học (QĐ543 Điều 6.4)** — `PROGRESS.md` đang ghi *"BE có chỗ nộp; FE chưa có UI"* |
+| `ChangeRequestsPanel` · `CreateChangeRequestSheet` · `PendingChangeRequestsPanel` | **BM07 "Phiếu đề nghị thay đổi"** (`ProposalChangeRequest`) — `PLAN_Week12` §C ghi *"BE có 4 endpoint, FE ❌ chưa có màn nào"* |
+| `DocumentRepositoryPage` | Kho tài liệu toàn hệ thống |
+| `ProposalExportMenu` | Xuất thuyết minh (Word) / dự toán (Excel) |
+
+⚠️ PR viết khi **typecheck còn hỏng** (xem mục dưới) nên mang theo **9 lỗi kiểu**, đã sửa hết
+trước khi trộn — đáng chú ý: `zod .default(0)` làm kiểu **input** lệch kiểu **output** khiến
+`resolver` của `react-hook-form` không khớp; và `EmptyState` nhận `icon` là **component** nhưng PR
+truyền **element đã render**.
+
+Đã đối chiếu **6 endpoint** PR gọi với BE đang chạy: `/change-requests/pending`, `/documents`,
+`/users/{id}/profile`, `/proposals/{id}/change-requests`, `/proposals/{id}/export/scientific`,
+`/proposals/{id}/export/budget` — **tất cả trả 200**.
+
+**Ảnh hưởng tới kế hoạch:** mục **C2/F2** (quan hệ giữa `ProposalChangeRequest` — đổi ĐỀ CƯƠNG,
+theo BM07 — và `AmendmentRequest` — đổi HỢP ĐỒNG) nay **gấp hơn**, vì cả hai đều đã có UI. Phải
+chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà không biết dùng cái nào.
+
 ## 0. Đọc nhanh — 6 nhóm lớn
 
 | Nhóm | Số ý | Nặng nhất |
