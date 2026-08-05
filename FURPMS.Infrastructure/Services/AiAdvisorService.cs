@@ -165,20 +165,43 @@ Tổng kinh phí: {p.TotalBudget:#,##0} VND");
         var criteriaText = string.Join("\n",
             criteria.Select(c => $"- id={c.Id} | {c.CriterionName} | điểm tối đa {c.MaxScore}"));
 
-        var raw = await _gemini.GenerateTextAsync($@"Bạn hỗ trợ thành viên hội đồng chấm đề tài nghiên cứu. Với TỪNG tiêu chí dưới đây, hãy đề xuất một mức điểm và lý do ngắn (1-2 câu) dựa trên nội dung đề cương.
+        /*
+         * Gợi ý chấm cũng phải đọc FILE đề cương như tóm tắt (B1/B5 — thầy 05/08:
+         * *"gợi ý chấm điểm phải đảm bảo AI chấm đúng dựa trên tiêu chí"*).
+         * Chấm dựa trên mấy dòng form gõ vội thì điểm đề xuất không có căn cứ.
+         */
+        var file = await _documents.GetLatestProposalFileAsync(proposalId);
+
+        var prompt = $@"Bạn hỗ trợ thành viên hội đồng chấm đề tài nghiên cứu khoa học cấp trường.
+{(file != null
+    ? "Kèm theo là FILE đề cương gốc — đọc file làm căn cứ CHÍNH, phần biểu mẫu bên dưới chỉ để đối chiếu."
+    : "KHÔNG có file đề cương đính kèm — chỉ dựa vào phần biểu mẫu bên dưới.")}
+
+Với TỪNG tiêu chí dưới đây, đề xuất một mức điểm và lý do ngắn (1-2 câu) BÁM SÁT tên tiêu chí đó.
 Trả về DUY NHẤT một mảng JSON, không markdown, dạng:
 [{{""criterionId"":<id>,""suggestedScore"":<số>,""comment"":""<lý do>""}}]
-Điểm phải nằm trong khoảng 0 đến điểm tối đa của tiêu chí đó.
+
+Quy tắc chấm:
+- Điểm mỗi tiêu chí phải nằm trong [0, điểm tối đa của chính tiêu chí đó].
+- Phải chấm ĐỦ {criteria.Count} tiêu chí, không bỏ sót, không tự thêm tiêu chí ngoài danh sách.
+- Tổng thang điểm của bộ này là {criteria.Sum(c => c.MaxScore):0.##}.
+- Lý do phải nói về ĐÚNG khía cạnh của tiêu chí, không nhận xét chung chung về cả đề tài.
+- Thiếu thông tin để đánh giá một tiêu chí thì cho điểm thấp và nói rõ là thiếu gì.
 
 TIÊU CHÍ:
 {criteriaText}
 
-ĐỀ CƯƠNG:
+BIỂU MẪU ĐÃ ĐIỀN:
 Tên: {proposal.TitleVi}
 Mục tiêu: {proposal.ResearchObjectives}
 Phương pháp: {proposal.Methodology}
 Sản phẩm dự kiến: {proposal.ExpectedOutput}
-Thời gian: {proposal.DurationMonths} tháng");
+Thời gian: {proposal.DurationMonths} tháng";
+
+        var raw = file == null
+            ? await _gemini.GenerateTextAsync(prompt)
+            : await GeminiFileInput.AskAboutFileAsync(
+                _gemini, file.Value.Content, file.Value.FileName, file.Value.ContentType, prompt);
 
         var parsed = ParseScores(raw);
 
