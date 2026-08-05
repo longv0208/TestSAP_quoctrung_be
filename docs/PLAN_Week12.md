@@ -229,6 +229,25 @@ hiện tại→đề nghị · lý do). Bao gồm **xin gia hạn** (QĐ543: t�
 2. **Upload chết khi mạng/DNS tới Cloudinary hỏng** ("không reach được server"). Nay **tự rơi về đĩa local**;
    đọc lại vẫn chạy vì `OpenAsync` đã có nhánh dự phòng đọc đĩa. Người dùng không bị chặn nộp bài.
 
+### ⚠️ Duyệt điều chỉnh: CHỈ "gia hạn" được hệ thống tự áp dụng (rà 05/08)
+User hỏi *"staff đồng ý rồi thì điều chỉnh kiểu gì?"* — soi `AmendmentService.ApproveAsync`:
+
+| Loại (seed) | Duyệt xong hệ thống làm gì |
+|---|---|
+| `EXTENSION` — Gia hạn thời gian | ✅ **Tự cộng tháng** vào `contract.EndDate`, chặn vượt `MaxExtensionMonths` (QĐ543: ≤6 tháng) |
+| `BUDGET_ADJUST` · `SCOPE_CHANGE` · `TEAM_CHANGE` · `OTHER` | ⚠️ **Chỉ đổi status thành APPROVED** — không sửa gì trong hệ thống. Staff phải tự vào chỗ tương ứng chỉnh tay, mà **có chỗ còn chưa chỉnh được** |
+
+🔴 **Lỗi im lặng đã sửa:** `ApplyExtensionIfNeededAsync` **`return` lặng lẽ** khi `NewValue` không phải số nguyên dương (PI gõ *"3 tháng"* thay vì *"3"*) ⇒ Staff bấm Duyệt, hệ thống báo thành công, **nhưng hạn hợp đồng không hề đổi và không ai biết**. Nay báo lỗi rõ; FE cũng đổi ô nhập thành **kiểu số** (1–6) khi chọn loại Gia hạn.
+
+**Còn phải quyết:** 4 loại kia có nên tự áp dụng không? Ví dụ `TEAM_CHANGE` → sửa `project_member`; `BUDGET_ADJUST` → rule #15 đã bỏ quản tiền nên có thể **chỉ lưu hồ sơ là đủ**. Cần chốt trước khi code.
+
+### ✅ Sửa lỗi vỡ layout ở màn hẹp (05/08)
+Thu nhỏ cửa sổ (~820px) thì **chữ lòi khỏi khung, breadcrumb xuống 3 dòng**. Ba nguyên nhân chồng nhau:
+1. Cột nội dung dùng `flex-1` mà **thiếu `min-w-0`** — flex item mặc định `min-width:auto` nên không co dưới bề rộng nội dung.
+2. Breadcrumb không `truncate`, icon không `shrink-0`.
+3. Ô tìm kiếm `w-56` **cố định** hiện từ `sm` — chính nó đẩy header tràn. Nay dưới `lg` dùng nút icon.
+*(Bắt bằng script đo `scrollWidth > clientWidth` ở viewport 820px, không phải nhìn bằng mắt.)*
+
 ### 📋 Việc user nêu 05/08 — chưa làm, ghi lại để không rơi
 1. **Quản lý hội đồng chưa phải CRUD.** Màn "Hội đồng" hiện chỉ là **danh sách đề cương** y hệt màn "Xét duyệt đề cương"
    (cùng cột, cùng nút) ⇒ **thừa và gây nhầm**. Cần đổi thành nơi quản lý **chính các hội đồng**: xem/thêm/sửa/xoá hội đồng

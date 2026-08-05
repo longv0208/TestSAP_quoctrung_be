@@ -119,8 +119,13 @@ public class AmendmentService : IAmendmentService
 
     private async Task ApplyExtensionIfNeededAsync(AmendmentRequest amendment)
     {
+        // Trước đây chỗ này `return` LẶNG LẼ khi NewValue không phải số nguyên dương
+        // (PI gõ "3 tháng" thay vì "3") ⇒ Staff bấm Duyệt, hệ thống báo thành công,
+        // nhưng hạn hợp đồng KHÔNG hề đổi và không ai biết. Phải báo lỗi rõ.
         if (!int.TryParse(amendment.NewValue, out int extensionMonths) || extensionMonths <= 0)
-            return;
+            throw new ArgumentException(
+                "Yêu cầu gia hạn phải ghi SỐ THÁNG ở ô \"Giá trị đề nghị\" (ví dụ: 3). " +
+                $"Hiện đang là \"{amendment.NewValue}\" — không áp dụng được.");
 
         var contract = amendment.Contract
             ?? await _contracts.Query().FirstOrDefaultAsync(c => c.Id == amendment.ContractId);
