@@ -433,6 +433,80 @@ public class ReviewScoringService : IReviewScoringService
         }
     }
 
+
+    /// <summary>
+    /// QĐ543 **BM12 mục 10.1**: *"Số phiếu phát ra … thu về … hợp lệ … không hợp lệ;
+    /// Kết quả đánh giá: **Đạt** … **Không đạt** …"*.
+    ///
+    /// Trước đây màn biên bản chỉ có 4 ô (thành viên · có mặt · phiếu hợp lệ · điểm TB) nên Thư ký
+    /// không có số để điền vào biểu mẫu, và không ai biết điểm nào của ai.
+    ///
+    /// Vòng XÉT DUYỆT chấm điểm (BM03 thang 100), vòng NGHIỆM THU chỉ Đạt/Không đạt (BM11 không
+    /// có thang điểm) — nên trả cả hai kiểu, phía nào không dùng thì để null.
+    /// </summary>
+    public async Task<BallotTallyDto> GetBallotTallyAsync(Guid councilId, Guid? projectId)
+    {
+        var council = await _review.Query().Include(c => c.Members).ThenInclude(m => m.User)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        var pid = await ResolveProjectIdAsync(councilId, projectId);
+        var isAcceptance = await IsAcceptanceCouncilAsync(council);
+
+        var scores = await _review.ReviewScores
+            .Include(sc => sc.Template)
+            .Where(sc => sc.CouncilId == councilId && sc.ProjectId == pid && sc.SubmittedAt != null)
+            .ToListAsync();
+        var scoreTotals = await _review.ReviewScoreDetails
+            .Where(d => scores.Select(sc => sc.Id).Contains(d.ScoreId))
+            .GroupBy(d => d.ScoreId)
+            .Select(g => new { ScoreId = g.Key, Total = g.Sum(d => d.GivenScore) })
+            .ToDictionaryAsync(x => x.ScoreId, x => x.Total);
+
+        var evals = await _review.AcceptanceEvaluations
+            .Where(e => e.CouncilId == councilId && e.ProjectId == pid && e.SubmittedAt != null)
+            .ToListAsync();
+
+        var ballots = new List<MemberBallotDto>();
+        foreach (var m in council.Members.OrderBy(m => m.MemberRole))
+        {
+            var sc = scores.FirstOrDefault(x => x.EvaluatorMemberId == m.Id);
+            var ev = evals.FirstOrDefault(x => x.EvaluatorMemberId == m.Id);
+            ballots.Add(new MemberBallotDto
+            {
+                MemberId = m.Id,
+                MemberName = m.User?.FullName ?? "—",
+                MemberRole = m.MemberRole,
+                HasSubmitted = sc != null || ev != null,
+                IsValidBallot = ev?.IsValidBallot ?? sc?.IsValidBallot ?? false,
+                TotalScore = sc != null && scoreTotals.TryGetValue(sc.Id, out var t) ? t : null,
+                MaxScore = sc?.Template?.MaxTotalScore,
+                Result = ev?.Result,
+                Comments = ev?.FailReason ?? sc?.GeneralComments,
+                SubmittedAt = ev?.SubmittedAt ?? sc?.SubmittedAt
+            });
+        }
+
+        var returned = ballots.Count(b => b.HasSubmitted);
+        var validTotals = ballots.Where(b => b.IsValidBallot && b.TotalScore.HasValue)
+            .Select(b => b.TotalScore!.Value).ToList();
+
+        return new BallotTallyDto
+        {
+            CouncilId = councilId,
+            ProjectId = pid,
+            IsAcceptanceRound = isAcceptance,
+            TotalMembers = council.Members.Count,      // = số phiếu phát ra
+            BallotsReturned = returned,
+            ValidBallots = ballots.Count(b => b.HasSubmitted && b.IsValidBallot),
+            InvalidBallots = ballots.Count(b => b.HasSubmitted && !b.IsValidBallot),
+            PassCount = ballots.Count(b => b.Result == ReviewResult.Approved || b.Result == "PASS" || b.Result == "PASSED"),
+            FailCount = ballots.Count(b => b.Result == ReviewResult.Rejected || b.Result == "FAIL" || b.Result == "FAILED"),
+            AverageScore = validTotals.Count > 0 ? Math.Round(validTotals.Average(), 2) : null,
+            Ballots = ballots
+        };
+    }
+
     /// <summary>
     /// Điều kiện họp hợp lệ theo QĐ543 — **Điều 8.3.b** (Hội đồng Xét duyệt) và **Điều 12.3.b**
     /// (Hội đồng Nghiệm thu):

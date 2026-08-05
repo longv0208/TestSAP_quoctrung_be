@@ -87,6 +87,15 @@ public class ReviewScoringController : ControllerBase
         return Ok(ApiResponse<CouncilDecisionDto>.Ok(result));
     }
 
+    // GET /api/review-scoring/councils/{councilId}/ballot-tally — BM12 mục 10.1:
+    // kết quả bỏ phiếu chi tiết từng thành viên (ai chấm, vai gì, bao nhiêu điểm, Đạt/Không đạt).
+    [HttpGet("councils/{councilId:guid}/ballot-tally")]
+    public async Task<IActionResult> GetBallotTally(Guid councilId, [FromQuery] Guid? projectId)
+    {
+        var result = await _scoring.GetBallotTallyAsync(councilId, projectId);
+        return Ok(ApiResponse<BallotTallyDto>.Ok(result));
+    }
+
     // POST /api/review-scoring/councils/{councilId}/minutes — Thư ký soạn/sửa biên bản (nháp)
     [HttpPost("councils/{councilId:guid}/minutes")]
     public async Task<IActionResult> SaveMinutes(Guid councilId, [FromBody] SaveMinutesRequest request)

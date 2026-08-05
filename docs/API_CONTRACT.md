@@ -665,6 +665,14 @@ Key hiện có:
 - Một số sub-resource (research-contents, expected-products, labor details) BE đã có nhưng FE cũ chưa dùng hết — Swagger có đủ.
 - Khi cần biết chính xác field của 1 request/response: mở **Swagger**, mục tương ứng có schema + ví dụ.
 
+### Kết quả bỏ phiếu chi tiết — BM12 mục 10.1 (mới 06/08)
+`GET /api/review-scoring/councils/{councilId}/ballot-tally?projectId=` → `BallotTallyDto`:
+`totalMembers` (= **số phiếu phát ra**) · `ballotsReturned` · `validBallots` · `invalidBallots` ·
+`passCount` / `failCount` (vòng NGHIỆM THU) · `averageScore` · `isAcceptanceRound` ·
+`ballots[]` gồm `{ memberId, memberName, memberRole, hasSubmitted, isValidBallot, totalScore, maxScore, result, comments, submittedAt }`.
+
+Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … hợp lệ … không hợp lệ; Kết quả đánh giá: Đạt … Không đạt …"*. Trước đây biên bản chỉ có 4 ô nên Thư ký không có số để điền vào biểu mẫu, và không ai biết điểm nào của ai. Vòng XÉT DUYỆT trả `totalScore` (BM03 thang 100), vòng NGHIỆM THU trả `result` Đạt/Không đạt (BM11 không có thang điểm).
+
 ### Hình thức họp — chỉ còn 2 giá trị (mới 06/08)
 `platform` nay chỉ nhận/trả **`IN_PERSON`** hoặc **`ONLINE`**. Giá trị cũ `GOOGLE_MEET`/`TEAMS`/`ZOOM` **vẫn nhận được** ở request và được map về `ONLINE`; khi đọc cũng quy về `ONLINE` — **không cần migration**. Offline vẫn bắt buộc `location`, online giữ `meetingLink`.
 

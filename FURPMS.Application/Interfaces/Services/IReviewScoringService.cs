@@ -14,4 +14,6 @@ public interface IReviewScoringService
     Task<CouncilDecisionDto> SaveMinutesAsync(Guid councilId, Guid secretaryUserId, SaveMinutesRequest request);
     Task<CouncilDecisionDto> ApproveMinutesAsync(Guid councilId, Guid chairUserId);
     Task<CouncilDecisionDto?> GetDecisionAsync(Guid councilId);
+    /// <summary>BM12 mục 10.1 — kết quả bỏ phiếu chi tiết từng thành viên.</summary>
+    Task<BallotTallyDto> GetBallotTallyAsync(Guid councilId, Guid? projectId);
 }
