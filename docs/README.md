@@ -1,6 +1,8 @@
 # FURPMS — Mục lục tài liệu & Việc còn lại
 
-> ⭐ **ĐANG Ở ĐÂU? Đọc `PLAN_Week12.md` trước** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P7** (≈17/18 ý thầy, 94%); còn **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
+> 🆕 **MỚI NHẤT — `PLAN_Week13_Demo_0508.md`**: gộp 2 bản note của nhóm sau buổi demo với thầy **chiều 05/08/2026** — **43 đầu việc** chia 6 nhóm (hội đồng/chấm/biên bản · AI · hợp đồng-nghiệm thu-giải ngân · báo cáo · UI-i18n-data demo · business rule) + thứ tự đề xuất + **8 câu phải hỏi lại thầy/nhóm trước khi làm**. Đọc file này TRƯỚC `PLAN_Week12.md`.
+>
+> ⭐ **Nền trước đó: `PLAN_Week12.md`** — kế hoạch sau demo thầy 29/07 + trạng thái từng mục. Xong **P0–P7** (≈17/18 ý thầy, 94%); còn **P8** (AI) — user chủ động hoãn để test trước. % theo nhóm chức năng ở `PROGRESS.md`.
 >
 > ⏸ **Đang chờ user chốt:** `PLAN_Week12.md` → mục **"Chờ user quyết định"** — **Q1** tìm kiếm ngữ nghĩa (bỏ / thay bằng tìm kiếm nâng cao / làm thật) · **Q2** AI cho từng role *(đã xử lý)* · **Q3** chuẩn hoá validate ở FE · **Q4** Google Calendar/Meet (cần đăng ký OAuth, có bẫy refresh token 7 ngày) · **Q5** 🔴 **deploy thật: Render xoá sạch file upload mỗi lần redeploy** — phải đổi sang storage ngoài trước khi deploy. Đừng tự làm, hỏi lại trước.
 >
@@ -111,6 +113,7 @@
 | File | Nội dung |
 |---|---|
 | `DB_Redesign_v3_PostReview2.md` | **★ Thiết kế DB v3 Project-centric theo biên bản Review 2** (a)–(e) → schema đích · bảng thay đổi từng thực thể · roadmap code Phase A/B · câu hỏi mở Q1–Q5. |
+| `PLAN_Week13_Demo_0508.md` | **★★ Góp ý demo 05/08/2026** — bản gộp 2 note của nhóm, 43 đầu việc, đánh dấu ✅/🔶/⬜/❓ từng mục + mục "phải hỏi lại". |
 | `PLAN_Week12.md` | **★ Kế hoạch sau demo thầy 29/07** — P0–P8 + trạng thái từng mục + việc làm thêm ngoài kế hoạch. |
 | `ERD_v3_Project_Centric.dbml` | **★ ERD hiện hành (đã áp Phase A→L)** — dán vào dbdiagram.io (**62 bảng**: +project, cycle_track, project_round, council_project_assignment, contract_phase). **Sơ đồ DB DUY NHẤT** (các bản .dbml/.sql cũ đã xóa 15/07 — xem git nếu cần lịch sử). |
 | `Review2_Diagrams.md` | Bộ diagram: Context · Architecture · **System Overview (§2b)** · State Machine · ERD rút gọn (§6) + **Logical ERD đầy đủ (§6b — có sản phẩm/giải ngân, Proposal→n Contract)** · Use Case · **Activity (§9)** + đánh giá DB/code (§7). |

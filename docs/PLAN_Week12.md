@@ -1,3 +1,7 @@
+> ⚠️ **File này là kế hoạch sau demo 29/07.** Buổi demo **05/08/2026** đã có góp ý MỚI —
+> xem `PLAN_Week13_Demo_0508.md` (43 đầu việc). Nhiều mục "chờ quyết định" ở cuối file này
+> đã được thầy chốt hướng trong buổi 05/08.
+
 # Kế hoạch tuần 12 — sau demo & góp ý thầy (29/07/2026)
 
 > Nguồn: note của 2 bạn trong buổi demo chiều 29/07 (có trùng lặp, đã gộp) + lỗi phát hiện khi demo trực tiếp + backlog đang dang dở ở `SYSTEM_REVIEW.md`.
