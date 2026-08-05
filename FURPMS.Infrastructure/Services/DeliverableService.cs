@@ -82,6 +82,27 @@ public class DeliverableService : IDeliverableService
         return Map(saved ?? deliverable);
     }
 
+    /// <summary>
+    /// Chỉ nhận đường dẫn nội bộ (BE sinh sau khi upload, bắt đầu bằng "/") hoặc link http(s) đầy đủ.
+    /// Trước đây nhận nguyên xi mọi chuỗi ⇒ PI gõ "abc.com" vẫn lưu được, nhưng thiếu scheme thì
+    /// trình duyệt hiểu là đường dẫn TƯƠNG ĐỐI: người nghiệm thu bấm vào chỉ ra trang trống,
+    /// tưởng là chưa có sản phẩm.
+    /// </summary>
+    private static string NormalizeFileUrl(string? raw, string label)
+    {
+        var url = raw?.Trim() ?? "";
+        if (url.Length == 0)
+            throw new ArgumentException($"Chưa có đường dẫn {label}.");
+        if (url.StartsWith('/'))
+            return url;
+        if (!url.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            && !url.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            url = "https://" + url;
+        if (!Uri.TryCreate(url, UriKind.Absolute, out _))
+            throw new ArgumentException($"Đường dẫn {label} không hợp lệ: \"{raw}\".");
+        return url;
+    }
+
     public async Task<DeliverableResponse> SubmitAsync(
         int deliverableId, SubmitDeliverableRequest request, Guid submittedBy)
     {
@@ -90,11 +111,11 @@ public class DeliverableService : IDeliverableService
             .FirstOrDefaultAsync(x => x.Id == deliverableId)
             ?? throw new KeyNotFoundException($"Deliverable {deliverableId} not found.");
 
-        d.FileUrl = request.FileUrl;
+        d.FileUrl = NormalizeFileUrl(request.FileUrl, "sản phẩm");
         d.Description = request.Description ?? d.Description;
         // Chỉ ghi đè khi PI thật sự nộp minh chứng mới — nộp lại mà bỏ trống thì giữ bản cũ.
         if (!string.IsNullOrWhiteSpace(request.TrialEvidenceUrl))
-            d.TrialEvidenceUrl = request.TrialEvidenceUrl;
+            d.TrialEvidenceUrl = NormalizeFileUrl(request.TrialEvidenceUrl, "minh chứng thử nghiệm");
         d.SubmittedAt = _clock.UtcNow;
         d.AcceptanceStatus = AcceptanceStatus.Pending;
         await _contracts.SaveChangesAsync();

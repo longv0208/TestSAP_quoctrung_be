@@ -281,6 +281,26 @@ Thu nhỏ cửa sổ (~820px) thì **chữ lòi khỏi khung, breadcrumb xuống
 3. 🟡 **CRUD sản phẩm**: Staff tạo/sửa được, nhưng **không có endpoint xoá** sản phẩm đã tạo nhầm.
 4. 🟡 **Màn "Đề tài được phân công" sắp xếp lộn xộn** — cần gom nhóm (theo loại vòng / trạng thái) hoặc sắp theo hạn/ngày họp gần nhất, thay vì đổ ra một mạch.
 
+
+### 🧠 Tóm tắt AI đọc gì? — **chỉ trường nhập tay, KHÔNG đọc file** (chốt 05/08)
+`AiSummaryService.BuildPrompt` ghép prompt từ **các trường cấu trúc PI đã điền**: tên đề tài, loại
+NC, số tháng, mục tiêu, phương pháp/nội dung, sản phẩm dự kiến, thành viên, tổng kinh phí. DTO trả
+`source: "textFields"`, `sourceFileName: null` — **file đính kèm không hề được đưa vào prompt.**
+
+Hệ quả cần biết trước khi demo:
+- Đề cương nộp theo **Đường A (nhập tay)** → tóm tắt đủ ý, dùng được.
+- Nộp theo **Đường B (upload + AI prefill)** mà PI để form sơ sài, nội dung thật nằm trong file
+  Word/PDF → tóm tắt sẽ **nghèo nàn/lệch**, vì AI không nhìn thấy file đó.
+- Ống dẫn đọc file **đã có sẵn** (`GeminiFileInput`: PDF gửi inline, .docx bóc text OpenXml — đang
+  dùng cho luồng trích xuất đề cương). Muốn tóm tắt bám file thì nối lại là xong, chưa làm vì chưa
+  chốt: tóm tắt **file** hay tóm tắt **form**, hay ghép cả hai rồi nêu chỗ vênh.
+- ⏸ **Chờ quyết định:** giữ nguyên (tóm tắt form) / đổi sang đọc file / ghép cả hai.
+
+### 🏷 Bỏ nhãn "Khoa học" ở màn Hội đồng & Chấm (xong 05/08)
+Rule #16 bỏ phương diện FINANCE ⇒ mọi vòng đều `SCIENCE`. Nhãn chỉ còn đúng một giá trị mà vẫn dán
+lên chip từng vòng + dòng tiêu đề. Thay bằng **loại vòng** (Xét duyệt đề cương / Nghiệm thu) — đó
+mới là thứ phân biệt các vòng với nhau. `dimension` vẫn giữ trong DB/API, chỉ ngừng hiển thị.
+
 ## 📌 DANH SÁCH VIỆC — rà CRUD toàn hệ thống (05/08)
 
 ### A. 🔴 Sai vai — panel viết cho vai này bị tái dùng cho vai khác

@@ -550,7 +550,7 @@ Key hiện có:
 | GET | `/api/disbursements/{id}/evidence/{documentId}/download` | Admin, Staff | Tải/mở file minh chứng (cần Bearer) |
 
 ### Sản phẩm — `/api/deliverables`
-| POST | `/api/deliverables/{id}/submit` | * (PI) | Nộp sản phẩm (`{ fileUrl, description?, acceptanceStatus, qualityAssessment? }`) |
+| POST | `/api/deliverables/{id}/submit` | * (PI) | Nộp sản phẩm (`{ fileUrl, trialEvidenceUrl?, description? }`). **Tuần 12 — chuẩn hoá URL:** `fileUrl`/`trialEvidenceUrl` chỉ nhận đường dẫn nội bộ (`/…` do BE sinh sau upload) hoặc link http(s); thiếu scheme thì BE **tự thêm `https://`**, không parse được → 400. Trước đây nhận nguyên xi mọi chuỗi (vd `abc.com`) ⇒ người nghiệm thu bấm vào ra trang trống. |
 | POST | `/api/deliverables/{id}/evaluate` | Admin, Staff | Đánh giá (`{ acceptanceStatus: "PASSED"|"FAILED", qualityAssessment? }`) |
 
 ### Điều chỉnh — `/api/amendments`
@@ -665,7 +665,7 @@ Key hiện có:
 | Method | Path | Mô tả |
 |---|---|---|
 | GET | `/api/proposals/{id}/summary` | Lấy tóm tắt AI hiện có (null nếu chưa tạo) |
-| POST | `/api/proposals/{id}/generate-summary` | Sinh tóm tắt mới bằng Gemini |
+| POST | `/api/proposals/{id}/generate-summary` | Sinh tóm tắt mới bằng Gemini. ⚠️ **Nguồn = CÁC TRƯỜNG PI ĐÃ NHẬP** (tên đề tài, loại NC, thời gian, mục tiêu, phương pháp, sản phẩm dự kiến, thành viên, tổng kinh phí) — **KHÔNG đọc file đính kèm** (`AiSummaryService.BuildPrompt`, DTO trả `source: "textFields"`). Đề cương nộp theo Đường A (nhập tay) thì tóm tắt đủ; nộp theo Đường B mà form sơ sài, nội dung chỉ nằm trong file Word/PDF thì tóm tắt sẽ nghèo nàn. |
 | PATCH | `/api/proposals/{id}/summary` | Sửa lại nội dung tóm tắt (`{ editedText }`) |
 
 > Cần cấu hình **`GeminiAI:ApiKey`** (đặt trong `appsettings.Development.json` đã gitignore, hoặc biến môi trường `GeminiAI__ApiKey`). Kết quả lưu ở bảng `llm_outputs`. Chưa cấu hình key → trả lỗi rõ ("Hết hạn mức/Key bị từ chối…").
