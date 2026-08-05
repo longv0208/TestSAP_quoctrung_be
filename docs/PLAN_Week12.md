@@ -281,6 +281,51 @@ Thu nhỏ cửa sổ (~820px) thì **chữ lòi khỏi khung, breadcrumb xuống
 3. 🟡 **CRUD sản phẩm**: Staff tạo/sửa được, nhưng **không có endpoint xoá** sản phẩm đã tạo nhầm.
 4. 🟡 **Màn "Đề tài được phân công" sắp xếp lộn xộn** — cần gom nhóm (theo loại vòng / trạng thái) hoặc sắp theo hạn/ngày họp gần nhất, thay vì đổ ra một mạch.
 
+## 📌 DANH SÁCH VIỆC — rà CRUD toàn hệ thống (05/08)
+
+### A. 🔴 Sai vai — panel viết cho vai này bị tái dùng cho vai khác
+**Mẫu lỗi lặp lại 3 lần**, không phải ca lẻ: panel nhúng trong màn Hợp đồng của Staff nhưng
+không gác hành động theo vai ⇒ **Staff làm hộ PI**.
+
+| Panel | Hành động sai vai | Trạng thái |
+|---|---|---|
+| `FinalReportPanel` | Staff nộp hộ báo cáo tổng kết (BM09 là của PI) | ✅ sửa — thêm `canSubmitReport` |
+| `AmendmentsPanel` | Staff tự xin điều chỉnh rồi tự duyệt | ✅ sửa — thêm `canRequest` |
+| `DeliverablesPanel` | Staff bấm "Nộp lại" sản phẩm hộ PI | ✅ sửa — thêm `canSubmit` |
+| `DisbursementsPanel` · `SettlementPanel` | **CHƯA RÀ** | ⬜ |
+
+### B. 🔴 CRUD thiếu — đếm từ code, không phỏng đoán
+**26/38 controller không có endpoint XOÁ.** Có cái không cần (Auth, Admin-tools, AI), nhưng
+những cái sau là **thiếu thật, chặn nghiệp vụ**:
+
+| Thực thể | Thiếu | Hậu quả |
+|---|---|---|
+| **Hợp đồng** | ❌ **không có cả SỬA lẫn XOÁ** (`ContractsController` chỉ có GET/POST/sign) | Staff tạo hợp đồng sai là **kẹt vĩnh viễn**, chỉ có cách tạo cái mới |
+| **Sản phẩm** | ❌ xoá | Thêm nhầm không gỡ được |
+| **Thành viên đề tài** | ❌ xoá | Không loại được thành viên |
+| **Kỳ báo cáo tiến độ** | ❌ xoá | Staff sinh thừa kỳ là kẹt |
+| **Lịch họp hội đồng** | ❌ xoá | Huỷ buổi họp không được |
+| **Master data** (đơn vị · loại sản phẩm · vai trò nhân sự · hạng mục chi · cấu hình tài chính) | ❌ xoá | Nhập sai là nằm đó mãi |
+
+### C. ⚠️ Điều chỉnh hợp đồng — chỉ 1/5 loại thật sự có tác dụng
+- ✅ **Gia hạn**: BE cộng tháng vào `EndDate`, chặn vượt `MaxExtensionMonths`. **Đã kiểm bằng API: `end` đổi từ `2027-01-08` → `2027-04-08`.**
+- ⚠️ **4 loại kia** (kinh phí · nội dung NC · thành viên · khác): duyệt xong **chỉ đổi status**, hệ thống không sửa gì.
+- 📄 **QĐ543 CÓ quy định**: `QD543_Compliance.md` ghi **BM07 "Phiếu đề nghị thay đổi"** → ánh xạ `ProposalChangeRequest` — **BE có 4 endpoint, FE ❌ chưa có màn nào**.
+  ⚠️ Nghĩa là hệ thống đang có **HAI cơ chế thay đổi song song**: `ProposalChangeRequest` (đổi ĐỀ CƯƠNG, theo BM07) và `AmendmentRequest` (đổi HỢP ĐỒNG). **Cần chốt phân vai** kẻo trùng lặp.
+- **Đề xuất:** giữ tự-động cho **gia hạn**; `BUDGET_ADJUST` chỉ lưu hồ sơ (rule #15 đã bỏ quản tiền); `TEAM_CHANGE`/`SCOPE_CHANGE` nối vào BM07 thay vì làm riêng.
+
+### D. ✅ Vừa sửa (05/08)
+- 🔴 **Duyệt gia hạn xong màn hình vẫn hiện hạn cũ** — FE **không invalidate** query hợp đồng ⇒ người dùng tưởng duyệt không có tác dụng. Nay invalidate + **hiện nhãn "Đã gia hạn — hạn gốc {ngày}"** (trước đây nhìn vào chỉ thấy một cái ngày, không biết đã gia hạn hay chưa). Kèm bổ sung `originalEndDate`/`maxExtensionMonths` vào DTO danh sách.
+- Lỗi im lặng khi gia hạn ghi chữ thay vì số (xem mục ở trên).
+
+### E. Thứ tự đề xuất
+1. **Hợp đồng: thêm SỬA + XOÁ** — đang chặn nghiệp vụ nặng nhất.
+2. **Rà nốt 2 panel còn lại** (giải ngân, quyết toán) xem có sai vai.
+3. **Xoá**: sản phẩm · kỳ báo cáo · lịch họp · thành viên đề tài.
+4. **Xoá master data** (5 màn Admin).
+5. Chốt hướng 4 loại điều chỉnh + quan hệ với BM07.
+6. Rồi mới tới 4 việc lớn về UI (hội đồng CRUD, gom nhóm màn xét duyệt, trang chi tiết đề tài, lọc màn hợp đồng).
+
 ## ⏸ Chờ user quyết định (đừng tự làm — hỏi lại rồi mới làm)
 
 ### Q1. Tìm kiếm ngữ nghĩa (semantic) — LÀM, THAY, hay BỎ?

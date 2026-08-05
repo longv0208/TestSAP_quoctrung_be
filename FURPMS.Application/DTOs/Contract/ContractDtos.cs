@@ -13,6 +13,13 @@ public class ContractListResponse
     public decimal TotalAmount { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
+    /// <summary>
+    /// Hạn GỐC lúc ký. So với <see cref="EndDate"/> để biết đã gia hạn bao lâu —
+    /// trước đây danh sách không trả field này nên duyệt gia hạn xong không đâu
+    /// thể hiện là hạn đã đổi.
+    /// </summary>
+    public DateOnly OriginalEndDate { get; set; }
+    public int MaxExtensionMonths { get; set; }
     public DateTime? SignedAt { get; set; }
     public DateTime CreatedAt { get; set; }
 }

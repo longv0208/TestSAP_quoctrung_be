@@ -140,6 +140,8 @@ public class ContractService : IContractService
         TotalAmount = c.TotalAmount,
         StartDate = c.StartDate,
         EndDate = c.EndDate,
+        OriginalEndDate = c.OriginalEndDate,
+        MaxExtensionMonths = c.MaxExtensionMonths,
         SignedAt = c.SignedAt,
         CreatedAt = c.CreatedAt
     };
