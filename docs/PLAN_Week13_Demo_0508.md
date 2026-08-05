@@ -120,7 +120,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | E3 | **Giao diện tiếng Việt phải FULL tiếng Việt** — còn chỗ để nguyên `passed` | [B1] | ✅ **XONG 06/08** | Đúng là `StatusBadge` render **thẳng** giá trị enum của BE (`{status}`), nên mọi nơi đều hiện `PASSED`, `IN_PROGRESS`, `PENDING_SIGNATURE`… Nay tra bảng `status.*` — **42 nhãn** phủ hết enum trong `DomainStatus.cs`; key thiếu thì vẫn hiện enum để lộ ra mà bổ sung, không hiện trống |
 | E4 | **Mặc định để màu trắng (light mode)** | [B2-6] | ✅ **XONG 06/08** | `ui.store` mặc định `"system"` — máy chấm để dark thì cả hệ thống hiện tối. Đổi sang `"light"` |
 | E5 | **UI/UX phải sửa lại, cải thiện nhiều** | [B1] | ❓ chung chung | Cần hỏi lại bạn ghi note xem thầy chỉ cụ thể màn nào. Các điểm cụ thể đã tách thành E1–E4, C8, F5 |
-| E6 | **Page "Tiêu chí chấm": gom nhóm bộ lọc** — filter năm, filter Ứng dụng/Cơ bản; cái nào cùng filter thì nhóm lại | [B2-18] | ⬜ | |
+| E6 | **Page "Tiêu chí chấm": gom nhóm bộ lọc** | [B2-18] | ✅ **XONG 06/08** | Màn này vốn **không có bộ lọc nào**. Thêm 1 hàng: loại đề tài (Cơ bản/Ứng dụng) + loại vòng, kèm đếm "Hiện x/y bộ" |
 | E7 | **Chuẩn bị DATA DEMO chuẩn thật**: sẵn 1 đợt có **nhiều đề tài**, **nhiều proposal đã nộp** | [B2-3] | ⬜ | Mở rộng `DatabaseSeeder` (vẫn phải idempotent) |
 | E8 | **Sửa mật khẩu tất cả tài khoản thành `password`** | [B2-13] | ⬜ | Seeder đang dùng `Admin@123456`, `Faculty@123456`… ⚠️ Đổi thì phải sửa **CLAUDE.md + mọi doc + script test** đang chép mật khẩu cũ, kẻo doc lệch |
 
@@ -165,7 +165,7 @@ Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
 6. ~~**E3** full tiếng Việt (status badge) · **E4** light mode mặc định~~ ✅
 7. ~~**A1** nền tảng họp chỉ online/offline~~ ✅
 8. ~~**A4 + A5** thống kê pass/fail từng người chấm~~ ✅
-9. ~~**C8** trang tiến trình đề tài · **C9** đổi nhãn~~ ✅ · **E6** gom filter
+9. ~~**C8** trang tiến trình đề tài · **C9** đổi nhãn~~ ✅ · ~~**E6** gom filter~~ ✅
 
 **Nhóm 3 — AI** *(gộp làm một đợt, vì cùng đụng prompt + luồng)*
 10. **B1 + B2 + B3 + B4 + B5** đọc file, tự chạy trước, prompt có ưu/nhược, gợi ý bám tiêu chí
