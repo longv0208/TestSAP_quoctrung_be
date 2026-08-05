@@ -665,6 +665,15 @@ Key hiện có:
 - Một số sub-resource (research-contents, expected-products, labor details) BE đã có nhưng FE cũ chưa dùng hết — Swagger có đủ.
 - Khi cần biết chính xác field của 1 request/response: mở **Swagger**, mục tương ứng có schema + ví dụ.
 
+### Lịch chấm theo đề tài — phải nằm trong buổi họp (mới 06/08)
+`PUT /api/councils/{id}/slots` nay **400** khi:
+- Hội đồng **chưa có buổi họp** nào (phải đặt lịch họp trước).
+- Khung giờ chấm nằm **ngoài** `[meeting.scheduledAt, scheduledAt + durationMinutes]` — kể cả khi bắt đầu đúng giờ nhưng **tràn ra ngoài** vì thời lượng quá dài.
+- Hai đề tài có khung giờ **chồng nhau** — hội đồng chỉ chấm được một đề tài tại một thời điểm.
+- `slotDurationMinutes <= 0` khi đã đặt `slotStartAt`.
+
+Trước đây lưu nguyên xi mọi giá trị: slot 7h sáng cho buổi họp 14h chiều, hay slot 3 tiếng trong buổi họp 2 tiếng, đều lọt.
+
 ### Biên bản hội đồng — điều kiện họp hợp lệ (mới 06/08)
 `PUT /api/review-scoring/councils/{id}/minutes` (Thư ký lưu nháp) và
 `POST /api/review-scoring/councils/{id}/minutes/approve` (Chủ tịch chốt) nay **409** khi:

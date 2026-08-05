@@ -507,13 +507,51 @@ public class CouncilService : ICouncilService
             ?? throw new KeyNotFoundException($"Council {councilId} not found.");
 
         // Slot con thuộc buổi họp sớm nhất của hội đồng (thường 1 buổi cho vòng xét duyệt).
-        var meetingId = council.Meetings.OrderBy(m => m.ScheduledAt).Select(m => (Guid?)m.Id).FirstOrDefault();
+        var meeting = council.Meetings.OrderBy(m => m.ScheduledAt).FirstOrDefault();
+        if (meeting == null)
+            throw new InvalidOperationException(
+                "Hội đồng chưa có buổi họp nào — hãy đặt lịch họp trước rồi mới chia khung giờ cho từng đề tài.");
+
+        /*
+         * Khung giờ chấm từng đề tài phải nằm TRONG buổi họp (rule tuần 10 #17, thầy nhắc lại
+         * 05/08). Trước đây lưu nguyên xi mọi giá trị: đặt slot 7h sáng cho buổi họp 14h chiều,
+         * hay slot dài 3 tiếng trong buổi họp 2 tiếng, đều lọt — lịch in ra vô nghĩa.
+         */
+        var windowStart = meeting.ScheduledAt;
+        var windowEnd = meeting.ScheduledAt.AddMinutes(meeting.DurationMinutes);
+
         var byProject = council.ProjectAssignments.ToDictionary(a => a.ProjectId);
+        var placed = new List<(DateTime Start, DateTime End, Guid ProjectId)>();
 
         foreach (var e in request.Entries)
         {
             if (!byProject.TryGetValue(e.ProjectId, out var a)) continue;
-            a.MeetingId = meetingId;
+
+            if (e.SlotStartAt.HasValue)
+            {
+                var duration = e.SlotDurationMinutes ?? 0;
+                if (duration <= 0)
+                    throw new ArgumentException("Khung giờ chấm phải có thời lượng lớn hơn 0 phút.");
+
+                var start = e.SlotStartAt.Value;
+                var end = start.AddMinutes(duration);
+
+                if (start < windowStart || end > windowEnd)
+                    throw new ArgumentException(
+                        $"Khung giờ chấm ({start:dd/MM HH:mm}–{end:HH:mm}) nằm ngoài buổi họp " +
+                        $"({windowStart:dd/MM HH:mm}–{windowEnd:HH:mm}). " +
+                        "Sửa lại khung giờ hoặc kéo dài buổi họp.");
+
+                // Hội đồng không thể chấm 2 đề tài cùng một lúc.
+                var clash = placed.FirstOrDefault(p => start < p.End && p.Start < end);
+                if (clash != default)
+                    throw new ArgumentException(
+                        $"Khung giờ chấm ({start:HH:mm}–{end:HH:mm}) chồng lên khung của đề tài khác " +
+                        $"({clash.Start:HH:mm}–{clash.End:HH:mm}) — hội đồng chỉ chấm được một đề tài tại một thời điểm.");
+                placed.Add((start, end, e.ProjectId));
+            }
+
+            a.MeetingId = meeting.Id;
             a.SlotStartAt = e.SlotStartAt;
             a.SlotDurationMinutes = e.SlotDurationMinutes;
             a.SlotOrder = e.SlotOrder;

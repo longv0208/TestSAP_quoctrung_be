@@ -56,7 +56,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | # | Việc | Nguồn | Trạng thái hiện tại | Ghi chú thực thi |
 |---|---|---|---|---|
 | A1 | **Lên lịch họp: nền tảng chỉ còn `online` / `offline`** — bỏ Google Meet / MS Teams / Zoom | *(cả 2 bản)* [B1] · [B2-1] | ⬜ BE đang có 4 giá trị: `IN_PERSON`, `GOOGLE_MEET`, `TEAMS`, `ZOOM` (`CouncilMeetingService.ValidateAndNormalize`) | Gộp về 2 giá trị. Cân nhắc **giữ cột cũ**, chỉ map `GOOGLE_MEET/TEAMS/ZOOM → ONLINE` khi đọc, để không phải migration dữ liệu cũ. Bỏ luôn nút "Tạo link Google Meet" trên form nếu không còn phân biệt nền tảng |
-| A2 | **Validate lịch chấm phải nằm TRONG khung giờ buổi họp** | *(cả 2 bản)* [B1] · [B2-2] | ⬜ | Đã có slot con theo đề tài (`PUT /councils/{id}/slots`) và `CouncilMeeting.ScheduledAt + DurationMinutes`. Cần chặn: `SlotStartAt ≥ ScheduledAt` và `SlotStartAt + SlotDuration ≤ ScheduledAt + DurationMinutes`. Đang **không** kiểm gì |
+| A2 | **Validate lịch chấm phải nằm TRONG khung giờ buổi họp** | *(cả 2 bản)* [B1] · [B2-2] | ✅ **XONG 06/08** | Chặn 4 ca: chưa có buổi họp · slot ngoài khung · slot tràn ra ngoài vì quá dài · **hai đề tài chồng giờ nhau** (hội đồng chỉ chấm được một đề tài một lúc). Kiểm bằng API với buổi họp 20/08 09:30–11:00: slot 07:00 → 400 · slot 10:30 dài 60′ (tràn 11:30) → 400 · slot 09:45 dài 30′ → 200 |
 | A3 | **Thư ký cũng được chấm điểm** | [B1] | ❓ cần xác nhận | Rule #11 hiện tại: *"Reviewer = mọi thành viên hội đồng; chức danh chỉ là field"* ⇒ về nguyên tắc Thư ký chấm được. Phải kiểm màn reviewer có chặn theo `MemberRole == Secretary` không |
 | A4 | **Màn Thư ký: hiện bao nhiêu người chấm, bao nhiêu Đạt / bao nhiêu Không đạt** | *(cả 2 bản)* [B1] · [B2-7] | 🔶 | 05/08 đã sửa: điểm từng thành viên nay hiện đúng tên (trước hiện `—: 58.0`), và thêm ô "Số liệu cuộc họp" tính tại chỗ. **Còn thiếu: đếm số phiếu Đạt / Không đạt** |
 | A5 | **Trang ra quyết định cuối: thống kê chi tiết từng người chấm** — ai chấm, bao nhiêu điểm, Đạt hay Không đạt, tổng bao nhiêu người chấm Đạt / bao nhiêu Không đạt. Đối chiếu **form mẫu PDF trang 34** | [B2-15] | ⬜ | Hiện chỉ có 4 ô: thành viên · có mặt · phiếu hợp lệ · điểm TB |
@@ -159,7 +159,7 @@ Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
 2. ~~**D5** sản phẩm đã nghiệm thu vẫn gia hạn được~~ ✅
 3. **D1** nộp báo cáo 2 lần cùng lúc
 4. ~~**A6 + A7 + A8**~~ ✅ (A6 vốn đã có sẵn)
-5. **A2** lịch chấm phải nằm trong khung giờ họp
+5. ~~**A2** lịch chấm phải nằm trong khung giờ họp~~ ✅
 
 **Nhóm 2 — thầy nhìn thấy ngay khi demo**
 6. **E3** full tiếng Việt (status badge) · **E4** light mode mặc định
