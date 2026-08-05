@@ -455,6 +455,8 @@ Key hiện có:
 | GET | `/api/meetings/my` | * (PI) | **Lịch họp hội đồng chấm đề tài của tôi** — PI **trình bày trước hội đồng** (Process_Spec) nên cần biết ngày/giờ + địa điểm hoặc link. Trước đây chỉ Staff/Reviewer xem được |
 | GET | `/api/councils/{councilId}/meetings` | Authenticated | Lịch họp của hội đồng |
 | POST | `/api/councils/{councilId}/meetings` | Admin, Staff | Tạo lịch họp |
+| PUT | `/api/meetings/{id}` | Admin, Staff | **Sửa lịch họp (mới 05/08)** — `UpdateMeetingRequest` (cùng bộ trường với lúc tạo). Rule #17 cho đổi lịch **bất kỳ lúc nào** nên không khoá theo trạng thái; buổi đã diễn ra thì bỏ ràng buộc "phải ở tương lai" (vẫn sửa được địa điểm/link ghi nhầm). Offline mà trống địa điểm → 400; `durationMinutes <= 0` → 400. Đổi sang online thì BE **tự xoá** `location`, và ngược lại. |
+| DELETE | `/api/meetings/{id}` | Admin, Staff | **Xoá buổi họp (mới 05/08)** — chỉ khi `status = SCHEDULED`, ngược lại **409**. Đã có điểm danh (`ActuallyAttended != null`) cũng **409**. Xoá thì dọn dòng điểm danh và **gỡ slot đề tài** đang trỏ tới buổi họp (`CouncilProjectAssignment.MeetingId/SlotStartAt` về null). |
 | POST | `/api/meetings/{id}/start` | Admin, Staff | Bắt đầu họp |
 | POST | `/api/meetings/{id}/end` | Admin, Staff | Kết thúc họp |
 

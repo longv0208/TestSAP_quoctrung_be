@@ -41,6 +41,13 @@ public class SaveAttendanceRequest
     public List<AttendanceEntryDto> Entries { get; set; } = new();
 }
 
+/// <summary>
+/// Sửa buổi họp đã đặt. Rule #17 (thầy tuần 10): "thay người/đổi lịch **bất kỳ lúc nào**,
+/// không đóng băng hội đồng" — nên đây là thao tác bình thường, không phải ngoại lệ.
+/// Dùng lại đúng bộ trường của lúc tạo để hai đường không lệch ràng buộc.
+/// </summary>
+public class UpdateMeetingRequest : ScheduleMeetingRequest;
+
 public class ScheduleMeetingRequest
 {
     public string? Title { get; set; }

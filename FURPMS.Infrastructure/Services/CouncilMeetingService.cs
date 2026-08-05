@@ -90,19 +90,7 @@ public class CouncilMeetingService : ICouncilMeetingService
         _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
             ?? throw new KeyNotFoundException($"Council {councilId} not found.");
 
-        if (request.ScheduledAt <= DateTime.UtcNow)
-            throw new ArgumentException("Meeting must be scheduled in the future.");
-        if (request.DurationMinutes <= 0)
-            throw new ArgumentException("DurationMinutes must be positive.");
-
-        var validPlatforms = new[] { "IN_PERSON", "GOOGLE_MEET", "TEAMS", "ZOOM" };
-        var platform = request.Platform.ToUpperInvariant().Replace(" ", "_");
-        if (!validPlatforms.Contains(platform))
-            platform = "IN_PERSON";
-
-        // Họp trực tiếp bắt buộc có địa điểm; họp online thì bỏ địa điểm, giữ link.
-        if (platform == "IN_PERSON" && string.IsNullOrWhiteSpace(request.Location))
-            throw new ArgumentException("Họp trực tiếp phải nhập địa điểm.");
+        var platform = ValidateAndNormalize(request, requireFuture: true);
 
         var meeting = new CouncilMeeting
         {
@@ -120,6 +108,97 @@ public class CouncilMeetingService : ICouncilMeetingService
         await _review.AddMeetingAsync(meeting);
         await _review.SaveChangesAsync();
         return Map(meeting);
+    }
+
+    /// <summary>
+    /// Ràng buộc dùng chung cho TẠO và SỬA buổi họp. Tách ra để hai đường không lệch nhau —
+    /// sửa mà lỏng hơn tạo thì người dùng lách được bằng cách tạo bừa rồi sửa lại.
+    /// </summary>
+    private static string ValidateAndNormalize(ScheduleMeetingRequest request, bool requireFuture)
+    {
+        // Buổi họp đã bắt đầu/đã qua thì không đòi "phải ở tương lai" nữa — Staff vẫn cần sửa
+        // địa điểm hay link ghi nhầm sau khi họp xong.
+        if (requireFuture && request.ScheduledAt <= DateTime.UtcNow)
+            throw new ArgumentException("Buổi họp phải được đặt ở thời điểm trong tương lai.");
+        if (request.DurationMinutes <= 0)
+            throw new ArgumentException("Thời lượng họp phải lớn hơn 0 phút.");
+
+        var validPlatforms = new[] { "IN_PERSON", "GOOGLE_MEET", "TEAMS", "ZOOM" };
+        var platform = request.Platform.ToUpperInvariant().Replace(" ", "_");
+        if (!validPlatforms.Contains(platform))
+            platform = "IN_PERSON";
+
+        // Họp trực tiếp bắt buộc có địa điểm; họp online thì bỏ địa điểm, giữ link (rule #17).
+        if (platform == "IN_PERSON" && string.IsNullOrWhiteSpace(request.Location))
+            throw new ArgumentException("Họp trực tiếp phải nhập địa điểm.");
+
+        return platform;
+    }
+
+    /// <summary>
+    /// Sửa buổi họp. Trước đây chỉ có tạo: Staff đặt nhầm giờ hay dán sai link Meet là **kẹt**,
+    /// chỉ còn cách tạo buổi họp thứ hai — hội đồng nhìn vào thấy hai lịch, không biết theo cái nào.
+    ///
+    /// Rule #17 cho đổi lịch **bất kỳ lúc nào**, nên không khoá theo trạng thái. Riêng buổi họp đã
+    /// diễn ra thì bỏ ràng buộc "phải ở tương lai" — sửa lại địa điểm/link ghi nhầm vẫn phải được.
+    /// </summary>
+    public async Task<MeetingDto> UpdateAsync(Guid meetingId, UpdateMeetingRequest request)
+    {
+        var meeting = await _review.Meetings
+            .FirstOrDefaultAsync(m => m.Id == meetingId)
+            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+
+        var isPast = meeting.Status != MeetingStatus.Scheduled;
+        var platform = ValidateAndNormalize(request, requireFuture: !isPast);
+
+        meeting.Title = request.Title;
+        meeting.Platform = platform;
+        meeting.MeetingLink = platform == "IN_PERSON" ? null : request.MeetingLink;
+        meeting.Location = platform == "IN_PERSON" ? request.Location : null;
+        meeting.ScheduledAt = request.ScheduledAt;
+        meeting.DurationMinutes = request.DurationMinutes;
+        meeting.Agenda = request.Agenda;
+
+        await _review.SaveChangesAsync();
+        return Map(meeting);
+    }
+
+    /// <summary>
+    /// Xoá buổi họp đặt nhầm. **Chỉ khi chưa diễn ra** — họp rồi mà xoá là mất luôn điểm danh và
+    /// mốc thời gian mà biên bản đang dựa vào.
+    ///
+    /// Xoá thì phải dọn: dòng điểm danh của buổi đó, và **gỡ slot đề tài** đang trỏ tới buổi họp
+    /// (khoá ngoại không cascade — để nguyên là `SaveChanges` nổ, hoặc tệ hơn: slot trỏ vào buổi
+    /// họp không còn tồn tại).
+    /// </summary>
+    public async Task DeleteAsync(Guid meetingId)
+    {
+        var meeting = await _review.Meetings
+            .FirstOrDefaultAsync(m => m.Id == meetingId)
+            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+
+        if (meeting.Status != MeetingStatus.Scheduled)
+            throw new InvalidOperationException(
+                $"Buổi họp đang ở trạng thái \"{meeting.Status}\" — chỉ xoá được buổi họp CHƯA DIỄN RA.");
+
+        var attendances = await _review.MeetingAttendances
+            .Where(a => a.MeetingId == meetingId).ToListAsync();
+        // Đã có người điểm danh nghĩa là buổi họp đó có thật, không phải đặt nhầm.
+        if (attendances.Any(a => a.ActuallyAttended != null))
+            throw new InvalidOperationException(
+                "Buổi họp đã có điểm danh — không xoá được. Nếu buổi họp không diễn ra thì sửa lại lịch.");
+        _review.RemoveAttendancesRange(attendances);
+
+        var slots = await _review.ProjectAssignments
+            .Where(a => a.MeetingId == meetingId).ToListAsync();
+        foreach (var s in slots)
+        {
+            s.MeetingId = null;
+            s.SlotStartAt = null;
+        }
+
+        _review.RemoveMeetingsRange(new[] { meeting });
+        await _review.SaveChangesAsync();
     }
 
     public async Task<MeetingDto> StartAsync(Guid meetingId)

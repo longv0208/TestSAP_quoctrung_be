@@ -301,6 +301,30 @@ Rule #16 bỏ phương diện FINANCE ⇒ mọi vòng đều `SCIENCE`. Nhãn ch
 lên chip từng vòng + dòng tiêu đề. Thay bằng **loại vòng** (Xét duyệt đề cương / Nghiệm thu) — đó
 mới là thứ phân biệt các vòng với nhau. `dimension` vẫn giữ trong DB/API, chỉ ngừng hiển thị.
 
+
+### 🔴 Biên bản Thư ký: điểm hiện "—: 58.0", mất tên người chấm (sửa 05/08)
+`ScoreResponse` ở FE khai `reviewerId` — **BE không hề có trường đó**, nó trả `evaluatorMemberId` +
+`evaluatorName`. Panel tra `membersById.get(score.reviewerId)` → luôn `undefined` → rơi xuống "—".
+`FeedbackResponse` sai y hệt (`reviewerId` vs `reviewerMemberId`/`reviewerName`).
+Đối chiếu `QD543_Compliance.md` §2: BM04 đòi mục **"Ý kiến thành viên (chuyên môn/kinh phí)"** lấy từ
+`ProposalReviewScore.GeneralComments` + `ReviewerFeedback` ⇒ **tên người chấm là bắt buộc**, không
+phải trang trí. Nay đọc thẳng `evaluatorName`/`reviewerName` và dùng `totalScore` của BE thay vì
+FE tự cộng lại `scoreDetails` cho lệch.
+
+Kèm theo: **"Số liệu cuộc họp" (BM04 II.2) cả 4 ô đều "—"** vì chỉ đọc từ `decision`, mà `decision`
+chỉ có SAU khi Chủ tịch duyệt biên bản — đúng lúc Thư ký cần số để soạn thì không có gì. Nay tính
+tại chỗ từ roster + điểm danh + phiếu hợp lệ khi chưa chốt.
+
+
+### 🔴 "Tạo hợp đồng" chào cả đề tài ĐÃ KÝ hợp đồng (sửa 05/08)
+Dropdown "Đề tài đã duyệt" đổ thẳng mọi đề tài `APPROVED`. Kiểm bằng API: **4 đề tài APPROVED thì
+3 đã có hợp đồng** mà vẫn nằm trong danh sách ⇒ Staff mở ra không biết cái nào còn phải làm, và
+tạo nhầm hợp đồng thứ hai lúc nào không hay.
+
+Ký từng giai đoạn đã có `ContractPhase` lo (phase nằm **trong** một hợp đồng), nên một đề tài chỉ
+cần một hợp đồng. Nay lọc bỏ đề tài đã có hợp đồng, kèm dòng "Đã ẩn N đề tài vì đã có hợp đồng"
+để không ai tưởng mất dữ liệu.
+
 ## 📌 DANH SÁCH VIỆC — rà CRUD toàn hệ thống (05/08)
 
 ### A. 🔴 Sai vai — panel viết cho vai này bị tái dùng cho vai khác
@@ -324,7 +348,7 @@ những cái sau là **thiếu thật, chặn nghiệp vụ**:
 | **Sản phẩm** | ❌ xoá | Thêm nhầm không gỡ được |
 | **Thành viên đề tài** | ❌ xoá | Không loại được thành viên |
 | **Kỳ báo cáo tiến độ** | ❌ xoá | Staff sinh thừa kỳ là kẹt |
-| **Lịch họp hội đồng** | ❌ xoá | Huỷ buổi họp không được |
+| ~~**Lịch họp hội đồng**~~ | ✅ **XONG 05/08** — `PUT`/`DELETE /meetings/{id}` + nút Sửa/Xoá ở panel hội đồng | Kiểm bằng API: sửa 200 · offline trống địa điểm 400 · thời lượng 0 → 400 |
 | **Master data** (đơn vị · loại sản phẩm · vai trò nhân sự · hạng mục chi · cấu hình tài chính) | ❌ xoá | Nhập sai là nằm đó mãi |
 
 ### C. ⚠️ Điều chỉnh hợp đồng — chỉ 1/5 loại thật sự có tác dụng
@@ -341,7 +365,7 @@ những cái sau là **thiếu thật, chặn nghiệp vụ**:
 ### E. Thứ tự đề xuất
 1. ~~**Hợp đồng: thêm SỬA + XOÁ**~~ ✅ xong 05/08.
 2. **Rà nốt 2 panel còn lại** (giải ngân, quyết toán) xem có sai vai.
-3. **Xoá**: sản phẩm · kỳ báo cáo · lịch họp · thành viên đề tài.
+3. **Xoá**: sản phẩm · kỳ báo cáo · ~~lịch họp~~ ✅ · thành viên đề tài.
 4. **Xoá master data** (5 màn Admin).
 5. Chốt hướng 4 loại điều chỉnh + quan hệ với BM07.
 6. Rồi mới tới 4 việc lớn về UI (hội đồng CRUD, gom nhóm màn xét duyệt, trang chi tiết đề tài, lọc màn hợp đồng).

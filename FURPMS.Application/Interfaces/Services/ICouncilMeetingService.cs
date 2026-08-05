@@ -9,6 +9,8 @@ public interface ICouncilMeetingService
     Task<IEnumerable<MeetingListDto>> GetForPiAsync(Guid piUserId);
     Task<IEnumerable<MeetingDto>> GetByCouncilAsync(Guid councilId);
     Task<MeetingDto> ScheduleAsync(Guid councilId, ScheduleMeetingRequest request);
+    Task<MeetingDto> UpdateAsync(Guid meetingId, UpdateMeetingRequest request);
+    Task DeleteAsync(Guid meetingId);
     Task<MeetingDto> StartAsync(Guid meetingId);
     Task<MeetingDto> EndAsync(Guid meetingId);
 

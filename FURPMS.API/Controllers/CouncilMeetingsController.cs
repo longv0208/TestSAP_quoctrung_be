@@ -55,6 +55,25 @@ public class CouncilMeetingsController : ControllerBase
         return Ok(ApiResponse<MeetingDto>.Ok(result));
     }
 
+    // PUT /api/meetings/{id} — sửa lịch họp. Trước đây chỉ tạo được: đặt nhầm giờ hay dán sai
+    // link Meet là kẹt, phải tạo buổi thứ hai và hội đồng nhìn vào không biết theo cái nào.
+    [HttpPut("api/meetings/{id:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateMeetingRequest request)
+    {
+        var result = await _service.UpdateAsync(id, request);
+        return Ok(ApiResponse<MeetingDto>.Ok(result, "Đã cập nhật lịch họp."));
+    }
+
+    // DELETE /api/meetings/{id} — chỉ buổi họp CHƯA DIỄN RA và chưa điểm danh.
+    [HttpDelete("api/meetings/{id:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        await _service.DeleteAsync(id);
+        return Ok(ApiResponse.Ok("Đã xoá buổi họp."));
+    }
+
     // POST /api/meetings/{id}/start
     [HttpPost("api/meetings/{id:guid}/start")]
     [Authorize(Roles = "Admin,Staff")]
