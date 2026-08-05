@@ -111,6 +111,19 @@ public class DeliverableService : IDeliverableService
             .FirstOrDefaultAsync(x => x.Id == deliverableId)
             ?? throw new KeyNotFoundException($"Deliverable {deliverableId} not found.");
 
+        /*
+         * Sản phẩm đã nghiệm thu ĐẠT thì ĐÓNG, không nộp lại được nữa
+         * (thầy 05/08: "từng đợt của sản phẩm sau khi xong thì đều phải đóng lại hết").
+         *
+         * Trước đây không kiểm gì: nộp lại một sản phẩm đã Đạt sẽ đặt lại AcceptanceStatus về
+         * PENDING ở ngay dưới ⇒ **xoá mất kết quả nghiệm thu**, và khoá lại đợt giải ngân vốn
+         * đã được mở nhờ sản phẩm đó. FE có ẩn nút nhưng gọi thẳng API là lọt.
+         */
+        if (d.AcceptanceStatus == AcceptanceStatus.Passed)
+            throw new InvalidOperationException(
+                $"Sản phẩm \"{d.ProductName}\" đã nghiệm thu ĐẠT — không nộp lại được. " +
+                "Nếu cần thay bản khác, liên hệ phòng QLKH để mở lại.");
+
         d.FileUrl = NormalizeFileUrl(request.FileUrl, "sản phẩm");
         d.Description = request.Description ?? d.Description;
         // Chỉ ghi đè khi PI thật sự nộp minh chứng mới — nộp lại mà bỏ trống thì giữ bản cũ.

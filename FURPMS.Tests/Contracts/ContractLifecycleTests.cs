@@ -1,3 +1,4 @@
+using FURPMS.Application.Constants;
 using FURPMS.Tests.Reminders;
 using FURPMS.Domain.Entities.Contracts;
 using FURPMS.Domain.Entities.Financial;
@@ -411,6 +412,104 @@ public class ContractLifecycleTests
 
         var refreshed = await db.Contracts.FindAsync(contract.Id);
         Assert.Equal(originalEnd.AddMonths(3), refreshed!.EndDate);
+    }
+
+    // ── Đề tài đã đóng thì không điều chỉnh được nữa (thầy 05/08) ────────────
+
+    /// <summary>
+    /// Thầy bắt lúc demo: *"sản phẩm đã nghiệm thu rồi nhưng vẫn có thể tiếp tục gia hạn thêm
+    /// thời gian làm"*. Nghiệm thu ĐẠT đưa project sang COMPLETED ⇒ gia hạn cho một đề tài đã
+    /// hoàn thành là vô nghĩa. `ChangeRequestService` (BM07) chặn đúng như vậy từ trước.
+    /// </summary>
+    [Theory]
+    [InlineData(ProjectStatus.Completed)]
+    [InlineData(ProjectStatus.Cancelled)]
+    [InlineData(ProjectStatus.Terminated)]
+    public async Task ApproveExtensionAmendment_ProjectClosed_Throws(string closedStatus)
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+
+        var pi = MakeUser();
+        db.Users.Add(pi);
+        var extCat = new AmendmentCategory { Code = "EXTENSION", Name = "Gia hạn", IsActive = true };
+        db.AmendmentCategories.Add(extCat);
+        await db.SaveChangesAsync();
+
+        var rt = MakeResearchType();
+        db.ResearchTypes.Add(rt);
+        var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        project.Status = closedStatus;
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+
+        var originalEnd = new DateOnly(2027, 1, 1);
+        var contract = MakeContract(project.Id);
+        contract.Project = project;
+        contract.MaxExtensionMonths = 6;
+        contract.EndDate = originalEnd;
+        contract.OriginalEndDate = originalEnd;
+        db.Contracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        var amendment = new AmendmentRequest
+        {
+            ContractId = contract.Id,
+            CategoryId = extCat.Id,
+            ChangeDescription = "Xin gia hạn thêm 3 tháng",
+            Justification = "Lý do",
+            NewValue = "3",
+            RequestedBy = pi.Id,
+            Status = "PENDING"
+        };
+        db.AmendmentRequests.Add(amendment);
+        await db.SaveChangesAsync();
+
+        var svc = new AmendmentService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.ApproveAsync(amendment.Id, new Application.DTOs.Contract.ReviewAmendmentRequest(), Guid.NewGuid()));
+
+        // Hạn hợp đồng phải giữ nguyên — chặn mà vẫn dời hạn thì coi như không chặn.
+        var refreshed = await db.Contracts.FindAsync(contract.Id);
+        Assert.Equal(originalEnd, refreshed!.EndDate);
+    }
+
+    /// <summary>Không chỉ chặn lúc duyệt — PI cũng không gửi được đơn mới cho đề tài đã đóng.</summary>
+    [Fact]
+    public async Task CreateAmendment_ProjectCompleted_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+
+        var pi = MakeUser();
+        db.Users.Add(pi);
+        var extCat = new AmendmentCategory { Code = "EXTENSION", Name = "Gia hạn", IsActive = true };
+        db.AmendmentCategories.Add(extCat);
+        await db.SaveChangesAsync();
+
+        var rt = MakeResearchType();
+        db.ResearchTypes.Add(rt);
+        var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        project.Status = ProjectStatus.Completed;
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+
+        var contract = MakeContract(project.Id);
+        contract.Project = project;
+        db.Contracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        var svc = new AmendmentService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.CreateAsync(contract.Id, new Application.DTOs.Contract.CreateAmendmentRequest
+            {
+                CategoryId = extCat.Id,
+                ChangeDescription = "Xin gia hạn",
+                Justification = "Lý do",
+                NewValue = "3"
+            }, pi.Id));
     }
 
     // ── P5: giải ngân phải có sản phẩm minh chứng đã nghiệm thu ──────────────

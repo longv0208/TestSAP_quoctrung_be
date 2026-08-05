@@ -3,6 +3,7 @@ using FURPMS.Application.DTOs.Contract;
 using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
+using FURPMS.Domain.Entities.Contracts;
 using FURPMS.Domain.Entities.Progress;
 using Microsoft.EntityFrameworkCore;
 
@@ -48,8 +49,12 @@ public class AmendmentService : IAmendmentService
     public async Task<AmendmentDetailResponse> CreateAsync(
         Guid contractId, CreateAmendmentRequest request, Guid requestedBy)
     {
-        _ = await _contracts.Query().FirstOrDefaultAsync(c => c.Id == contractId)
+        var contract = await _contracts.Query()
+            .Include(c => c.Project)
+            .FirstOrDefaultAsync(c => c.Id == contractId)
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+
+        EnsureContractStillOpen(contract, "gửi đơn đề nghị điều chỉnh");
 
         _ = await _masterData.AmendmentCategories.FirstOrDefaultAsync(c => c.Id == request.CategoryId)
             ?? throw new KeyNotFoundException($"Amendment category {request.CategoryId} not found.");
@@ -85,6 +90,15 @@ public class AmendmentService : IAmendmentService
         if (amendment.Status != AmendmentStatus.Pending)
             throw new InvalidOperationException($"Amendment is already '{amendment.Status}'.");
 
+        // Chặn cả ở lúc DUYỆT chứ không chỉ lúc gửi: đơn có thể nằm chờ từ trước khi đề tài được
+        // nghiệm thu, tới lúc Staff bấm duyệt thì đề tài đã xong từ đời nào.
+        // Nạp lại kèm Project vì `Include(a => a.Contract)` ở trên không kéo theo Project.
+        var contract = await _contracts.Query()
+            .Include(c => c.Project)
+            .FirstOrDefaultAsync(c => c.Id == amendment.ContractId)
+            ?? throw new KeyNotFoundException($"Contract {amendment.ContractId} not found.");
+        EnsureContractStillOpen(contract, "duyệt đơn đề nghị điều chỉnh");
+
         amendment.Status = AmendmentStatus.Approved;
         amendment.ReviewedBy = reviewedBy;
         amendment.ReviewedAt = _clock.UtcNow;
@@ -115,6 +129,25 @@ public class AmendmentService : IAmendmentService
 
         await _contracts.SaveChangesAsync();
         return MapDetail(amendment);
+    }
+
+    /// <summary>
+    /// Đề tài đã nghiệm thu xong / bị huỷ / bị chấm dứt thì **không còn gì để điều chỉnh** —
+    /// gia hạn thêm thời gian cho một đề tài đã hoàn thành là vô nghĩa (thầy bắt lúc demo 05/08:
+    /// *"sản phẩm đã nghiệm thu rồi nhưng vẫn có thể tiếp tục gia hạn thêm thời gian làm"*).
+    ///
+    /// `ChangeRequestService` (BM07) đã chặn đúng như vậy từ trước; nhánh này thì chưa — hai cơ
+    /// chế thay đổi song song mà luật lại lệch nhau.
+    /// </summary>
+    private static void EnsureContractStillOpen(Contract contract, string action)
+    {
+        if (contract.TerminatedAt != null)
+            throw new InvalidOperationException($"Hợp đồng đã chấm dứt — không thể {action}.");
+
+        var status = contract.Project?.Status;
+        if (status is ProjectStatus.Completed or ProjectStatus.Cancelled or ProjectStatus.Terminated)
+            throw new InvalidOperationException(
+                $"Đề tài đã ở trạng thái \"{status}\" — không thể {action}.");
     }
 
     private async Task ApplyExtensionIfNeededAsync(AmendmentRequest amendment)

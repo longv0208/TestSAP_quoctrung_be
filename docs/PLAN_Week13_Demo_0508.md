@@ -92,7 +92,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | C4 | **Hồ sơ nghiệm thu phải có: link sản phẩm + TOÀN BỘ thông tin sản phẩm và đề tài + file Word/PDF** | [B1] | 🔶 | 05/08 đã thêm `GET /councils/{cid}/proposals/{pid}/dossier` + panel hồ sơ nghiệm thu. Cần bổ sung: thông tin đề tài đầy đủ, và mở được file |
 | C5 | **Hồ sơ nghiệm thu phải chi tiết TỪNG LẦN báo cáo tiến độ**: ai chấm · role gì · bao nhiêu điểm · xem lại được **tất cả file của các lần trước** | [B2-14] | ⬜ | Hiện dossier mới trả % + đánh giá của Staff, **không có** người chấm/role/điểm từng lần, cũng chưa gom file các kỳ |
 | C6 | **Chưa có giải ngân đợt CUỐI trước khi chốt nghiệm thu (kết thúc hợp đồng)** | [B2-16] | ⬜ | BM05 Điều 4.2: *"Đợt 4: giải ngân kinh phí còn lại sau khi đề tài được công nhận kết quả Đạt"*. Phải nối: nghiệm thu Đạt → mở đợt cuối → giải ngân → mới cho đóng hợp đồng |
-| C7 | **Từng đợt sản phẩm sau khi xong phải ĐÓNG lại** | [B1] | ⬜ | Xem D5 (cùng gốc vấn đề với gia hạn) |
+| C7 | **Từng đợt sản phẩm sau khi xong phải ĐÓNG lại** | [B1] | ✅ **XONG 06/08** | Sản phẩm nghiệm thu ĐẠT nay không nộp lại được (409). Xem D5 |
 | C8 | **Page "Tiến trình đề tài" quá sơ sài** — hiện chỉ có `"abc06 Hợp đồng 06"`. Phải có **tên đề tài · ai là PI · mô tả đề tài** | [B2-17] | ⬜ | |
 | C9 | **Tab "Báo cáo tổng kết" ở page hợp đồng: đổi tên trường "Duyệt (chuyên viên)" → "Nội dung kiểm tra"** | [B2-12] | ⬜ | Sửa nhãn i18n, việc nhỏ |
 
@@ -106,7 +106,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | D2 | **Sau bước báo cáo tiến độ phải có một bước DUYỆT (ví dụ Staff duyệt)** | [B2-11] | ✅ **đã có** | `POST /progress-reports/{id}/evaluate` — Staff chấm Đạt/Không đạt/Có điều kiện (rule #16: không cần hội đồng). Có thể ý thầy là **luồng chưa rõ trên UI** → cần làm nổi bước này lên |
 | D3 | **Báo cáo tổng kết mới chỉ có link sản phẩm — phải thêm file Word/PDF** | [B1] | 🔶 | 31/07 đã đổi sang upload file thật (BM09). Cần kiểm lại màn có còn ô dán link đơn thuần không |
 | D4 | **Gia hạn: phải ghi rõ được gia hạn LÚC NÀO và gia hạn TRONG BAO LÂU** | [B1] | 🔶 | Đã có: `OriginalEndDate` + nhãn *"Đã gia hạn — hạn gốc {ngày}"*; và 05/08 đã chặn trần theo **QĐ543 Điều 10.4** (≤ ½ thời gian thực hiện; đề tài 12 tháng ⇒ ≤ 6 tháng). **Còn thiếu**: log *thời điểm* duyệt gia hạn hiện ra cho người dùng thấy |
-| D5 | 🔴 **Sản phẩm ĐÃ NGHIỆM THU rồi mà vẫn gia hạn thêm thời gian được** | [B1] | ⬜ **lỗi thật** | `AmendmentService.ApproveAsync` chỉ kiểm `Status == Pending`, **không hề kiểm trạng thái hợp đồng/nghiệm thu**. Phải chặn khi hợp đồng đã `COMPLETED` / sản phẩm đã nghiệm thu Đạt |
+| D5 | 🔴 **Sản phẩm ĐÃ NGHIỆM THU rồi mà vẫn gia hạn thêm thời gian được** | [B1] | ✅ **XONG 06/08** | Hoá ra là **hai lỗi tách biệt**: ① `AmendmentService` không kiểm trạng thái đề tài (trong khi `ChangeRequestService`/BM07 đã kiểm đúng từ trước — hai cơ chế song song mà luật lệch nhau) → nay chặn ở **cả gửi lẫn duyệt**; ② `DeliverableService.SubmitAsync` không kiểm `AcceptanceStatus`, nộp lại sản phẩm đã ĐẠT sẽ **đặt lại về PENDING = xoá kết quả nghiệm thu** và khoá lại đợt giải ngân đã mở — FE ẩn nút nhưng gọi thẳng API là lọt. Kiểm bằng API: nộp lại sản phẩm đã ĐẠT → 409; sản phẩm chưa đạt → vẫn 200. Thêm 4 test (104/104) |
 | D6 | **Ô nhập thông tin proposal phải tải lên được từ file Word** | [B2-19] | ✅ **đã có** | Đường B (upload + AI trích xuất → prefill form) — `/ai/extract`, nối lại 04/08. Nếu thầy vẫn nói thiếu ⇒ **UI chưa lộ rõ**, phải làm nổi nút upload ở bước 1 wizard |
 
 ---
@@ -155,8 +155,8 @@ Kèm 2 ràng buộc QĐ543 chưa code (bổ sung cho A8):
 ## 🔢 Thứ tự đề xuất
 
 **Nhóm 1 — lỗi nghiệp vụ thật, sai kết quả** *(làm trước)*
-1. **A11** tổng điểm bộ tiêu chí > 100 vẫn tạo được
-2. **D5** sản phẩm đã nghiệm thu vẫn gia hạn được
+1. ~~**A11** tổng điểm bộ tiêu chí > 100 vẫn tạo được~~ ✅
+2. ~~**D5** sản phẩm đã nghiệm thu vẫn gia hạn được~~ ✅
 3. **D1** nộp báo cáo 2 lần cùng lúc
 4. **A6 + A7 + A8** khoá phiếu trước khi chốt biên bản · đổi status sau khi chốt · thiếu người thì không cho lưu
 5. **A2** lịch chấm phải nằm trong khung giờ họp

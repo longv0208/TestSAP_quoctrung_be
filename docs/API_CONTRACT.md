@@ -541,7 +541,7 @@ Key hiện có:
 | GET | `/api/contracts/{contractId}/deliverables` | * | Sản phẩm phải nộp |
 | POST | `/api/contracts/{contractId}/deliverables` | Admin, Staff | **Staff thêm 1 sản phẩm** cho hợp đồng `{ productName, categoryId?, dueDate?, description? }` (đề cương không có trường sản phẩm cấu trúc → nhập tay; PI sau đó nộp file). |
 | GET | `/api/contracts/{contractId}/amendments` | * | Điều chỉnh hợp đồng |
-| POST | `/api/contracts/{contractId}/amendments` | * | Tạo yêu cầu điều chỉnh |
+| POST | `/api/contracts/{contractId}/amendments` | * | Tạo yêu cầu điều chỉnh. **409 khi đề tài đã đóng** (`COMPLETED`/`CANCELLED`/`TERMINATED`) hoặc hợp đồng đã chấm dứt (mới 06/08). |
 
 **CreateContractRequest**: `{ proposalId, contractNumber, scopeTitle?, startDate, endDate, maxExtensionMonths=6, sideARepresentative?, econtractUrl? }` — nhận `proposalId` nhưng hợp đồng neo **project**; ký HĐ → project sang `IN_PROGRESS`. **1 đề tài có thể ký nhiều hợp đồng** (từng giai đoạn/phần sản phẩm). `ContractDto` trả thêm `projectId`, `scopeTitle`.
 **CreateAmendmentRequest**: `{ categoryId, changeDescription, justification, changePercentage?, oldValue?, newValue?, requiresRectorApproval, reviewerComments? }`
@@ -554,12 +554,12 @@ Key hiện có:
 | GET | `/api/disbursements/{id}/evidence/{documentId}/download` | Admin, Staff | Tải/mở file minh chứng (cần Bearer) |
 
 ### Sản phẩm — `/api/deliverables`
-| POST | `/api/deliverables/{id}/submit` | * (PI) | Nộp sản phẩm (`{ fileUrl, trialEvidenceUrl?, description? }`). **Tuần 12 — chuẩn hoá URL:** `fileUrl`/`trialEvidenceUrl` chỉ nhận đường dẫn nội bộ (`/…` do BE sinh sau upload) hoặc link http(s); thiếu scheme thì BE **tự thêm `https://`**, không parse được → 400. Trước đây nhận nguyên xi mọi chuỗi (vd `abc.com`) ⇒ người nghiệm thu bấm vào ra trang trống. |
+| POST | `/api/deliverables/{id}/submit` | * (PI) | Nộp sản phẩm (`{ fileUrl, trialEvidenceUrl?, description? }`). **Chuẩn hoá URL (tuần 12):** chỉ nhận đường dẫn nội bộ (`/…` do BE sinh sau upload) hoặc link http(s); thiếu scheme thì BE **tự thêm `https://`**, không parse được → 400 — trước đây nhận nguyên xi mọi chuỗi (vd `abc.com`) nên người nghiệm thu bấm vào ra trang trống. **409 nếu sản phẩm đã nghiệm thu ĐẠT (mới 06/08)** — nộp lại sẽ đặt `acceptanceStatus` về `PENDING`, tức **xoá mất kết quả nghiệm thu** và khoá lại đợt giải ngân vốn đã mở nhờ sản phẩm đó. |
 | POST | `/api/deliverables/{id}/evaluate` | Admin, Staff | Đánh giá (`{ acceptanceStatus: "PASSED"|"FAILED", qualityAssessment? }`) |
 
 ### Điều chỉnh — `/api/amendments`
 | GET | `/api/amendments/{id}` | * | Chi tiết |
-| POST | `/api/amendments/{id}/approve` | Admin, Staff | Duyệt (`ReviewAmendmentRequest`) |
+| POST | `/api/amendments/{id}/approve` | Admin, Staff | Duyệt (`ReviewAmendmentRequest`). **409 khi đề tài đã đóng** — chặn cả ở đây chứ không chỉ lúc gửi, vì đơn có thể nằm chờ từ trước khi đề tài được nghiệm thu. Gia hạn vẫn giới hạn ≤ `MaxExtensionMonths` (QĐ543 Điều 10.4). |
 | POST | `/api/amendments/{id}/reject` | Admin, Staff | Từ chối |
 
 ### Báo cáo tiến độ — `/api/progress-reports`
