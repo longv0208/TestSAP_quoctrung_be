@@ -89,6 +89,13 @@ public class CouncilService : ICouncilService
             ? (5, 7)
             : (3, 5);
 
+    /// <summary>Các cỡ hợp lệ (lẻ) nằm trong khoảng QĐ543 cho phép — dùng để báo lỗi cho rõ.</summary>
+    private static IEnumerable<int> OddSizesFor(int min, int max)
+    {
+        for (var n = min; n <= max; n++)
+            if (n % 2 == 1) yield return n;
+    }
+
     public async Task<CouncilMemberResponse> AddMemberAsync(Guid councilId, AddCouncilMemberRequest request)
     {
         var council = await _review.Query()
@@ -154,6 +161,21 @@ public class CouncilService : ICouncilService
             throw new InvalidOperationException(
                 $"Hội đồng mới có {council.Members.Count}/{council.MinMembersRequired} thành viên — " +
                 "gán đủ người rồi mới gửi thư mời (QĐ543 Điều 8.2 / 12.2).");
+
+        /*
+         * Số thành viên phải LẺ (thầy chốt 08/08).
+         * Lý do: **mọi thành viên đều chấm** (kể cả Thư ký — QĐ543 Điều 8.3.b). Thư ký dựa vào
+         * **chênh lệch số phiếu Đạt / Không đạt** để soạn kết luận; Chủ tịch xem lại rồi mới ký
+         * thông qua. Số chẵn ⇒ có thể hoà phiếu ⇒ không có căn cứ để viết kết luận, và người
+         * ngoài soi vào cũng không đối chiếu được.
+         * (Không mâu thuẫn rule #12: hệ thống VẪN không tự chốt kết quả — nó chỉ cung cấp căn cứ,
+         * quyết định cuối vẫn là của Chủ tịch.)
+         */
+        if (council.Members.Count % 2 == 0)
+            throw new InvalidOperationException(
+                $"Hội đồng đang có {council.Members.Count} thành viên — phải là SỐ LẺ " +
+                $"({string.Join(" hoặc ", OddSizesFor(council.MinMembersRequired, council.MaxMembersAllowed))}) " +
+                "để khi bỏ phiếu luôn có chênh lệch Đạt/Không đạt làm căn cứ cho kết luận của Hội đồng.");
 
         var inviteDays = await _settings.GetIntAsync(
             SystemSettingKeys.CouncilInviteDeadlineDays, SystemSettingKeys.DefaultCouncilInviteDeadlineDays);

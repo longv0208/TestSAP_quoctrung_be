@@ -63,7 +63,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | A6 | **Chốt biên bản = ĐÓNG**; trước khi chốt, toàn bộ phiếu cũng phải đóng | [B1] · [B2-BR] | ✅ **ĐÃ CÓ SẴN** (kiểm 06/08) | `ReviewScoringService.SubmitScoreAsync` dòng 91 đã chặn: `council.Status == DECIDED \|\| lockedDecision` → không sửa điểm. `AcceptanceEvaluationService` chặn tương tự cho phiếu Đạt/Không đạt. Không phải làm gì thêm |
 | A7 | **Sau khi chốt biên bản phải đổi trạng thái** — hiện vẫn để `active` | [B2-BR] | ✅ **XONG 06/08** | Rà hết: đề tài → `COMPLETED`/`APPROVED`, đề cương → `APPROVED`, vòng → `PASSED`/`FAILED`, hội đồng → `DECIDED` — **đều đã đổi đúng**. Chỉ **buổi họp** kẹt ở `SCHEDULED` vĩnh viễn vì không ai bấm Bắt đầu/Kết thúc, nên lịch vẫn hiện như sắp họp dù đề tài đã có kết quả. Nay Chủ tịch chốt biên bản = tự đóng mọi buổi họp của hội đồng (`COMPLETED` + `ActualEndAt`) |
 | A8 | **Không đủ số thành viên chấm thì KHÔNG được lưu biên bản** | [B2-BR] | ✅ **XONG 06/08** | Tra nguyên văn: **Điều 8.3.b** *"Tham dự của ít nhất **2/3** số thành viên dưới sự chủ trì của Chủ tịch; các thành viên tham dự họp **cần đánh giá thẩm định** đề cương (BM03)"* ⇒ số phiếu đã nộp chính là thước đo số người dự. **Điều 12.3.b** thêm *"và sự tham dự của **thành viên phản biện**"* cho hội đồng nghiệm thu. Nay chặn ở **cả lưu nháp lẫn chốt**; 2/3 làm tròn LÊN (5 người cần 4, không phải 3). Thêm 2 test |
-| A9 | **Tổng số thành viên hội đồng** | [B2-8] | ✅ **XONG 06/08** (theo QĐ543, chưa ép "lẻ") | Tra kỹ thì QĐ543 quy định **KHÁC NHAU cho hai loại hội đồng**: **Điều 8.2** — Xét duyệt **03–05** người; **Điều 12.2** — Nghiệm thu **05–07** người. Ghép với "lẻ và >3" của thầy: xét duyệt ⇒ **5**, nghiệm thu ⇒ **5 hoặc 7**. Nay `CouncilSizeFor(roundType)` áp **3–5** cho xét duyệt / **5–7** cho nghiệm thu, thay vì lấy số Staff tự gõ ở request. Chặn thêm: quá `MaxMembersAllowed` → 409; **gửi thư mời khi chưa đủ `MinMembersRequired` → 409** (trước đây hội đồng 1 người vẫn mời được). ⏸ **Chưa ép "số lẻ"** — QĐ543 không ghi, và ép thì hội đồng xét duyệt chỉ còn đúng 5, hẹp hơn văn bản. Cần hỏi thầy nếu vẫn muốn |
+| A9 | **Số thành viên hội đồng phải LẺ** | [B2-8] | ✅ **XONG 08/08** | Cỡ theo QĐ543: xét duyệt **3–5** (Điều 8.2), nghiệm thu **5–7** (Điều 12.2) — bỏ điều kiện ">3" thì hết vướng vì **3 cũng là số lẻ** ⇒ hợp lệ: xét duyệt **3 hoặc 5**, nghiệm thu **5 hoặc 7**. Chặn gửi thư mời khi số chẵn; FE cảnh báo **ngay lúc gán người** kèm lý do, không để tới lúc bấm mới ăn lỗi. |
 | A10 | **Điểm chấm là số nguyên hay thập phân?** | [B2-BR] | ❓ | Hiện `decimal`. Phải chốt và validate thống nhất cả BE lẫn ô nhập ở FE |
 | A11 | **Ràng buộc tổng điểm khi chỉnh sửa bộ tiêu chí** | *(cả 2 bản)* [B1-22] · [B2-BR] | ✅ **XONG 06/08** | Tra nguyên văn: QĐ543 **BM03** có 5 mục 10+20+40+20+10, dòng cuối ghi **"Cộng 100"**. Dữ liệu thật đang có bộ **125 điểm**. Nay: `POST/PUT` tiêu chí vượt trần → **400**; **nộp phiếu chấm bằng bộ chưa cộng đủ → 409** (cổng chặn thật, vì bộ phải xây dần mới đủ 100); DTO trả `totalCriteriaScore`/`isTotalValid`, FE hiện "125/100 — chưa dùng chấm được" ngay ở danh sách. Kiểm bằng API: thêm 120 → 400 · 60 ok → thêm 50 → 400 · sửa 60→60 vẫn 200 (không tự tính trùng) · đủ 100 → `isTotalValid=true` |
 
@@ -325,12 +325,16 @@ nguyên (10/20/40/20/10). ⇒ Đề xuất: **điểm từng tiêu chí = số n
 **điểm trung bình = thập phân** (phép chia tự nhiên). **Không** cho user tự cấu hình — phải thống
 nhất trong một hội đồng, cho chỉnh thì mỗi người chấm một kiểu.
 
-**A9 — ép số lẻ:** lý do thầy nêu (*"số lẻ mới vote chênh lệch được"*) hợp lý và **không trái**
-QĐ543 (chỉ thu hẹp: xét duyệt `3–5`→**5**, nghiệm thu `5–7`→**5 hoặc 7**).
-⚠️ **Nhưng mâu thuẫn với rule #12** (*"Kết quả = QUYẾT ĐỊNH của Chủ tịch; hệ thống hiển thị phiếu
-chỉ để tham khảo, KHÔNG tự đếm phiếu chốt"*) — nếu Chủ tịch quyết thì hoà phiếu không thành vấn
-đề. **Phải hỏi lại thầy**: đếm phiếu ra kết quả, hay Chủ tịch chốt? Trả lời xong mới biết số lẻ là
-bắt buộc hay chỉ khuyến nghị.
+**A9 — ✅ ĐÃ CHỐT 08/08 (user xác nhận với thầy): ÉP SỐ LẺ.**
+Mâu thuẫn mình nêu trước đó **đã được giải**: hệ thống **vẫn đếm phiếu**, Chủ tịch **vẫn chốt** —
+hai thứ **bổ sung** nhau chứ không loại trừ. Cơ chế thật:
+1. **Mọi thành viên đều chấm** (kể cả Thư ký — Điều 8.3.b, đã sửa ở A3).
+2. **Thư ký** dựa vào **chênh lệch phiếu Đạt/Không đạt** để soạn kết luận.
+3. **Chủ tịch** xem lại, thấy hợp lý mới ký thông qua — *"quyết định cũng phải có căn cứ"*.
+4. Người ngoài soi vào **đối chiếu được** kết luận với số phiếu.
+
+Số chẵn ⇒ có thể hoà ⇒ **không có căn cứ nào để viết kết luận**. Rule #12 vẫn đúng: hệ thống
+**không tự chốt** kết quả, chỉ cung cấp căn cứ.
 
 **Form tạo hợp đồng vs BM05:** rà xong — **không thiếu gì**. Form hỏi số HĐ · thời gian · gia hạn
 tối đa · đại diện Bên A; mọi mục khác của BM05 đều **tự lấy** (tên đề tài, chủ nhiệm, đơn vị,
