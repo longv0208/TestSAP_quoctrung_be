@@ -431,8 +431,14 @@ chi tiền ngoài hệ thống… đánh dấu đã giải ngân (**không nhậ
 
 Nay để tuỳ chọn (bỏ trống = 0). BE vốn đã nhận 0 (chỉ chặn số âm) nên không phải đổi.
 
-⚠️ **Còn cần rà tiếp**: các màn khác có ô nhập tiền nào không — `budget-categories`, dự toán đề
-cương, `financial-config`. Rule #15 nói scope là **strip + ẩn**, không xoá bảng.
+**Đã rà nốt (06/08) — sạch:**
+- `budget-categories` và `financial-config`: **đã ẩn khỏi nav** từ tuần 12 (2 dòng comment trong `nav.ts`).
+- Dự toán đề cương: **không còn ô nhập tiền nào** ở màn PI.
+- Chỉ còn **`maxBudgetCap`** ở màn Admin *Loại đề tài* — đây là **trần kinh phí của LOẠI đề tài**,
+  đúng rule #7 (*"mỗi cycle có timeline + funding cap riêng"*), **không phải** nhập tiền chi tiêu ⇒ giữ.
+
+⇒ Rule #15 nay đã áp đủ ở FE. Phần "strip" còn lại nằm ở BE (bảng vẫn giữ, chỉ ngừng tính tiền) —
+đúng như scope đã chốt.
 
 ### E. Thứ tự đề xuất
 1. ~~**Hợp đồng: thêm SỬA + XOÁ**~~ ✅ xong 05/08.
