@@ -464,6 +464,15 @@ public class DocumentExportService : IDocumentExportService
             .FirstOrDefaultAsync(x => x.Id == contractId)
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
+        // Điều 2 (sản phẩm) và Điều 4 (đợt giải ngân) phải là dữ liệu THẬT của hợp đồng này,
+        // không phải câu mẫu chung chung.
+        var deliverables = await _contracts.Deliverables
+            .Where(d => d.ContractId == contractId)
+            .OrderBy(d => d.Sequence).ToListAsync();
+        var disbursements = await _contracts.Disbursements
+            .Where(d => d.ContractId == contractId)
+            .OrderBy(d => d.RoundNumber).ToListAsync();
+
         using var ms = new MemoryStream();
         using (var docx = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document))
         {
@@ -471,30 +480,143 @@ public class DocumentExportService : IDocumentExportService
             mainPart.Document = new Document(new Body());
             var body = mainPart.Document.Body!;
 
-            AppendParagraph(body, "TRƯỜNG ĐẠI HỌC FPT", bold: true, fontSize: 12);
-            AppendParagraph(body, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
-            AppendParagraph(body, "Độc lập - Tự do - Hạnh phúc");
+            /*
+             * BM05 — Hợp đồng nghiên cứu khoa học cấp trường (QĐ543, PDF tr.22-26).
+             *
+             * Trước đây bản xuất ra chỉ là MỘT BẢNG TÓM TẮT 6 dòng + ô ký — không phải hợp đồng,
+             * đem đi ký không được. Thầy 05/08: "phải tự tạo hợp đồng xong có thể kiểm tra lại xong
+             * xuất ra mới đưa cho bên ký, chứ không phải người ta tự tạo tự ký ở ngoài rồi nộp lên".
+             *
+             * Nay giữ NGUYÊN VĂN toàn bộ chữ của mẫu (căn cứ pháp lý, Điều 1-7, ô ký) và điền dữ
+             * liệu hệ thống vào đúng chỗ trống. Mục nào hệ thống CHƯA có dữ liệu (số tài khoản,
+             * CCCD của Bên B — DB chưa có cột) thì để dấu chấm lửng như bản giấy, ký ngoài điền tay.
+             */
+            var pi = c.Project?.PiUser;
+            var titleVi = c.Project?.TitleVi ?? c.ScopeTitle ?? "…";
+            var money = c.TotalAmount > 0 ? $"{c.TotalAmount:N0}" : "…………";
+            const string Blank = "……………………………";
+
+            AppendParagraph(body, "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
+            AppendParagraph(body, "Độc lập – Tự do – Hạnh phúc");
+            AppendParagraph(body, "***");
             AppendParagraph(body, "");
-            AppendHeading(body, "HỢP ĐỒNG THỰC HIỆN ĐỀ TÀI NGHIÊN CỨU KHOA HỌC", 16, bold: true, justify: JustificationValues.Center);
-            AppendParagraph(body, $"Số: {c.ContractNumber}");
+            AppendHeading(body, $"HỢP ĐỒNG NGHIÊN CỨU KHOA HỌC CẤP TRƯỜNG NĂM {c.StartDate.Year}",
+                16, bold: true, justify: JustificationValues.Center);
+            AppendParagraph(body, $"Số: {c.ContractNumber}/QLKH-FEHO");
+            AppendParagraph(body, "(Dùng cho việc giao khoán thực hiện Đề tài NCKH cấp Trường với Chủ nhiệm đề tài)");
             AppendParagraph(body, "");
 
-            var t = CreateTable(body, new[] { "Mục", "Nội dung" }, new[] { 2600, 6400 });
-            AddTableRow(t, "Tên đề tài", c.Project?.TitleVi ?? c.ScopeTitle ?? "—", bold0: true);
-            AddTableRow(t, "Chủ nhiệm đề tài", c.Project?.PiUser?.FullName ?? "—", bold0: true);
-            AddTableRow(t, "Đơn vị chủ trì", c.Project?.HostingUnit?.Name ?? "—", bold0: true);
-            AddTableRow(t, "Thời gian thực hiện", $"{c.StartDate:dd/MM/yyyy} – {c.EndDate:dd/MM/yyyy}", bold0: true);
-            AddTableRow(t, "Tổng kinh phí", c.TotalAmount > 0 ? $"{c.TotalAmount:N0} VNĐ" : "—", bold0: true);
-            AddTableRow(t, "Đại diện Bên A", c.SideARepresentative ?? "—", bold0: true);
+            foreach (var can in new[]
+            {
+                "Căn cứ Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015;",
+                "Căn cứ Luật Khoa học và Công nghệ số 29/2013/QH13 ngày 18/6/2013;",
+                "Căn cứ Luật Sở hữu trí tuệ số 50/2005/QH11 ngày 29/11/2005 và Luật Sửa đổi, bổ sung một số điều của Luật Sở hữu trí tuệ số 07/2022/QH15 ngày 16/6/2022;",
+                "Căn cứ Quyết định số 543/QĐ-ĐHFPT của Hiệu trưởng Trường Đại học FPT về Quy định quản lý đề tài nghiên cứu khoa học cấp Trường;",
+                "Căn cứ thuyết minh đề cương nghiên cứu của đề tài đã được phê duyệt."
+            })
+                AppendParagraph(body, can);
 
             AppendParagraph(body, "");
-            AppendParagraph(body, "Hai bên cam kết thực hiện đúng các điều khoản của Hợp đồng và Quy định quản lý đề tài NCKH (QĐ 543/QĐ-ĐHFPT).");
+            AppendParagraph(body, "Chúng tôi gồm:", bold: true);
+            AppendParagraph(body, "BÊN GIAO THỰC HIỆN ĐỀ TÀI (BÊN A): TRƯỜNG ĐẠI HỌC FPT", bold: true);
+            AppendParagraph(body, $"Đại diện là: {c.SideARepresentative ?? Blank}");
+            AppendParagraph(body, "Chức vụ: Trưởng ban Nghiên cứu và Phát triển                Mã số thuế: 0102100740");
+            AppendParagraph(body, "Địa chỉ: Khu Giáo dục và Đào tạo, Khu Công nghệ cao Hòa Lạc, Km29 Đại lộ Thăng Long, huyện Thạch Thất, Hà Nội.");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "BÊN NHẬN TỔ CHỨC CHỦ TRÌ THỰC HIỆN ĐỀ TÀI (BÊN B):", bold: true);
+            AppendParagraph(body, $"CHỦ NHIỆM ĐỀ TÀI: {pi?.FullName ?? Blank}");
+            AppendParagraph(body, $"Đơn vị công tác: {c.Project?.HostingUnit?.Name ?? Blank}");
+            AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? "………………"}          Email: {pi?.Email ?? "………………"}");
+            // Hệ thống chưa lưu tài khoản ngân hàng / CCCD của Bên B (chưa chốt có thu thập hay
+            // không — xem PLAN_Week13 mục C3) ⇒ để trống đúng như bản giấy.
+            AppendParagraph(body, $"Số tài khoản: {Blank} tại Ngân hàng {Blank}");
+            AppendParagraph(body, $"Số CCCD: {Blank} Cấp ngày … tháng … năm …… tại {Blank}");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "Cùng thỏa thuận và thống nhất ký kết hợp đồng thực hiện Đề tài nghiên cứu khoa học cấp Trường (sau đây gọi tắt là Hợp đồng) với những điều khoản như sau:");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 1. NỘI DUNG CÔNG VIỆC", 13);
+            AppendParagraph(body, $"Bên B cam kết tổ chức triển khai thực hiện đề tài nghiên cứu khoa học cấp Trường năm {c.StartDate.Year} theo đúng tiến độ đã đăng ký trong thuyết minh đề cương được phê duyệt.");
+            AppendParagraph(body, $"- Tên đề tài: {titleVi}");
+            AppendParagraph(body, $"- Mã số: {c.ContractNumber}");
+            if (!string.IsNullOrWhiteSpace(c.ScopeTitle))
+                AppendParagraph(body, $"- Phạm vi ký kết: {c.ScopeTitle}");
+            AppendParagraph(body, "Đề cương là bộ phận không tách rời của Hợp đồng.");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 2. SẢN PHẨM CỦA ĐỀ TÀI", 13);
+            AppendParagraph(body, "Bên B phải nộp cho Bên A sản phẩm nghiên cứu khoa học bao gồm:");
+            AppendParagraph(body, "- 01 bản mềm Báo cáo tổng kết đề tài;");
+            AppendParagraph(body, "- 01 bản mềm toàn bộ nội dung sản phẩm;");
+            AppendParagraph(body, "- Xác nhận bằng văn bản của đơn vị thụ hưởng về việc tiếp nhận, thử nghiệm sản phẩm và đánh giá chất lượng.");
+            if (deliverables.Count > 0)
+            {
+                AppendParagraph(body, "Danh mục sản phẩm đã đăng ký trong đề cương:");
+                var td = CreateTable(body, new[] { "TT", "Tên sản phẩm", "Thời hạn nộp" }, new[] { 800, 6200, 2000 });
+                for (int i = 0; i < deliverables.Count; i++)
+                    AddTableRowMulti(td, new[]
+                    {
+                        (i + 1).ToString(),
+                        deliverables[i].ProductName,
+                        deliverables[i].DueDate?.ToString("dd/MM/yyyy") ?? "—"
+                    });
+            }
+            AppendParagraph(body, "Toàn bộ thủ tục giao nộp sản phẩm phải hoàn tất trong 30 ngày kể từ ngày nghiệm thu.");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 3. THỜI GIAN THỰC HIỆN HỢP ĐỒNG", 13);
+            var months = ((c.EndDate.Year - c.StartDate.Year) * 12) + c.EndDate.Month - c.StartDate.Month;
+            AppendParagraph(body, $"Thời gian thực hiện Đề tài là: {(months > 0 ? months : 12)} tháng");
+            AppendParagraph(body, $"Từ tháng {c.StartDate.Month} năm {c.StartDate.Year} đến tháng {c.EndDate.Month} năm {c.EndDate.Year}.");
+            AppendParagraph(body, "Thời gian trên đã bao gồm thời gian nghiệm thu sản phẩm.");
+            if (c.EndDate != c.OriginalEndDate)
+                AppendParagraph(body, $"(Đã gia hạn — thời hạn theo hợp đồng gốc: {c.OriginalEndDate:dd/MM/yyyy})");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 4. GIÁ TRỊ HỢP ĐỒNG VÀ PHƯƠNG THỨC THANH TOÁN", 13);
+            AppendParagraph(body, $"4.1. Tổng giá trị Hợp đồng: tổng kinh phí thực hiện đề tài là {money} đồng.");
+            AppendParagraph(body, "4.2. Kinh phí này bao gồm các khoản đóng góp nghĩa vụ theo quy định hiện hành và được chia làm các đợt giải ngân:");
+            if (disbursements.Count > 0)
+            {
+                var tt = CreateTable(body, new[] { "Đợt", "Điều kiện giải ngân", "Thời điểm dự kiến" }, new[] { 900, 6100, 2000 });
+                foreach (var d in disbursements)
+                    AddTableRowMulti(tt, new[]
+                    {
+                        d.RoundNumber.ToString(),
+                        string.IsNullOrWhiteSpace(d.ConditionDescription) ? "Theo tiến độ thực hiện" : d.ConditionDescription,
+                        d.ConditionMetAt?.ToString("dd/MM/yyyy") ?? "—"
+                    });
+            }
+            else
+            {
+                AppendParagraph(body, "- Đợt 1: Tối đa 30% tổng kinh phí, để Bên B thực hiện nội dung theo Đề cương.");
+                AppendParagraph(body, "- Đợt 2, Đợt 3: Tối đa 30% mỗi đợt, sau khi đánh giá tiến độ đạt yêu cầu.");
+                AppendParagraph(body, "- Đợt 4: Kinh phí còn lại, sau khi đề tài được công nhận kết quả \"Đạt\".");
+            }
+            AppendParagraph(body, "4.3. Phương thức thanh toán: thanh toán từng đợt theo kết quả đánh giá tiến độ; việc thanh quyết toán thực hiện theo quy trình của Ban Kế toán.");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 5. TRÁCH NHIỆM CỦA MỖI BÊN", 13);
+            AppendParagraph(body, "5.1. Bên A: cung cấp thông tin cần thiết; cấp kinh phí theo tiến độ khi Bên B đáp ứng yêu cầu của Đề cương; kiểm tra định kỳ hoặc đột xuất; tổ chức đánh giá, nghiệm thu và thanh lý Hợp đồng theo quy định.");
+            AppendParagraph(body, "5.2. Bên B: tổ chức thực hiện đúng nội dung, tiến độ và kinh phí đã đăng ký; báo cáo tiến độ định kỳ; giao nộp sản phẩm đúng hạn; hoàn trả kinh phí chưa sử dụng nếu Đề tài bị đình chỉ hoặc Hợp đồng bị chấm dứt do lỗi của Bên B.");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 6. ĐIỀU KHOẢN CHUNG", 13);
+            AppendParagraph(body, "6.1. Trong quá trình thực hiện Hợp đồng, nếu một trong hai bên có yêu cầu sửa đổi, bổ sung nội dung hoặc có căn cứ để chấm dứt thực hiện Hợp đồng phải thông báo cho bên kia ít nhất 15 ngày trước.");
+            AppendParagraph(body, "6.2. Hai bên cam kết thực hiện đúng các quy định của Hợp đồng và hợp tác giải quyết các vướng mắc phát sinh.");
+            AppendParagraph(body, "6.3. Mọi tranh chấp được các bên thương lượng hòa giải; không hòa giải được thì đưa ra cơ quan có thẩm quyền giải quyết.");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 7. HIỆU LỰC CỦA HỢP ĐỒNG", 13);
+            AppendParagraph(body, "7.1. Hợp đồng này có hiệu lực từ ngày ký.");
+            AppendParagraph(body, "7.2. Hợp đồng được thực hiện qua phương thức ký điện tử trên phần mềm Econtract; Bên B ủy quyền cho Trường Đại học FPT khai báo thông tin định danh để cấp chứng thư số.");
+            AppendParagraph(body, "7.3. Các bên tự bảo quản và lưu trữ Hợp đồng trên thiết bị điện tử của từng Bên./.");
             AppendParagraph(body, "");
             AppendParagraph(body, "");
 
             var sign = CreateTable(body, new[] { "ĐẠI DIỆN BÊN A", "CHỦ NHIỆM ĐỀ TÀI (BÊN B)" }, new[] { 4500, 4500 });
             AddTableRow(sign, "(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)");
-            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (c.Project?.PiUser?.FullName ?? ""));
+            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (pi?.FullName ?? ""));
         }
 
         var code = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
