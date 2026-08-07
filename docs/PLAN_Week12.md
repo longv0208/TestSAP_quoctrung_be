@@ -394,7 +394,7 @@ không gác hành động theo vai ⇒ **Staff làm hộ PI**.
 | `FinalReportPanel` | Staff nộp hộ báo cáo tổng kết (BM09 là của PI) | ✅ sửa — thêm `canSubmitReport` |
 | `AmendmentsPanel` | Staff tự xin điều chỉnh rồi tự duyệt | ✅ sửa — thêm `canRequest` |
 | `DeliverablesPanel` | Staff bấm "Nộp lại" sản phẩm hộ PI | ✅ sửa — thêm `canSubmit` |
-| `DisbursementsPanel` · `SettlementPanel` | **CHƯA RÀ** | ⬜ |
+| `DisbursementsPanel` · `SettlementPanel` | Rà 06/08: **KHÔNG sai vai** — cả hai đều gác đúng bằng `canManage` (`DisbursementsPanel` gác từng nút; `SettlementPanel` chặn sớm bằng `if (!canManage) return <EmptyState/>` khi chưa có quyết toán, và gác các nút hành động). | ✅ đã rà |
 
 ### B. 🔴 CRUD thiếu — đếm từ code, không phỏng đoán
 **26/38 controller không có endpoint XOÁ.** Có cái không cần (Auth, Admin-tools, AI), nhưng
@@ -420,9 +420,23 @@ những cái sau là **thiếu thật, chặn nghiệp vụ**:
 - 🔴 **Duyệt gia hạn xong màn hình vẫn hiện hạn cũ** — FE **không invalidate** query hợp đồng ⇒ người dùng tưởng duyệt không có tác dụng. Nay invalidate + **hiện nhãn "Đã gia hạn — hạn gốc {ngày}"** (trước đây nhìn vào chỉ thấy một cái ngày, không biết đã gia hạn hay chưa). Kèm bổ sung `originalEndDate`/`maxExtensionMonths` vào DTO danh sách.
 - Lỗi im lặng khi gia hạn ghi chữ thay vì số (xem mục ở trên).
 
+
+### 🔎 Rà 2 panel (06/08) — không sai vai, nhưng lộ ra vi phạm **rule #15**
+`SettlementPanel` **bắt nhập 2 ô số tiền** (`totalContractedAmount`, `totalDisbursedAmount`) mới
+cho tạo quyết toán — `disabled={!contracted || !disbursed || ...}`.
+
+Trái **rule #15** (thầy tuần 10): *"Tài chính = minh chứng, hệ thống **KHÔNG quản tiền**; kế toán
+chi tiền ngoài hệ thống… đánh dấu đã giải ngân (**không nhập số tiền**)"*. Chỗ xác nhận giải ngân
+đã sửa từ tuần 12 (`confirm` → amount optional) nhưng **quyết toán thì bỏ sót**.
+
+Nay để tuỳ chọn (bỏ trống = 0). BE vốn đã nhận 0 (chỉ chặn số âm) nên không phải đổi.
+
+⚠️ **Còn cần rà tiếp**: các màn khác có ô nhập tiền nào không — `budget-categories`, dự toán đề
+cương, `financial-config`. Rule #15 nói scope là **strip + ẩn**, không xoá bảng.
+
 ### E. Thứ tự đề xuất
 1. ~~**Hợp đồng: thêm SỬA + XOÁ**~~ ✅ xong 05/08.
-2. **Rà nốt 2 panel còn lại** (giải ngân, quyết toán) xem có sai vai.
+2. ~~**Rà nốt 2 panel còn lại**~~ ✅ 06/08 — không sai vai, nhưng lộ ra lỗi khác (xem dưới).
 3. **Xoá**: sản phẩm · kỳ báo cáo · ~~lịch họp~~ ✅ · thành viên đề tài.
 4. **Xoá master data** (5 màn Admin).
 5. Chốt hướng 4 loại điều chỉnh + quan hệ với BM07.
