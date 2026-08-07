@@ -1,6 +1,7 @@
 using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Progress;
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Progress;
@@ -12,11 +13,15 @@ public class ProgressReportService : IProgressReportService
 {
     private readonly IContractRepository _contracts;
     private readonly IProposalRepository _proposals;
+    // Dùng IClock (không phải DateTime.UtcNow) để test tua được thời gian — các service khác
+    // trong dự án đã theo quy ước này.
+    private readonly IClock _clock;
 
-    public ProgressReportService(IContractRepository contracts, IProposalRepository proposals)
+    public ProgressReportService(IContractRepository contracts, IProposalRepository proposals, IClock clock)
     {
         _contracts = contracts;
         _proposals = proposals;
+        _clock = clock;
     }
 
     // QĐ543 Điều 10.1: Ứng dụng 2 kỳ, Cơ bản 1 kỳ. Applied = loại có đặt hàng (RequireOrderingUnit).
@@ -223,6 +228,36 @@ public class ProgressReportService : IProgressReportService
 
         if (report.Status != ProgressReportStatus.Draft)
             throw new InvalidOperationException($"Report is '{report.Status}'; only DRAFT reports can be submitted.");
+
+        /*
+         * QĐ543 Điều 10.1: báo cáo tiến độ là báo cáo **ĐỊNH KỲ** — kỳ sau chỉ có nghĩa khi kỳ
+         * trước đã chốt. Thầy 05/08: *"nộp báo cáo phải được duyệt xong phải qua 1 thời gian mới
+         * cho nộp lần 2, hiện tại đang có thể nộp 2 lần cùng lúc"*.
+         *
+         * Trước đây `SubmitAsync` chỉ kiểm DRAFT ⇒ PI nộp kỳ 1 xong **nộp dồn luôn kỳ 2, kỳ 3**
+         * dù kỳ trước Staff chưa đánh giá và kỳ sau còn chưa tới ngày bắt đầu.
+         *
+         * Chặn theo KỲ chứ không theo số ngày — QĐ543 không quy định khoảng cách ngày nào cả.
+         */
+        var earlier = await _contracts.ProgressReports
+            .Where(r => r.ContractId == report.ContractId && r.ReportRound < report.ReportRound)
+            .OrderByDescending(r => r.ReportRound)
+            .FirstOrDefaultAsync();
+
+        if (earlier != null && string.IsNullOrWhiteSpace(earlier.EvaluationResult))
+        {
+            var name = earlier.RoundName ?? $"Kỳ {earlier.ReportRound}";
+            throw new InvalidOperationException(
+                earlier.SubmittedAt == null
+                    ? $"Chưa nộp {name} — phải nộp và được đánh giá xong kỳ trước rồi mới nộp kỳ này."
+                    : $"{name} đã nộp nhưng phòng QLKH chưa đánh giá — chờ có kết quả kỳ trước rồi mới nộp kỳ này.");
+        }
+
+        // Chưa tới kỳ thì cũng chưa có gì để báo cáo.
+        var today = DateOnly.FromDateTime(_clock.UtcNow);
+        if (report.ReportingPeriodStart > today)
+            throw new InvalidOperationException(
+                $"Kỳ báo cáo này bắt đầu từ {report.ReportingPeriodStart:dd/MM/yyyy} — chưa tới kỳ, chưa nộp được.");
 
         report.Status = ProgressReportStatus.Submitted;
         report.SubmittedAt = DateTime.UtcNow;

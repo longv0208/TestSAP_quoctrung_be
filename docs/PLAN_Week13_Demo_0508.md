@@ -102,7 +102,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 
 | # | Việc | Nguồn | Trạng thái | Ghi chú thực thi |
 |---|---|---|---|---|
-| D1 | **Nộp báo cáo: duyệt xong phải qua MỘT KHOẢNG THỜI GIAN mới cho nộp lần 2** — hiện có thể nộp 2 lần cùng lúc | [B1] | ⬜ **lỗi thật** | Cần chốt khoảng cách tối thiểu (theo kỳ báo cáo? theo số ngày?) rồi chặn ở `SubmitAsync` |
+| D1 | **Nộp báo cáo tiến độ dồn nhiều kỳ cùng lúc** | [B1] | ✅ **XONG 06/08** | Đọc lại thì không phải chuyện số ngày: `SubmitAsync` chỉ kiểm `DRAFT` ⇒ PI nộp kỳ 1 xong **nộp dồn luôn kỳ 2, 3**. Chặn theo **KỲ** (QĐ543 Điều 10.1 — báo cáo *định kỳ*), không bịa số ngày: kỳ N chỉ nộp được khi kỳ N−1 **đã được Staff đánh giá** và đã tới `reportingPeriodStart` của kỳ N. Kiểm bằng API với 3 kỳ: nộp kỳ 3 khi kỳ 2 chưa duyệt → 409 *"Kỳ 2 đã nộp nhưng phòng QLKH chưa đánh giá"*; duyệt kỳ 1+2 xong nộp kỳ 3 → 200 |
 | D2 | **Sau bước báo cáo tiến độ phải có một bước DUYỆT (ví dụ Staff duyệt)** | [B2-11] | ✅ **đã có** | `POST /progress-reports/{id}/evaluate` — Staff chấm Đạt/Không đạt/Có điều kiện (rule #16: không cần hội đồng). Có thể ý thầy là **luồng chưa rõ trên UI** → cần làm nổi bước này lên |
 | D3 | **Báo cáo tổng kết mới chỉ có link sản phẩm — phải thêm file Word/PDF** | [B1] | 🔶 | 31/07 đã đổi sang upload file thật (BM09). Cần kiểm lại màn có còn ô dán link đơn thuần không |
 | D4 | **Gia hạn: phải ghi rõ được gia hạn LÚC NÀO và gia hạn TRONG BAO LÂU** | [B1] | 🔶 | Đã có: `OriginalEndDate` + nhãn *"Đã gia hạn — hạn gốc {ngày}"*; và 05/08 đã chặn trần theo **QĐ543 Điều 10.4** (≤ ½ thời gian thực hiện; đề tài 12 tháng ⇒ ≤ 6 tháng). **Còn thiếu**: log *thời điểm* duyệt gia hạn hiện ra cho người dùng thấy |
