@@ -271,6 +271,48 @@ Hội đồng được tạo **kèm sẵn đề tài** (`CreateCouncilAsync` b�
    vượt thời lượng buổi họp (cảnh báo, không chặn — rule #17 cho đổi lịch bất kỳ lúc nào).
 2. **Ẩn phần lịch chấm khi hội đồng chỉ có 1 đề tài** — bớt rối cho ca thường gặp nhất.
 
+
+## 🎬 E7 — KỊCH BẢN DATA DEMO (thiết kế 06/08, làm sau)
+
+**Vấn đề:** data hiện tại là `abc`, `abc4`, `abc5`, `t01`, `t06 tc` — thầy nhìn vào là biết chưa
+chuẩn bị. Và **mọi đề tài đang ở cùng một chỗ**, nên demo màn nào cũng phải bấm từ đầu.
+
+**Nguyên tắc:** mỗi màn/mỗi bước của quy trình phải có **sẵn ít nhất 1 đề tài đứng đúng ở đó**,
+để mở màn nào là demo được ngay màn đó — không phải chạy lại cả vòng đời.
+
+### 2 đợt (rule #7: 1 đợt = 1 loại đề tài)
+| Đợt | Loại | Trạng thái |
+|---|---|---|
+| `2026-UD` | Ứng dụng | Đang mở nhận đề cương (còn hạn) |
+| `2026-CB` | Cơ bản | Đã đóng nhận, đang xét duyệt |
+
+### 8 đề tài — mỗi cái đứng ở một bước khác nhau
+| # | Tên (thật, không phải abc) | Trạng thái | Demo được màn nào |
+|---|---|---|---|
+| 1 | *Ứng dụng học sâu phát hiện đạo văn trong bài báo khoa học* | `DRAFT` | PI đang soạn dở → demo **wizard nộp đề cương** + **upload file + AI trích xuất** |
+| 2 | *Hệ thống giám sát môi trường khuôn viên bằng IoT* | `SUBMITTED`, **chưa vào vòng nào** | Staff **tạo vòng chấm + gán đề tài** |
+| 3 | *Mô hình dự báo tỷ lệ bỏ học bằng học máy tổ hợp* | `SUBMITTED`, **đã vào vòng 1**, hội đồng đã lập + đã mời + **các TV đã xác nhận**, đã có lịch họp | ⭐ **Màn chính**: reviewer **chấm điểm** · Thư ký **soạn biên bản** · Chủ tịch **chốt** |
+| 4 | *Nền tảng học liệu cá nhân hoá* | `REVISION_REQUIRED` sau vòng 1 | PI **sửa & nộp lại**, vòng **mở lại** (rule #1) |
+| 5 | *Phân tích cảm xúc phản hồi sinh viên* | `APPROVED`, **chưa có hợp đồng** | Staff **lập hợp đồng** + **xuất Word** |
+| 6 | *Tối ưu lịch thi bằng thuật toán di truyền* | Có **hợp đồng ACTIVE**, **kỳ 1 đã nộp chưa duyệt** | Staff **duyệt báo cáo tiến độ** · PI **xin gia hạn** |
+| 7 | *Nhận dạng chữ viết tay tiếng Việt* | Hợp đồng ACTIVE, **sản phẩm đã nộp**, **vòng NGHIỆM THU đang mở** | Hội đồng **nghiệm thu** (BM11 Đạt/Không đạt) + **hồ sơ nghiệm thu** |
+| 8 | *Hệ thống khuyến nghị môn học tự chọn* | `COMPLETED` (nghiệm thu Đạt) | **Vòng đời trọn vẹn**: timeline, giải ngân đủ 4 đợt, quyết toán |
+
+### Kèm theo
+- **Bộ tiêu chí HỢP LỆ**: 1 bộ Xét duyệt đúng **BM03** (10+20+40+20+10 = **100**), 1 bộ Nghiệm thu.
+  ⚠️ **Xoá bộ 125 điểm** đang có — nay đã bị chặn không chấm được.
+- **Hội đồng đúng cỡ QĐ543**: xét duyệt **5 người** (Điều 8.2), nghiệm thu **5–7** (Điều 12.2),
+  có đủ Chủ tịch/Thư ký/Phản biện.
+- **Đề tài #3 và #7 nên gán CHUNG một hội đồng nhiều đề tài** → mới demo được **lịch chấm (slot con)**,
+  thứ hiện không thấy tác dụng vì hội đồng nào cũng chỉ 1 đề tài.
+- Mật khẩu tất cả tài khoản = `password` (E8). ⚠️ Hiện **không đồng nhất**: `reviewer3.demo` dùng
+  `Reviewer@123456` còn `pi.demo` dùng khác — sửa thì phải sửa cả doc đang chép mật khẩu cũ.
+
+### Cách làm
+Mở rộng `DatabaseSeeder.SeedAsync()` — **vẫn phải idempotent** (kiểm tồn tại trước khi insert).
+Tách thành `SeedDemoScenarioAsync()` gọi sau seeder gốc, bật/tắt bằng `SystemSetting` để bản deploy
+thật không dính data giả.
+
 ## 🔢 Thứ tự đề xuất
 
 **Nhóm 1 — lỗi nghiệp vụ thật, sai kết quả** *(làm trước)*
