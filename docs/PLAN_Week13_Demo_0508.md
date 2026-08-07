@@ -88,7 +88,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 |---|---|---|---|---|
 | C1 | **Hệ thống tự tổng hợp file hợp đồng ĐẦY ĐỦ rồi mới đem ký** | *(cả 2 bản)* [B1] · [B2-9] | ✅ **XONG 08/08** — bản Word nay có đủ **căn cứ pháp lý + Bên A/Bên B + Điều 1–7 + ô ký**, dữ liệu thật điền vào đúng chỗ (tên đề tài, mã số, chủ nhiệm, đơn vị, thời gian, kinh phí, **bảng sản phẩm**, **bảng đợt giải ngân**). Nhãn gia hạn tự hiện khi . Kiểm bằng file xuất thật: 80 dòng, đúng thứ tự mẫu. **Chừa trống** số tài khoản + CCCD của Bên B vì chưa chốt C3. Cũ: Đã có `GET /contracts/{id}/export-word` nhưng bản Word **mới chỉ có 1 bảng tóm tắt + ô ký**, chưa có Điều 1–7. Đối chiếu BM05 còn thiếu: **mã số đề tài** · **Bên B: đơn vị công tác, điện thoại, địa chỉ** · **số tài khoản + ngân hàng** · **số CMND/CCCD + ngày cấp + nơi cấp** |
 | C2 | **Xem lại chức năng "Phạm vi ký" (`scopeTitle`)** | *(cả 2 bản)* [B1] · [B2-10] | ✅ **XONG 08/08 — BỎ** | Rà hết mẫu BM05: **không có mục nào tên "phạm vi ký"**. Khái niệm gần nhất là **Điều 1 "Nội dung công việc"** (tên đề tài + mã số) và **Điều 2 "Sản phẩm của đề tài"** — cả hai hệ thống đã tự sinh. Ô này là do nhóm tự thêm hồi Review 2, không có căn cứ. Đã gỡ khỏi **form tạo hợp đồng** và **bản Word**; cột `ScopeTitle` giữ trong DB cho dữ liệu cũ (rule: strip chứ không xoá bảng). |
-| C3 | **Thiếu trường của BÊN B** (kéo theo từ C1): tài khoản ngân hàng, CCCD, đơn vị công tác, điện thoại, địa chỉ | [B2-9] | ⬜ | Cần **migration** + màn cho PI tự khai trong hồ sơ cá nhân (không nên để Staff gõ hộ thông tin định danh người khác) |
+| C3 | **Trường của BÊN B**: tài khoản ngân hàng, CCCD | [B2-9] | ⬜ — **ĐÃ CHỐT HƯỚNG 08/08** | **Có thu thập**, và để **TUỲ CHỌN** (user chốt): PI chưa khai thì bản Word chừa trống như bản giấy, bổ sung sau cũng được — **không chặn** việc lập hợp đồng. Cách làm: migration thêm cột · card trong hồ sơ cá nhân cho **PI tự khai** (Staff không gõ hộ) · **che `****1234`** khi hiển thị · bản đầy đủ chỉ đổ vào file Word lúc xuất · ghi `audit_log`. Căn cứ trả lời khi bị hỏi: BM05 **Điều 7.2** — *"ủy quyền cho Trường ĐH FPT khai báo thông tin định danh để **cấp chứng thư số**"*. ≈ nửa buổi |
 | C4 | **Hồ sơ nghiệm thu phải có: link sản phẩm + TOÀN BỘ thông tin sản phẩm và đề tài + file Word/PDF** | [B1] | 🔶 | 05/08 đã thêm `GET /councils/{cid}/proposals/{pid}/dossier` + panel hồ sơ nghiệm thu. Cần bổ sung: thông tin đề tài đầy đủ, và mở được file |
 | C5 | **Hồ sơ nghiệm thu phải chi tiết TỪNG LẦN báo cáo tiến độ**: ai chấm · role gì · bao nhiêu điểm · xem lại được **tất cả file của các lần trước** | [B2-14] | ⬜ | Hiện dossier mới trả % + đánh giá của Staff, **không có** người chấm/role/điểm từng lần, cũng chưa gom file các kỳ |
 | C6 | **Chưa có giải ngân đợt CUỐI trước khi chốt nghiệm thu (kết thúc hợp đồng)** | [B2-16] | ⬜ | BM05 Điều 4.2: *"Đợt 4: giải ngân kinh phí còn lại sau khi đề tài được công nhận kết quả Đạt"*. Phải nối: nghiệm thu Đạt → mở đợt cuối → giải ngân → mới cho đóng hợp đồng |
@@ -339,6 +339,47 @@ Số chẵn ⇒ có thể hoà ⇒ **không có căn cứ nào để viết kế
 **Form tạo hợp đồng vs BM05:** rà xong — **không thiếu gì**. Form hỏi số HĐ · thời gian · gia hạn
 tối đa · đại diện Bên A; mọi mục khác của BM05 đều **tự lấy** (tên đề tài, chủ nhiệm, đơn vị,
 điện thoại, email, tổng kinh phí, bảng sản phẩm, bảng giải ngân). Chỉ thiếu đúng **nhóm C3**.
+
+
+### ⚠️ E7 — mục đích thật, và cái bẫy lớn nhất (làm rõ 08/08)
+
+**Mục đích KHÔNG phải "màn nào cũng có dữ liệu"** (cách diễn đạt sai ở bản trước). Mục đích là:
+**mỗi bước của quy trình có một đề tài đứng NGAY TRƯỚC bước đó**, để lúc demo **bấm thật được
+ngay**, không mất 20 phút dựng tiền đề trước mỗi thao tác. Thầy muốn xem *bấm và nó chạy*, không
+phải xem màn hình có chữ.
+
+⇒ Đề tài #3 phải ở trạng thái *hội đồng đã lập + đã mời + mọi người đã xác nhận + đã có lịch họp*
+để **chấm điểm / soạn biên bản / chốt** đều diễn live. Đề tài #8 `COMPLETED` mới là "cảnh nền" —
+để trả lời *"xong rồi thì nhìn thế nào"* mà không phải diễn lại cả vòng đời.
+
+**🔴 Cái bẫy: data seed phải QUA ĐƯỢC chính các chốt chặn thêm ngày 06–08/08**, nếu không demo
+gãy ngay trên sân khấu:
+
+| Chốt chặn | Seed phải đảm bảo |
+|---|---|
+| Hội đồng **số lẻ** + 3–5 (xét duyệt) / 5–7 (nghiệm thu) | Đúng 5 người, không phải 4 |
+| Quorum **2/3** mới lưu/chốt biên bản | ≥ 4/5 phiếu đã nộp |
+| Nghiệm thu phải có **phản biện dự** | Có vai `Opponent` **và** người đó đã chấm |
+| Bộ tiêu chí **cộng đúng `MaxTotalScore`** | Dùng bộ 100 điểm, **không** dùng bộ 125 điểm cũ |
+| Kỳ báo cáo **tuần tự** (kỳ N-1 phải được đánh giá) | Kỳ 1 seed sẵn trạng thái đã đánh giá |
+| Slot chấm phải **trong khung giờ họp**, không chồng nhau | Nếu seed slot thì phải khớp buổi họp |
+| Sản phẩm đã **PASSED** thì không nộp lại được | Đề tài #7 để `PENDING` nếu muốn demo nộp |
+
+Đây mới là phần khó, không phải chuyện gõ tên đề tài.
+
+**Cách dựng:** `SeedDemoScenarioAsync()` chạy sau seeder gốc, **idempotent**, bật/tắt bằng setting
+để bản deploy thật không dính data giả. Đặt thẳng trạng thái **nhưng dựng kèm đủ bản ghi phụ trợ**
+(`CouncilDecision`, phiếu chấm, đợt giải ngân…) — nếu không màn đó hiện trống lúc demo.
+
+**File đính kèm:** dùng lại `DocumentExportService` sinh Word thuyết minh **khớp nội dung từng đề
+tài**, lưu qua `IFileStorage`, tạo `Document` row ⇒ demo **AI đọc file → tóm tắt → đối chiếu form**
+chạy thật, không phải upload tay.
+
+**User cho xoá sạch DB (08/08)** ⇒ seeder dựng lại từ đầu, không phải né dữ liệu cũ (`abc`, `abc4`,
+`t01`, bộ tiêu chí 125 điểm).
+
+**F5 viết SAU E7** — `DEMO_SCRIPT.md` phải trỏ vào dữ liệu thật (tên đề tài, tài khoản, mật khẩu);
+viết trước thì toàn placeholder.
 
 ## 🔢 Thứ tự đề xuất
 
