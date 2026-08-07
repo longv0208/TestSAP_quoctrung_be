@@ -18,7 +18,7 @@
 **Tổng thể ≈ 88–92%** cho phạm vi capstone. Lõi (đề cương → xét duyệt → hợp đồng → giải ngân → **nghiệm thu → COMPLETED**) chạy thông end-to-end.
 
 ## Đối chiếu góp ý thầy (demo 05/08) — `PLAN_Week13_Demo_0508.md`
-**43 đầu việc**, xong **13** (≈30%) trong ngày 06/08. Hết **nhóm 1 (lỗi nghiệp vụ)** và
+**43 đầu việc**, xong **24** (≈56%) trong ngày 06/08. Hết **nhóm 1 (lỗi nghiệp vụ)** và
 **nhóm 2 (thứ thầy nhìn thấy ngay)**, trừ D1 đang chờ chốt "bao lâu mới cho nộp lại".
 
 Xong: A1 hình thức họp còn online/offline · A2 lịch chấm trong khung giờ họp · A4+A5 kết quả bỏ
@@ -26,8 +26,15 @@ phiếu BM12 mục 10.1 · A6 (vốn đã có) · A7 đóng buổi họp khi ch�
 phản biện · A11 tổng điểm bộ tiêu chí · C7+D5 đóng sản phẩm đã nghiệm thu · C8 trang tiến trình ·
 C9 đổi nhãn · E3 full tiếng Việt · E4 light mode · E6 gom bộ lọc · F3 trần gia hạn Điều 10.4.
 
-Còn: nhóm AI (B1–B6) · hợp đồng BM05 (C1–C3) · hồ sơ nghiệm thu (C4–C6) · data demo + kịch bản
-(E7, E8, F5) · và **8 câu chờ thầy chốt** (nay còn 7 — A9 đã tự giải bằng Điều 8.2/12.2).
+Xong thêm chiều 06/08: **nhóm AI B1–B5** (đọc file, đối chiếu form, tự chạy trước màn chấm,
+prompt ưu/nhược, gợi ý bám tiêu chí) · **D1** nộp dồn kỳ báo cáo · **D4** ngày duyệt gia hạn ·
+**A3** Thư ký được chấm · **A9** cỡ hội đồng theo Điều 8.2/12.2 · ẩn lịch chấm khi 1 đề tài +
+hiện quỹ giờ buổi họp.
+
+Còn: **hợp đồng BM05** (C1 Word đủ Điều 1–7 · F4 **phụ lục hợp đồng** · C2 "phạm vi ký" ·
+C3 trường Bên B cần migration) · **hồ sơ nghiệm thu** (C4–C6) · **chuẩn bị bảo vệ** (E7 data demo
+đã có kịch bản 8 đề tài · E8 mật khẩu · F5 kịch bản demo) · **B6** cache AI + pin version bộ tiêu
+chí · và **backlog 4 nguồn** (xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~40 việc).
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).
