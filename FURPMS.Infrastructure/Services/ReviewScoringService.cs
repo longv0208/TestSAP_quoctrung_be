@@ -543,10 +543,18 @@ public class ReviewScoringService : IReviewScoringService
         if (total == 0)
             throw new InvalidOperationException($"Hội đồng chưa có thành viên nào — không thể {action}.");
 
-        var submitted = await _review.ReviewScores
+        // Vòng XÉT DUYỆT nộp phiếu điểm (BM03 → review_scores), vòng NGHIỆM THU nộp phiếu
+        // Đạt/Không đạt (BM11 → acceptance_evaluations). Đếm quorum phải gộp CẢ HAI, nếu không
+        // hội đồng nghiệm thu dù đủ 5/5 phiếu vẫn bị báo "mới có 0/5 phiếu" và không chốt được.
+        var scoreBallots = await _review.ReviewScores
             .Where(sc => sc.CouncilId == council.Id && sc.ProjectId == projectId && sc.SubmittedAt != null)
             .Select(sc => sc.EvaluatorMemberId)
             .ToListAsync();
+        var acceptanceBallots = await _review.AcceptanceEvaluations
+            .Where(e => e.CouncilId == council.Id && e.ProjectId == projectId && e.SubmittedAt != null)
+            .Select(e => e.EvaluatorMemberId)
+            .ToListAsync();
+        var submitted = scoreBallots.Concat(acceptanceBallots).Distinct().ToList();
 
         // 2/3 làm tròn LÊN: hội đồng 5 người thì cần 4, không phải 3 (3.33 → 4).
         var required = (int)Math.Ceiling(total * 2m / 3m);
@@ -587,15 +595,27 @@ public class ReviewScoringService : IReviewScoringService
             .Where(s => s.CouncilId == councilId && s.ProjectId == projectId && s.SubmittedAt != null)
             .ToListAsync();
 
-        var validBallots = scores.Count(s => s.IsValidBallot);
-        var avgScore = validBallots > 0
-            ? scores.Where(s => s.IsValidBallot).Average(s =>
+        // Vòng nghiệm thu không chấm điểm (BM11 chỉ Đạt/Không đạt) — phiếu nằm ở bảng khác.
+        // Không gộp thì biên bản nghiệm thu luôn hiện "0 phiếu hợp lệ" dù cả hội đồng đã bỏ phiếu.
+        var evals = await _review.AcceptanceEvaluations
+            .Where(e => e.CouncilId == councilId && e.ProjectId == projectId && e.SubmittedAt != null)
+            .ToListAsync();
+        var scoredMemberIds = scores.Select(s => s.EvaluatorMemberId).ToHashSet();
+        var extraEvals = evals.Where(e => !scoredMemberIds.Contains(e.EvaluatorMemberId)).ToList();
+
+        var validBallots = scores.Count(s => s.IsValidBallot) + extraEvals.Count(e => e.IsValidBallot);
+        var returned = scores.Count + extraEvals.Count;
+
+        // Điểm trung bình chỉ có nghĩa với vòng chấm điểm; nghiệm thu để null.
+        var scored = scores.Where(s => s.IsValidBallot).ToList();
+        var avgScore = scored.Count > 0
+            ? scored.Average(s =>
                 _review.ReviewScoreDetails
                     .Where(d => d.ScoreId == s.Id)
                     .Sum(d => d.GivenScore))
             : (decimal?)null;
 
-        return (council.Members.Count, scores.Count, validBallots, scores.Count - validBallots, avgScore);
+        return (council.Members.Count, returned, validBallots, returned - validBallots, avgScore);
     }
 
     private static bool RoleIs(string? role, string target)

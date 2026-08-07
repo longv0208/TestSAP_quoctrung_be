@@ -87,6 +87,11 @@ using (var scope = app.Services.CreateScope())
     db.Database.Migrate();
     var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
     await seeder.SeedAsync();
+
+    // E7 — kịch bản demo: 8 đề tài đứng ở 8 bước khác nhau của quy trình. Chạy SAU seeder gốc vì
+    // dựa vào master data + tài khoản mẫu ở đó. Tắt bằng setting DEMO_DATA_ENABLED khi bàn giao thật.
+    var demoSeeder = scope.ServiceProvider.GetRequiredService<DemoScenarioSeeder>();
+    await demoSeeder.SeedAsync();
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();

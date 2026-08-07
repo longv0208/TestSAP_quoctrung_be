@@ -31,10 +31,17 @@ prompt ưu/nhược, gợi ý bám tiêu chí) · **D1** nộp dồn kỳ báo c
 **A3** Thư ký được chấm · **A9** cỡ hội đồng theo Điều 8.2/12.2 · ẩn lịch chấm khi 1 đề tài +
 hiện quỹ giờ buổi họp.
 
-Còn: **hợp đồng BM05** (C1 Word đủ Điều 1–7 · F4 **phụ lục hợp đồng** · C2 "phạm vi ký" ·
-C3 trường Bên B cần migration) · **hồ sơ nghiệm thu** (C4–C6) · **chuẩn bị bảo vệ** (E7 data demo
-đã có kịch bản 8 đề tài · E8 mật khẩu · F5 kịch bản demo) · **B6** cache AI + pin version bộ tiêu
-chí · và **backlog 4 nguồn** (xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~40 việc).
+Xong thêm 08/08: **C1** xuất Word hợp đồng đủ mẫu BM05 · **A9** hội đồng số lẻ · **A10** bước
+nhảy điểm do Admin đặt · **E7 data demo** (`DemoScenarioSeeder`: 2 đợt + 8 đề tài `NCKH-2026-001..008`
+đứng ở 8 bước, 3 hội đồng × 5 người, 3 slot chấm chung một buổi họp, 22 phiếu, 3 biên bản đã chốt,
+6 file Word thuyết minh sinh sẵn) · **F5 kịch bản demo** (viết vào `DEMO_GUIDE.md` §3–4).
+Dựng data demo lôi ra **2 lỗi thật** đã sửa luôn: **A12** hội đồng nghiệm thu không chốt được biên
+bản dù đủ phiếu (quorum chỉ đếm phiếu chấm điểm, bỏ qua phiếu Đạt/Không đạt) · **A13** biên bản
+nghiệm thu luôn hiện 0 phiếu hợp lệ. Cả hai chỉ lộ khi có dữ liệu đứng đúng ở bước nghiệm thu.
+
+Còn: **hợp đồng BM05** (F4 **phụ lục hợp đồng** · C3 trường Bên B cần migration) · **hồ sơ nghiệm
+thu** (C4–C6) · **B6** cache AI + pin version bộ tiêu chí · và **backlog 4 nguồn**
+(xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~35 việc).
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).

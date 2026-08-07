@@ -673,6 +673,10 @@ Key hiện có:
 
 Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … hợp lệ … không hợp lệ; Kết quả đánh giá: Đạt … Không đạt …"*. Trước đây biên bản chỉ có 4 ô nên Thư ký không có số để điền vào biểu mẫu, và không ai biết điểm nào của ai. Vòng XÉT DUYỆT trả `totalScore` (BM03 thang 100), vòng NGHIỆM THU trả `result` Đạt/Không đạt (BM11 không có thang điểm).
 
+⚠️ **Sửa 08/08 — phiếu nghiệm thu nay được tính vào quorum và vào số liệu biên bản.** Phiếu chấm điểm nằm ở `review_scores`, phiếu Đạt/Không đạt nằm ở `acceptance_evaluations`; trước đây **chỉ bảng đầu được đếm**, nên hội đồng nghiệm thu dù đủ 5/5 phiếu vẫn bị `POST /minutes` trả **409** *"mới có 0/5 phiếu"* và biên bản luôn hiện `validBallots = 0`. Nay:
+- **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
+- **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
+
 ### Hình thức họp — chỉ còn 2 giá trị (mới 06/08)
 `platform` nay chỉ nhận/trả **`IN_PERSON`** hoặc **`ONLINE`**. Giá trị cũ `GOOGLE_MEET`/`TEAMS`/`ZOOM` **vẫn nhận được** ở request và được map về `ONLINE`; khi đọc cũng quy về `ONLINE` — **không cần migration**. Offline vẫn bắt buộc `location`, online giữ `meetingLink`.
 

@@ -50,7 +50,7 @@
 |---|---|
 | `HANDOFF_Week10.md` | Bàn giao: chạy dự án thế nào, lỗi thường gặp khi clone (env FE, docker SQL) |
 | `Review2_Tech_Stack.md` | Stack đang dùng và vì sao |
-| `DEMO_GUIDE.md` | Hướng dẫn demo hiện có ⚠️ **cần viết lại** — xem `PLAN_Week13` mục F5 |
+| `DEMO_GUIDE.md` | **Hướng dẫn chạy + kịch bản demo** (viết lại 08/08): tài khoản · bảng 8 đề tài demo và mỗi cái đứng ở bước nào · kịch bản ①→⑧ đóng vai nào bấm gì. Đọc trước mỗi buổi demo |
 | `EXPORT_TEST_GUIDE.md` | Cách test chức năng export |
 | `FE_PROGRESS.md` | Tiến độ FE (ảnh chụp cũ) |
 
@@ -74,7 +74,7 @@ Cẩm nang nêu **6 nguyên nhân không đạt**. Đối chiếu với FURPMS:
 
 | # | Nguyên nhân (cẩm nang) | FURPMS đang thế nào |
 |---|---|---|
-| 1 | **Demo lỗi ở mainflow / không demo hết luồng chính** — *rất cao* | 🔶 Luồng lõi chạy thông, nhưng buổi 05/08 vẫn vấp. `PLAN_Week13` nhóm 1 chính là để xử. Còn thiếu **data demo chuẩn** (E7) + **kịch bản demo** (F5) |
+| 1 | **Demo lỗi ở mainflow / không demo hết luồng chính** — *rất cao* | 🔶 Luồng lõi chạy thông, nhưng buổi 05/08 vẫn vấp. `PLAN_Week13` nhóm 1 chính là để xử. **Data demo (E7) + kịch bản (F5) đã xong 08/08** — 8 đề tài đứng ở 8 bước, kịch bản ①→⑧ ở `DEMO_GUIDE.md` §3–4. Chính việc dựng data đã lôi ra 2 lỗi chặn màn nghiệm thu (A12/A13) |
 | 2 | **Hardcode tham số nghiệp vụ** — *rất cao* | 🔶 Đã có bảng `system_settings` + màn Admin (giới hạn upload, đại diện Bên A…). **Nhưng**: cẩm nang nói rõ *"sửa file appsettings rồi restart vẫn bị coi là hardcode"*, và câu hỏi kinh điển là *"đổi con số này rồi demo ngay"*. Phải rà lại mọi magic number: số kỳ báo cáo, tỷ lệ giải ngân 30/30/30, trần gia hạn ½, tổng điểm 100, số thành viên hội đồng |
 | 3 | **Tài liệu sai/thiếu, không dùng template chính thức** — *rất cao* | ⬜ Chưa dùng template FLM. Cẩm nang nhấn: *"phần lớn nhóm rơi vào đạt-nhưng-phải-nộp-lại-tài-liệu"* |
 | 4 | **Nghiệp vụ không sát thực tế, thiếu ràng buộc ngoại lệ** — *cao* | 🔴 Đúng chỗ đau: `PLAN_Week13` §F1 *"VALIDATE LẠI TOÀN BỘ"*, và 5 lỗi nghiệp vụ ở nhóm 1 |

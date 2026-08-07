@@ -254,4 +254,88 @@ public class CouncilMinutesTests
 
         await Assert.ThrowsAsync<ForbiddenException>(() => svc.ApproveMinutesAsync(council.Id, chairId));
     }
+
+    /// <summary>
+    /// Vòng NGHIỆM THU không chấm điểm (BM11 chỉ Đạt/Không đạt) nên phiếu nằm ở
+    /// <c>acceptance_evaluations</c>, không phải <c>review_scores</c>. Trước đây quorum chỉ đếm bảng
+    /// điểm ⇒ hội đồng nghiệm thu dù đủ phiếu vẫn bị báo "mới có 0/3 phiếu" và không ai chốt được
+    /// biên bản nghiệm thu.
+    /// </summary>
+    private static async Task<Guid> MakeAcceptanceRoundAsync(FURPMSDbContext db, ReviewCouncil council)
+    {
+        var round = new ReviewRound
+        {
+            Id = Guid.NewGuid(),
+            CycleTrackId = 1,
+            RoundNumber = 1,
+            Dimension = ReviewRoundDimension.Science,
+            RoundType = "ACCEPTANCE",
+            Sequence = 1,
+            Status = ReviewRoundStatus.Open
+        };
+        db.ReviewRounds.Add(round);
+        council.RoundId = round.Id;
+        await db.SaveChangesAsync();
+        return round.Id;
+    }
+
+    [Fact]
+    public async Task SaveMinutes_AcceptanceCouncil_CountsPassFailBallotsTowardQuorum()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, _, secId, _, proposal) = await SeedAsync(db);
+        await MakeAcceptanceRoundAsync(db, council);
+
+        // Nghiệm thu không có phiếu điểm — thay bằng phiếu Đạt/Không đạt của cùng 2 thành viên.
+        var projectId = db.Proposals.First(p => p.Id == proposal.Id).ProjectId;
+        db.ProposalReviewScores.RemoveRange(db.ProposalReviewScores.Where(s => s.CouncilId == council.Id));
+        var members = db.Set<CouncilMember>().Where(m => m.CouncilId == council.Id).ToList();
+        var opponent = members.First(m => m.MemberRole == CouncilMemberRole.Member);
+        opponent.MemberRole = CouncilMemberRole.Opponent;   // Điều 12.3.b: phản biện phải dự
+        db.AcceptanceEvaluations.AddRange(
+            new AcceptanceEvaluation { CouncilId = council.Id, ProjectId = projectId, EvaluatorMemberId = opponent.Id, Result = EvaluationResult.Pass, IsValidBallot = true, SubmittedAt = DateTime.UtcNow },
+            new AcceptanceEvaluation { CouncilId = council.Id, ProjectId = projectId, EvaluatorMemberId = members.First(m => m.MemberRole == CouncilMemberRole.Chair).Id, Result = EvaluationResult.Pass, IsValidBallot = true, SubmittedAt = DateTime.UtcNow });
+        await db.SaveChangesAsync();
+
+        var svc = MakeService(db);
+        var decision = await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "Nghiệm thu Đạt"
+        });
+
+        // BM12 mục 10.1: phiếu Đạt/Không đạt phải vào ô "thu về / hợp lệ"; nghiệm thu không có điểm TB.
+        Assert.Equal(2, decision.ValidBallots);
+        Assert.Equal(0, decision.InvalidBallots);
+        Assert.Null(decision.AverageScore);
+    }
+
+    [Fact]
+    public async Task SaveMinutes_AcceptanceCouncil_WithoutOpponentBallot_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, _, secId, _, proposal) = await SeedAsync(db);
+        await MakeAcceptanceRoundAsync(db, council);
+
+        var projectId = db.Proposals.First(p => p.Id == proposal.Id).ProjectId;
+        db.ProposalReviewScores.RemoveRange(db.ProposalReviewScores.Where(s => s.CouncilId == council.Id));
+        var members = db.Set<CouncilMember>().Where(m => m.CouncilId == council.Id).ToList();
+        members.First(m => m.MemberRole == CouncilMemberRole.Member).MemberRole = CouncilMemberRole.Opponent;
+
+        // Đủ 2/3 phiếu nhưng KHÔNG có phiếu của phản biện ⇒ vẫn phải chặn (Điều 12.3.b).
+        foreach (var m in members.Where(m => m.MemberRole != CouncilMemberRole.Opponent))
+        {
+            db.AcceptanceEvaluations.Add(new AcceptanceEvaluation
+            {
+                CouncilId = council.Id, ProjectId = projectId, EvaluatorMemberId = m.Id,
+                Result = EvaluationResult.Pass, IsValidBallot = true, SubmittedAt = DateTime.UtcNow
+            });
+        }
+        await db.SaveChangesAsync();
+
+        var svc = MakeService(db);
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest { Result = ReviewResult.Approved }));
+        Assert.Contains("phản biện", ex.Message);
+    }
 }

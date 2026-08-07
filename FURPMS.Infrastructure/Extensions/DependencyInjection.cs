@@ -87,6 +87,7 @@ public static class DependencyInjection
         services.AddScoped<IDeadlineReminderScanner, DeadlineReminderScanner>();
         services.AddHostedService<DeadlineReminderService>();
         services.AddScoped<DatabaseSeeder>();
+        services.AddScoped<DemoScenarioSeeder>();
 
         return services;
     }

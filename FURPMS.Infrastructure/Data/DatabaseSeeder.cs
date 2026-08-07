@@ -70,19 +70,42 @@ public class DatabaseSeeder
     {
         var unit = await GetOrCreateDemoUnitAsync();
 
+        // Tên phải là tên người thật-nghĩa: hội đồng "PGS.TS Lê Phản Biện" in ra biên bản trước mặt
+        // hội đồng chấm là lộ ngay dữ liệu chưa chuẩn bị. Cần 5 reviewer vì hội đồng phải đủ 5 người
+        // (QĐ543 Điều 8.2 / 12.2) và phải LẺ để có chênh lệch phiếu.
         var accounts = new[]
         {
-            (Email: "staff.demo@furpms.edu.vn",     Name: "Trần Thị Quản Lý",   Role: "Staff",           Pwd: "Staff@123456"),
-            (Email: "reviewer1.demo@furpms.edu.vn", Name: "PGS.TS Lê Phản Biện", Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
-            (Email: "reviewer2.demo@furpms.edu.vn", Name: "TS. Phạm Hội Đồng",   Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
-            (Email: "reviewer3.demo@furpms.edu.vn", Name: "TS. Vũ Thẩm Định",    Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
+            (Email: "staff.demo@furpms.edu.vn",     Name: "Trần Thị Mai Lan",   Role: "Staff",           Pwd: "Staff@123456"),
+            (Email: "reviewer1.demo@furpms.edu.vn", Name: "PGS.TS. Lê Quang Minh", Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
+            (Email: "reviewer2.demo@furpms.edu.vn", Name: "TS. Phạm Thu Hương",    Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
+            (Email: "reviewer3.demo@furpms.edu.vn", Name: "TS. Vũ Đình Nam",       Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
+            (Email: "reviewer4.demo@furpms.edu.vn", Name: "TS. Đặng Hoài Anh",     Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
+            (Email: "reviewer5.demo@furpms.edu.vn", Name: "ThS. Bùi Thanh Hà",     Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
             (Email: "pi2.demo@furpms.edu.vn",       Name: "Hoàng Văn Bình",      Role: "Faculty",         Pwd: "Faculty@123456"),
+        };
+
+        // DB cũ đã có tài khoản với tên placeholder → đổi tên, không tạo trùng.
+        var placeholders = new Dictionary<string, string>
+        {
+            ["staff.demo@furpms.edu.vn"] = "Trần Thị Quản Lý",
+            ["reviewer1.demo@furpms.edu.vn"] = "PGS.TS Lê Phản Biện",
+            ["reviewer2.demo@furpms.edu.vn"] = "TS. Phạm Hội Đồng",
+            ["reviewer3.demo@furpms.edu.vn"] = "TS. Vũ Thẩm Định"
         };
 
         foreach (var a in accounts)
         {
-            if (await _db.Users.IgnoreQueryFilters().AnyAsync(u => u.Email == a.Email))
+            var existing = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(u => u.Email == a.Email);
+            if (existing != null)
+            {
+                if (placeholders.TryGetValue(a.Email, out var old) && existing.FullName == old)
+                {
+                    existing.FullName = a.Name;
+                    existing.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+                }
                 continue;
+            }
 
             var role = await _db.Roles.FirstAsync(r => r.Name == a.Role);
             var user = new User
@@ -121,12 +144,14 @@ public class DatabaseSeeder
         _db.RubricTemplates.Add(template);
         await _db.SaveChangesAsync();
 
+        // QĐ543 **BM03** — Phiếu đánh giá thẩm định đề cương: 5 mục 10+20+40+20+10, dòng cuối
+        // ghi "Cộng 100". Phải cộng ĐÚNG MaxTotalScore, nếu không bộ này không dùng chấm được.
         _db.RubricCriteria.AddRange(
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính cấp thiết, ý nghĩa khoa học và thực tiễn", MaxScore = 20m, Sequence = 1, IsActive = true },
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Mục tiêu, nội dung và phương pháp nghiên cứu",     MaxScore = 30m, Sequence = 2, IsActive = true },
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính mới, tính sáng tạo",                          MaxScore = 20m, Sequence = 3, IsActive = true },
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Sản phẩm và khả năng ứng dụng",                    MaxScore = 20m, Sequence = 4, IsActive = true },
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính hợp lý của kinh phí và tiến độ",              MaxScore = 10m, Sequence = 5, IsActive = true }
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Mục đích, ý nghĩa khoa học và thực tiễn của đề tài", MaxScore = 10m, Sequence = 1, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Phương pháp nghiên cứu",                              MaxScore = 20m, Sequence = 2, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Nội dung nghiên cứu và kết quả dự kiến",              MaxScore = 40m, Sequence = 3, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Năng lực của chủ nhiệm đề tài và nhóm nghiên cứu",    MaxScore = 20m, Sequence = 4, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính hợp lý của dự toán kinh phí",                    MaxScore = 10m, Sequence = 5, IsActive = true }
         );
         await _db.SaveChangesAsync();
     }
@@ -432,6 +457,14 @@ public class DatabaseSeeder
                 Value = SystemSettingKeys.DefaultContractSideARepresentative,
                 RecommendedValue = SystemSettingKeys.DefaultContractSideARepresentative,
                 Description = "Người đại diện Bên A ký hợp đồng, dùng khi tạo hợp đồng không ghi rõ."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.DemoDataEnabled,
+                Value = SystemSettingKeys.DefaultDemoDataEnabled.ToString().ToLowerInvariant(),
+                RecommendedValue = SystemSettingKeys.DefaultDemoDataEnabled.ToString().ToLowerInvariant(),
+                Description = "Seed bộ dữ liệu kịch bản demo (8 đề tài ở 8 bước của quy trình). " +
+                              "Đặt false trước khi bàn giao bản chạy thật để không dính đề tài giả."
             }
         };
 

@@ -49,4 +49,13 @@ public static class SystemSettingKeys
     /// <summary>Người đại diện Bên A ký hợp đồng, dùng khi tạo hợp đồng không ghi rõ.</summary>
     public const string ContractSideARepresentative = "CONTRACT_SIDE_A_REPRESENTATIVE";
     public const string DefaultContractSideARepresentative = "Nguyễn Kim Ánh";
+
+    // ── Dữ liệu demo ──────────────────────────────────────────────────────────
+    /// <summary>
+    /// Bật/tắt bộ dữ liệu kịch bản demo (8 đề tài ở 8 bước khác nhau của quy trình).
+    /// Đặt <c>false</c> TRƯỚC khi bàn giao bản chạy thật để cơ sở dữ liệu không dính đề tài giả.
+    /// Tắt chỉ ngăn seed thêm — dữ liệu đã seed vẫn còn, muốn sạch thì xoá bằng tay.
+    /// </summary>
+    public const string DemoDataEnabled = "DEMO_DATA_ENABLED";
+    public const bool DefaultDemoDataEnabled = true;
 }
