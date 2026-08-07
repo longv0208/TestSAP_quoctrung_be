@@ -26,7 +26,8 @@ public class CouncilMinutesTests
     };
 
     private static ReviewScoringService MakeService(FURPMSDbContext db) =>
-        new(new ReviewRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new FakeClock());
+        new(new ReviewRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new FakeClock(),
+            new SystemSettingService(new MasterDataRepository(db)));
 
     private static async Task<(ReviewCouncil council, Guid chairId, Guid secId, Guid memberId, Proposal proposal)>
         SeedAsync(FURPMSDbContext db)

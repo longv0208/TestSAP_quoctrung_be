@@ -15,17 +15,21 @@ public class ReviewScoringService : IReviewScoringService
     private readonly IMasterDataRepository _masterData;
     private readonly IProposalRepository _proposals;
     private readonly IClock _clock;
+    // Bước nhảy điểm chấm là tham số nghiệp vụ Admin chỉnh được, không hardcode.
+    private readonly ISystemSettingService _settings;
 
     public ReviewScoringService(
         IReviewRepository review,
         IMasterDataRepository masterData,
         IProposalRepository proposals,
-        IClock clock)
+        IClock clock,
+        ISystemSettingService settings)
     {
         _review = review;
         _masterData = masterData;
         _proposals = proposals;
         _clock = clock;
+        _settings = settings;
     }
 
     // Phase B: council chấm NHÓM đề tài — suy ra project từ assignment
@@ -121,9 +125,23 @@ public class ReviewScoringService : IReviewScoringService
         if (missing.Count > 0)
             throw new ArgumentException($"Missing scores for criterion IDs: {string.Join(", ", missing)}.");
 
+        /*
+         * Bước nhảy điểm do Admin quy định (mặc định: số nguyên).
+         * QĐ543 không quy định nguyên hay thập phân — BM03 để điểm tối đa toàn số nguyên. Thầy
+         * 08/08: cho Admin đặt từ đầu, PI/hội đồng làm việc khi luật đã rõ. Đổi cấu hình KHÔNG hồi
+         * tố: phiếu đã chấm giữ nguyên, chỉ phiếu mới bị soi — giống rule #13.
+         */
+        var decimals = await _settings.GetIntAsync(
+            SystemSettingKeys.ScoreDecimalPlaces, SystemSettingKeys.DefaultScoreDecimalPlaces);
+
         // Validate score ranges
         foreach (var detail in request.ScoreDetails)
         {
+            if (decimal.Round(detail.GivenScore, decimals) != detail.GivenScore)
+                throw new ArgumentException(decimals == 0
+                    ? $"Điểm phải là SỐ NGUYÊN (đang nhập {detail.GivenScore}). Phòng QLKH đổi được ở Cấu hình hệ thống."
+                    : $"Điểm chỉ được có tối đa {decimals} chữ số thập phân (đang nhập {detail.GivenScore}).");
+
             var criterion = template.Criteria.FirstOrDefault(c => c.Id == detail.CriterionId);
             if (criterion == null)
                 throw new ArgumentException($"Criterion {detail.CriterionId} does not belong to this template.");

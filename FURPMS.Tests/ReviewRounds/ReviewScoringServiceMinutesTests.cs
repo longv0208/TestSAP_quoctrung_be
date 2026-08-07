@@ -56,7 +56,8 @@ public class ReviewScoringServiceMinutesTests
     }
 
     private static ReviewScoringService MakeService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
-        new(new ReviewRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new FakeClock());
+        new(new ReviewRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new FakeClock(),
+            new SystemSettingService(new MasterDataRepository(db)));
 
     /// <summary>
     /// Seed phiếu đã nộp cho các thành viên — cần vì QĐ543 Điều 8.3.b bắt buộc ≥2/3 thành viên

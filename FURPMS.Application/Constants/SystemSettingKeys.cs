@@ -20,6 +20,15 @@ public static class SystemSettingKeys
     public const string CouncilInviteDeadlineDays = "COUNCIL_INVITE_DEADLINE_DAYS";
     public const int DefaultCouncilInviteDeadlineDays = 7;
 
+    /// <summary>
+    /// Số chữ số thập phân cho phép khi chấm điểm (0 = chỉ số nguyên, 1 = cho 0.5 / 7.5…).
+    /// QĐ543 **không quy định**; BM03 để điểm tối đa toàn số nguyên (10/20/40/20/10) nên mặc định 0.
+    /// Admin chỉnh ở màn Cấu hình hệ thống — **không hồi tố**, chỉ áp cho phiếu chấm MỚI
+    /// (cùng nguyên tắc với rule #13: đổi bộ tiêu chí active chỉ áp đề tài mới).
+    /// </summary>
+    public const string ScoreDecimalPlaces = "SCORE_DECIMAL_PLACES";
+    public const int DefaultScoreDecimalPlaces = 0;
+
     // ── Nhắc hạn (thông báo) ──────────────────────────────────────────────────
     /// <summary>Các mốc nhắc trước hạn nộp sản phẩm, tính bằng ngày. Ví dụ "30,14,7".</summary>
     public const string DeadlineReminderDays = "DEADLINE_REMINDER_DAYS";
