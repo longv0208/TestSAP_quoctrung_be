@@ -44,6 +44,9 @@ public class CouncilService : ICouncilService
         if (!joined)
             throw new ArgumentException("The project has not joined the specified review round.");
 
+        // QĐ543 quy định cỡ hội đồng KHÁC NHAU cho hai loại (xem CouncilSizeFor).
+        var (minSize, maxSize) = CouncilSizeFor(round.RoundType);
+
         var council = new ReviewCouncil
         {
             Id = Guid.NewGuid(),
@@ -52,8 +55,8 @@ public class CouncilService : ICouncilService
             EstablishmentDecisionNo = request.EstablishmentDecisionNo,
             EstablishedAt = request.EstablishedAt,
             MeetingDeadline = request.MeetingDeadline,
-            MinMembersRequired = request.MinMembersRequired,
-            MaxMembersAllowed = request.MaxMembersAllowed,
+            MinMembersRequired = minSize,
+            MaxMembersAllowed = maxSize,
             Status = CouncilStatus.Forming,
             CreatedBy = createdBy,
             CreatedAt = DateTime.UtcNow,
@@ -71,6 +74,21 @@ public class CouncilService : ICouncilService
         return MapToResponse(council, reqProposal.Id);
     }
 
+    /// <summary>
+    /// Cỡ hội đồng theo QĐ543 — **khác nhau cho hai loại**, đây là chỗ mâu thuẫn "lẻ và &gt;3" của
+    /// thầy được giải:
+    /// <list type="bullet">
+    /// <item><b>Điều 8.2</b> — Hội đồng Xét duyệt đề cương: <b>03–05</b> thành viên.</item>
+    /// <item><b>Điều 12.2</b> — Hội đồng Nghiệm thu: <b>05–07</b> thành viên.</item>
+    /// </list>
+    /// Trước đây `MinMembersRequired`/`MaxMembersAllowed` là số Staff **tự gõ** ở request, không
+    /// theo loại vòng và chẳng ai kiểm — lập hội đồng 1 người vẫn được.
+    /// </summary>
+    private static (int Min, int Max) CouncilSizeFor(string? roundType) =>
+        string.Equals(roundType, "ACCEPTANCE", StringComparison.OrdinalIgnoreCase)
+            ? (5, 7)
+            : (3, 5);
+
     public async Task<CouncilMemberResponse> AddMemberAsync(Guid councilId, AddCouncilMemberRequest request)
     {
         var council = await _review.Query()
@@ -85,6 +103,12 @@ public class CouncilService : ICouncilService
 
         if (council.Members.Any(m => m.UserId == request.UserId))
             throw new InvalidOperationException("This user is already a member of the council.");
+
+        // Trước đây `MaxMembersAllowed` chỉ là con số nằm trong DB, không ai kiểm — thêm 10 người
+        // vào hội đồng vẫn được.
+        if (council.MaxMembersAllowed > 0 && council.Members.Count >= council.MaxMembersAllowed)
+            throw new InvalidOperationException(
+                $"Hội đồng đã đủ {council.MaxMembersAllowed} thành viên — không thêm được nữa (QĐ543 Điều 8.2 / 12.2).");
 
         // Chỉ GÁN, chưa gửi thư mời — Staff gán hết rồi bấm "Gửi thư mời" 1 lần (tránh spam, rule #13).
         var member = new CouncilMember
@@ -124,6 +148,12 @@ public class CouncilService : ICouncilService
             throw new InvalidOperationException("Chưa có Thư ký hội đồng — không thể gửi thư mời.");
         if (!await _review.Meetings.AnyAsync(mt => mt.CouncilId == councilId))
             throw new InvalidOperationException("Chưa có lịch họp — đặt ngày/giờ + địa điểm trước khi gửi thư mời.");
+        // QĐ543 Điều 8.2 (xét duyệt 3–5) / Điều 12.2 (nghiệm thu 5–7): thiếu người thì hội đồng
+        // không hợp lệ, gửi thư mời rồi mới phát hiện là phải mời bù, mất công cả hai bên.
+        if (council.MinMembersRequired > 0 && council.Members.Count < council.MinMembersRequired)
+            throw new InvalidOperationException(
+                $"Hội đồng mới có {council.Members.Count}/{council.MinMembersRequired} thành viên — " +
+                "gán đủ người rồi mới gửi thư mời (QĐ543 Điều 8.2 / 12.2).");
 
         var inviteDays = await _settings.GetIntAsync(
             SystemSettingKeys.CouncilInviteDeadlineDays, SystemSettingKeys.DefaultCouncilInviteDeadlineDays);
