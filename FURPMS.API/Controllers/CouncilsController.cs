@@ -66,13 +66,13 @@ public class CouncilsController : ControllerBase
         return Ok(ApiResponse<IEnumerable<ScheduleConflictDto>>.Ok(result));
     }
 
-    // GET /api/councils/{councilId}/slots — lịch chấm theo đề tài (slot con)
+    // GET /api/councils/{councilId}/slots — lịch chấm theo đề tài (slot con) + khung giờ buổi họp
     [HttpGet("{councilId:guid}/slots")]
     [Authorize(Roles = "Staff,Admin")]
-    public async Task<ActionResult<ApiResponse<IEnumerable<CouncilSlotDto>>>> GetSlots(Guid councilId)
+    public async Task<ActionResult<ApiResponse<CouncilSlotBoardDto>>> GetSlots(Guid councilId)
     {
-        var result = await _service.GetCouncilSlotsAsync(councilId);
-        return Ok(ApiResponse<IEnumerable<CouncilSlotDto>>.Ok(result));
+        var result = await _service.GetCouncilSlotBoardAsync(councilId);
+        return Ok(ApiResponse<CouncilSlotBoardDto>.Ok(result));
     }
 
     // PUT /api/councils/{councilId}/slots — gán khung giờ con cho từng đề tài

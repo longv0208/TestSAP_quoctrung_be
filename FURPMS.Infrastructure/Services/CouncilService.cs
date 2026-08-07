@@ -476,6 +476,29 @@ public class CouncilService : ICouncilService
     }
 
     // ── Slot theo đề tài (rule tuần 10) ──────────────────────────────────────
+    /// <summary>
+    /// Trả kèm KHUNG GIỜ buổi họp + tổng phút đã xếp, để màn lịch chấm hiện "đã xếp 60/90 phút".
+    /// Trước đây chỉ trả danh sách slot: Staff phải tự cộng nhẩm, gán thêm đề tài vào hội đồng
+    /// cũng chẳng ai nhắc là buổi họp có còn đủ giờ hay không.
+    /// </summary>
+    public async Task<CouncilSlotBoardDto> GetCouncilSlotBoardAsync(Guid councilId)
+    {
+        var slots = (await GetCouncilSlotsAsync(councilId)).ToList();
+        var meeting = await _review.Meetings
+            .Where(m => m.CouncilId == councilId)
+            .OrderBy(m => m.ScheduledAt)
+            .FirstOrDefaultAsync();
+
+        return new CouncilSlotBoardDto
+        {
+            MeetingId = meeting?.Id,
+            MeetingStartAt = meeting?.ScheduledAt,
+            MeetingDurationMinutes = meeting?.DurationMinutes,
+            AssignedMinutes = slots.Sum(x => x.SlotDurationMinutes ?? 0),
+            Slots = slots
+        };
+    }
+
     public async Task<IEnumerable<CouncilSlotDto>> GetCouncilSlotsAsync(Guid councilId)
     {
         var council = await _review.Query()

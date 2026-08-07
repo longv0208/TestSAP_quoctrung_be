@@ -677,6 +677,10 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 `platform` nay chỉ nhận/trả **`IN_PERSON`** hoặc **`ONLINE`**. Giá trị cũ `GOOGLE_MEET`/`TEAMS`/`ZOOM` **vẫn nhận được** ở request và được map về `ONLINE`; khi đọc cũng quy về `ONLINE` — **không cần migration**. Offline vẫn bắt buộc `location`, online giữ `meetingLink`.
 
 ### Lịch chấm theo đề tài — phải nằm trong buổi họp (mới 06/08)
+⚠️ **Đổi shape 06/08:** `GET /api/councils/{id}/slots` nay trả `CouncilSlotBoardDto`
+(`{ meetingId, meetingStartAt, meetingDurationMinutes, assignedMinutes, slots[] }`) thay vì mảng
+slot trần — để màn lịch chấm hiện "đã xếp 60/90 phút" thay vì bắt Staff tự cộng rồi tới lúc lưu
+mới ăn 400 vì tràn giờ.
 `PUT /api/councils/{id}/slots` nay **400** khi:
 - Hội đồng **chưa có buổi họp** nào (phải đặt lịch họp trước).
 - Khung giờ chấm nằm **ngoài** `[meeting.scheduledAt, scheduledAt + durationMinutes]` — kể cả khi bắt đầu đúng giờ nhưng **tràn ra ngoài** vì thời lượng quá dài.

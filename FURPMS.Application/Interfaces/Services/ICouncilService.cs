@@ -26,5 +26,7 @@ public interface ICouncilService
 
     // Slot theo đề tài (rule tuần 10): khung giờ con từng đề tài trong buổi họp.
     Task<IEnumerable<CouncilSlotDto>> GetCouncilSlotsAsync(Guid councilId);
+    /// <summary>Slot + khung giờ buổi họp + tổng phút đã xếp.</summary>
+    Task<CouncilSlotBoardDto> GetCouncilSlotBoardAsync(Guid councilId);
     Task SaveCouncilSlotsAsync(Guid councilId, SaveSlotsRequest request);
 }
