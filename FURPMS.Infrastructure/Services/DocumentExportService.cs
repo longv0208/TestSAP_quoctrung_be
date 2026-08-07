@@ -539,8 +539,6 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, $"Bên B cam kết tổ chức triển khai thực hiện đề tài nghiên cứu khoa học cấp Trường năm {c.StartDate.Year} theo đúng tiến độ đã đăng ký trong thuyết minh đề cương được phê duyệt.");
             AppendParagraph(body, $"- Tên đề tài: {titleVi}");
             AppendParagraph(body, $"- Mã số: {c.ContractNumber}");
-            if (!string.IsNullOrWhiteSpace(c.ScopeTitle))
-                AppendParagraph(body, $"- Phạm vi ký kết: {c.ScopeTitle}");
             AppendParagraph(body, "Đề cương là bộ phận không tách rời của Hợp đồng.");
             AppendParagraph(body, "");
 

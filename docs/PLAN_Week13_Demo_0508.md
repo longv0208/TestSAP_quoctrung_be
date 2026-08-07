@@ -87,7 +87,7 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | # | Việc | Nguồn | Trạng thái | Ghi chú thực thi |
 |---|---|---|---|---|
 | C1 | **Hệ thống tự tổng hợp file hợp đồng ĐẦY ĐỦ rồi mới đem ký** | *(cả 2 bản)* [B1] · [B2-9] | ✅ **XONG 08/08** — bản Word nay có đủ **căn cứ pháp lý + Bên A/Bên B + Điều 1–7 + ô ký**, dữ liệu thật điền vào đúng chỗ (tên đề tài, mã số, chủ nhiệm, đơn vị, thời gian, kinh phí, **bảng sản phẩm**, **bảng đợt giải ngân**). Nhãn gia hạn tự hiện khi . Kiểm bằng file xuất thật: 80 dòng, đúng thứ tự mẫu. **Chừa trống** số tài khoản + CCCD của Bên B vì chưa chốt C3. Cũ: Đã có `GET /contracts/{id}/export-word` nhưng bản Word **mới chỉ có 1 bảng tóm tắt + ô ký**, chưa có Điều 1–7. Đối chiếu BM05 còn thiếu: **mã số đề tài** · **Bên B: đơn vị công tác, điện thoại, địa chỉ** · **số tài khoản + ngân hàng** · **số CMND/CCCD + ngày cấp + nơi cấp** |
-| C2 | **Xem lại chức năng "Phạm vi ký" (`scopeTitle`)** — trường này để làm gì, có đúng mẫu không; rà cả Entity `Contract`, các DTO (`ContractDto`, `CreateContractDto`) và API liên quan | *(cả 2 bản)* [B1] · [B2-10] | ⬜ | Hiện là ô chữ tự do, không map vào mục nào của BM05. Mẫu hợp đồng **không có** mục "phạm vi ký"; khái niệm gần nhất là Điều 1 *"Nội dung công việc"* + Điều 2 *"Sản phẩm của đề tài"*. **Nhiều khả năng nên bỏ hoặc đổi tên** |
+| C2 | **Xem lại chức năng "Phạm vi ký" (`scopeTitle`)** | *(cả 2 bản)* [B1] · [B2-10] | ✅ **XONG 08/08 — BỎ** | Rà hết mẫu BM05: **không có mục nào tên "phạm vi ký"**. Khái niệm gần nhất là **Điều 1 "Nội dung công việc"** (tên đề tài + mã số) và **Điều 2 "Sản phẩm của đề tài"** — cả hai hệ thống đã tự sinh. Ô này là do nhóm tự thêm hồi Review 2, không có căn cứ. Đã gỡ khỏi **form tạo hợp đồng** và **bản Word**; cột `ScopeTitle` giữ trong DB cho dữ liệu cũ (rule: strip chứ không xoá bảng). |
 | C3 | **Thiếu trường của BÊN B** (kéo theo từ C1): tài khoản ngân hàng, CCCD, đơn vị công tác, điện thoại, địa chỉ | [B2-9] | ⬜ | Cần **migration** + màn cho PI tự khai trong hồ sơ cá nhân (không nên để Staff gõ hộ thông tin định danh người khác) |
 | C4 | **Hồ sơ nghiệm thu phải có: link sản phẩm + TOÀN BỘ thông tin sản phẩm và đề tài + file Word/PDF** | [B1] | 🔶 | 05/08 đã thêm `GET /councils/{cid}/proposals/{pid}/dossier` + panel hồ sơ nghiệm thu. Cần bổ sung: thông tin đề tài đầy đủ, và mở được file |
 | C5 | **Hồ sơ nghiệm thu phải chi tiết TỪNG LẦN báo cáo tiến độ**: ai chấm · role gì · bao nhiêu điểm · xem lại được **tất cả file của các lần trước** | [B2-14] | ⬜ | Hiện dossier mới trả % + đánh giá của Staff, **không có** người chấm/role/điểm từng lần, cũng chưa gom file các kỳ |
@@ -312,6 +312,29 @@ chuẩn bị. Và **mọi đề tài đang ở cùng một chỗ**, nên demo m�
 Mở rộng `DatabaseSeeder.SeedAsync()` — **vẫn phải idempotent** (kiểm tồn tại trước khi insert).
 Tách thành `SeedDemoScenarioAsync()` gọi sau seeder gốc, bật/tắt bằng `SystemSetting` để bản deploy
 thật không dính data giả.
+
+
+### 📌 Chốt thêm 08/08 sau khi tra QĐ543
+
+**E2 — năm học:** QĐ543 **không có khái niệm "năm học"**. Văn bản dùng **năm dương lịch**:
+*"**Quý I hằng năm**, Phòng QLKH tiếp nhận hồ sơ… **Quý II hằng năm**…"*, và mọi biểu mẫu ghi
+**"NĂM 20…"** (một năm). ⇒ Dùng **`2026`**, bỏ `2025-2026`.
+
+**A10 — điểm chấm:** QĐ543 **không quy định** nguyên hay thập phân. BM03 để điểm tối đa toàn số
+nguyên (10/20/40/20/10). ⇒ Đề xuất: **điểm từng tiêu chí = số nguyên** (khớp thang biểu mẫu),
+**điểm trung bình = thập phân** (phép chia tự nhiên). **Không** cho user tự cấu hình — phải thống
+nhất trong một hội đồng, cho chỉnh thì mỗi người chấm một kiểu.
+
+**A9 — ép số lẻ:** lý do thầy nêu (*"số lẻ mới vote chênh lệch được"*) hợp lý và **không trái**
+QĐ543 (chỉ thu hẹp: xét duyệt `3–5`→**5**, nghiệm thu `5–7`→**5 hoặc 7**).
+⚠️ **Nhưng mâu thuẫn với rule #12** (*"Kết quả = QUYẾT ĐỊNH của Chủ tịch; hệ thống hiển thị phiếu
+chỉ để tham khảo, KHÔNG tự đếm phiếu chốt"*) — nếu Chủ tịch quyết thì hoà phiếu không thành vấn
+đề. **Phải hỏi lại thầy**: đếm phiếu ra kết quả, hay Chủ tịch chốt? Trả lời xong mới biết số lẻ là
+bắt buộc hay chỉ khuyến nghị.
+
+**Form tạo hợp đồng vs BM05:** rà xong — **không thiếu gì**. Form hỏi số HĐ · thời gian · gia hạn
+tối đa · đại diện Bên A; mọi mục khác của BM05 đều **tự lấy** (tên đề tài, chủ nhiệm, đơn vị,
+điện thoại, email, tổng kinh phí, bảng sản phẩm, bảng giải ngân). Chỉ thiếu đúng **nhóm C3**.
 
 ## 🔢 Thứ tự đề xuất
 
