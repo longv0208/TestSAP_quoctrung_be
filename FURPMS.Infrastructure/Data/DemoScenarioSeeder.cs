@@ -11,6 +11,7 @@ using FURPMS.Domain.Entities.Proposals;
 using FURPMS.Domain.Entities.Review;
 using FURPMS.Domain.Entities.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 
 namespace FURPMS.Infrastructure.Data;
 
@@ -32,12 +33,16 @@ public class DemoScenarioSeeder
     private readonly FURPMSDbContext _db;
     private readonly IFileStorage _storage;
     private readonly IDocumentExportService _export;
+    private readonly ILogger<DemoScenarioSeeder> _log;
 
-    public DemoScenarioSeeder(FURPMSDbContext db, IFileStorage storage, IDocumentExportService export)
+    public DemoScenarioSeeder(
+        FURPMSDbContext db, IFileStorage storage, IDocumentExportService export,
+        ILogger<DemoScenarioSeeder> log)
     {
         _db = db;
         _storage = storage;
         _export = export;
+        _log = log;
     }
 
     // Mã đề tài của kịch bản — cũng là khoá idempotent.
@@ -61,15 +66,47 @@ public class DemoScenarioSeeder
         var ctx = await LoadContextAsync();
         if (ctx == null) return; // seeder gốc chưa chạy xong — bỏ qua, lần khởi động sau làm lại
 
-        await SeedDraftAsync(ctx);
-        await SeedSubmittedAsync(ctx);
-        var reviewRound = await GetOrCreateReviewRoundAsync(ctx);
-        await SeedUnderReviewGroupAsync(ctx, reviewRound);
-        await SeedApprovedNoContractAsync(ctx, reviewRound);
-        await SeedInProgressAsync(ctx);
-        await SeedAcceptanceAsync(ctx);
-        await SeedCompletedAsync(ctx);
-        await AttachProposalFilesAsync();
+        await TryStepAsync("đề tài nháp", () => SeedDraftAsync(ctx));
+        await TryStepAsync("đề tài đã nộp", () => SeedSubmittedAsync(ctx));
+        await TryStepAsync("vòng xét duyệt + 3 đề tài", async () =>
+        {
+            var reviewRound = await GetOrCreateReviewRoundAsync(ctx);
+            await SeedUnderReviewGroupAsync(ctx, reviewRound);
+        });
+        await TryStepAsync("đề tài đang thực hiện", () => SeedInProgressAsync(ctx));
+        await TryStepAsync("đề tài đang nghiệm thu", () => SeedAcceptanceAsync(ctx));
+        await TryStepAsync("đề tài hoàn thành", () => SeedCompletedAsync(ctx));
+        await TryStepAsync("file thuyết minh đính kèm", AttachProposalFilesAsync);
+    }
+
+    /// <summary>
+    /// Mỗi kịch bản chạy độc lập: cái nào vướng dữ liệu sẵn có (trùng số hợp đồng, trùng mã đợt…)
+    /// thì bỏ qua đúng cái đó, các kịch bản còn lại vẫn dựng. Dữ liệu demo **không đáng** để chặn
+    /// ứng dụng khởi động — trên deploy thì cả API sập theo, FE mất luôn backend.
+    /// Bỏ dở giữa chừng còn để lại bản ghi rác, nên gỡ luôn phần đã theo dõi trong bộ nhớ EF.
+    /// </summary>
+    private async Task TryStepAsync(string step, Func<Task> run)
+    {
+        // Mỗi kịch bản gọi SaveChanges nhiều lần (project → thành viên → hợp đồng → phiếu…), nên
+        // không có giao dịch thì lỗi ở bước cuối vẫn để lại nửa đề tài đã ghi: lần khởi động sau
+        // thấy mã đề tài đã tồn tại nên bỏ qua luôn, và cái nửa vời đó nằm lại vĩnh viễn.
+        var useTransaction = _db.Database.IsRelational();
+        var tx = useTransaction ? await _db.Database.BeginTransactionAsync() : null;
+        try
+        {
+            await run();
+            if (tx != null) await tx.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            if (tx != null) await tx.RollbackAsync();
+            _db.ChangeTracker.Clear();
+            _log.LogWarning(ex, "Bỏ qua phần dữ liệu demo \"{Step}\" vì lỗi — ứng dụng vẫn chạy bình thường.", step);
+        }
+        finally
+        {
+            if (tx != null) await tx.DisposeAsync();
+        }
     }
 
     // ── Bối cảnh dùng chung ──────────────────────────────────────────────────
@@ -92,10 +129,11 @@ public class DemoScenarioSeeder
         var applied = await _db.ResearchTypes.FirstOrDefaultAsync(t => t.Code == "APPLIED");
         var basic = await _db.ResearchTypes.FirstOrDefaultAsync(t => t.Code == "BASIC");
         var track = await _db.ResearchTracks.FirstOrDefaultAsync(t => t.Code == "AI");
-        var rubric = await _db.RubricTemplates.FirstOrDefaultAsync(t => t.TemplateType == "REVIEW" && t.IsActive);
         if (admin == null || staff == null || pi1 == null || pi2 == null ||
-            unit == null || applied == null || basic == null || track == null || rubric == null)
+            unit == null || applied == null || basic == null || track == null)
             return null;
+
+        var rubric = await GetOrCreateValidReviewRubricAsync();
 
         var reviewers = await LoadReviewersAsync();
         if (reviewers.Count < 5) return null;
@@ -125,6 +163,47 @@ public class DemoScenarioSeeder
 
         return new Ctx(admin, staff, pi1, pi2, reviewers, unit, category,
             applied, basic, openTrack, closedTrack, openOrder, closedOrder, rubric);
+    }
+
+    /// <summary>
+    /// Không tin bộ tiêu chí có sẵn: cơ sở dữ liệu đang chạy (deploy) còn bộ **125 điểm** cũ, mà
+    /// bộ không cộng đúng <c>MaxTotalScore</c> thì **không nộp phiếu chấm được** (chốt chặn A11)
+    /// ⇒ vòng chấm của kịch bản demo sẽ gãy dù local chạy ngon. Nên chọn bộ REVIEW **cộng đủ**;
+    /// không có thì tạo mới đúng BM03 (10+20+40+20+10 = "Cộng 100").
+    /// Bộ cũ **giữ nguyên**, không sửa, không tắt — đó là dữ liệu của người dùng.
+    /// </summary>
+    private async Task<RubricTemplate> GetOrCreateValidReviewRubricAsync()
+    {
+        var templates = await _db.RubricTemplates
+            .Where(t => t.TemplateType == "REVIEW" && t.IsActive)
+            .ToListAsync();
+        foreach (var t in templates)
+        {
+            var sum = await _db.RubricCriteria
+                .Where(c => c.TemplateId == t.Id && c.IsActive)
+                .SumAsync(c => (decimal?)c.MaxScore) ?? 0m;
+            if (sum > 0 && sum == t.MaxTotalScore) return t;
+        }
+
+        var template = new RubricTemplate
+        {
+            TemplateType = "REVIEW",
+            Name = "Phiếu đánh giá thẩm định đề cương (BM03)",
+            MaxTotalScore = 100m,
+            IsActive = true
+        };
+        _db.RubricTemplates.Add(template);
+        await _db.SaveChangesAsync();
+
+        _db.RubricCriteria.AddRange(
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Mục đích, ý nghĩa khoa học và thực tiễn của đề tài", MaxScore = 10m, Sequence = 1, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Phương pháp nghiên cứu",                              MaxScore = 20m, Sequence = 2, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Nội dung nghiên cứu và kết quả dự kiến",              MaxScore = 40m, Sequence = 3, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Năng lực của chủ nhiệm đề tài và nhóm nghiên cứu",    MaxScore = 20m, Sequence = 4, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính hợp lý của dự toán kinh phí",                    MaxScore = 10m, Sequence = 5, IsActive = true }
+        );
+        await _db.SaveChangesAsync();
+        return template;
     }
 
     private async Task<List<User>> LoadReviewersAsync()
@@ -516,9 +595,6 @@ public class DemoScenarioSeeder
             now.AddDays(-20));
         await SetProjectRoundAsync(p5.Id, round.Id, "PASSED", ReviewResult.Approved, now.AddDays(-20));
     }
-
-    // #5 đã dựng trong nhóm trên — hàm này giữ chỗ cho bước kiểm tra dữ liệu sản phẩm chờ ký hợp đồng.
-    private Task SeedApprovedNoContractAsync(Ctx ctx, ReviewRound round) => Task.CompletedTask;
 
     // ── #6 — hợp đồng đang chạy, báo cáo kỳ 1 đã nộp CHƯA duyệt ──────────────
     // Demo: Staff duyệt báo cáo tiến độ · PI xin gia hạn.
@@ -1094,11 +1170,17 @@ public class DemoScenarioSeeder
         Ctx ctx, Project project, string number, decimal amount,
         DateOnly start, DateOnly end, string status, DateTime signedAt, int maxExtensionMonths)
     {
+        // Số hợp đồng là unique index. Trên cơ sở dữ liệu đang chạy có thể đã có người đặt trùng
+        // số này bằng tay ⇒ né sang hậu tố thay vì để cả mẻ seed đổ.
+        var candidate = number;
+        for (var i = 2; await _db.Contracts.AnyAsync(c => c.ContractNumber == candidate); i++)
+            candidate = $"{number}-{i}";
+
         var contract = new Contract
         {
             Id = Guid.NewGuid(),
             ProjectId = project.Id,
-            ContractNumber = number,
+            ContractNumber = candidate,
             ScopeTitle = "Toàn bộ nội dung đề tài",
             Status = status,
             SignedAt = signedAt,

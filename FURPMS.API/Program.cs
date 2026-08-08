@@ -90,8 +90,20 @@ using (var scope = app.Services.CreateScope())
 
     // E7 — kịch bản demo: 8 đề tài đứng ở 8 bước khác nhau của quy trình. Chạy SAU seeder gốc vì
     // dựa vào master data + tài khoản mẫu ở đó. Tắt bằng setting DEMO_DATA_ENABLED khi bàn giao thật.
-    var demoSeeder = scope.ServiceProvider.GetRequiredService<DemoScenarioSeeder>();
-    await demoSeeder.SeedAsync();
+    //
+    // Dữ liệu demo KHÔNG được phép chặn ứng dụng khởi động: trên bản deploy, seeder đổ là API sập,
+    // FE mất luôn backend. Hỏng thì ghi log rồi chạy tiếp với dữ liệu đang có.
+    try
+    {
+        var demoSeeder = scope.ServiceProvider.GetRequiredService<DemoScenarioSeeder>();
+        await demoSeeder.SeedAsync();
+    }
+    catch (Exception ex)
+    {
+        scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
+            .CreateLogger("DemoData")
+            .LogWarning(ex, "Không dựng được dữ liệu demo — ứng dụng vẫn khởi động bình thường.");
+    }
 }
 
 app.UseMiddleware<GlobalExceptionMiddleware>();

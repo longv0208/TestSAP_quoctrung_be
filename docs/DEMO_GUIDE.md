@@ -78,6 +78,27 @@ Kèm theo:
 **Tắt data demo** khi bàn giao bản chạy thật: Admin → Cấu hình hệ thống → `DEMO_DATA_ENABLED` = `false`.
 Tắt chỉ **ngăn seed thêm**, dữ liệu đã có vẫn nằm đó.
 
+### Khi deploy lên bản đang chạy (không xoá DB)
+
+**Không cần xoá dữ liệu cũ, không có migration mới.** Deploy code này lên DB đang chạy thì:
+
+| Thứ | Chuyện gì xảy ra |
+|---|---|
+| **Mật khẩu** tài khoản cũ | **Không đổi** — seeder không bao giờ ghi đè `PasswordHash` của user đã tồn tại |
+| **Tên hiển thị** | Chỉ đổi nếu đang đúng bằng tên placeholder cũ (`PGS.TS Lê Phản Biện`…) |
+| `reviewer4` / `reviewer5` | **Tạo mới**, mật khẩu `Reviewer@123456` — hội đồng cần 5 người |
+| Đề tài / hợp đồng / phiếu cũ | **Giữ nguyên**, seeder chỉ thêm chứ không xoá |
+| **Bộ tiêu chí 125 điểm** cũ | **Giữ nguyên, không sửa** — nhưng seeder **tự tạo thêm** bộ BM03 100 điểm và vòng chấm demo pin vào bộ đó, nên màn chấm điểm vẫn chạy |
+| Trùng số hợp đồng / mã đợt | Tự né sang hậu tố (`HĐ-2025-008-2`) |
+
+**Seeder hỏng không làm sập API.** Mỗi kịch bản chạy trong **một giao dịch riêng**: lỗi thì rollback
+sạch (không để lại nửa đề tài), ghi cảnh báo, các kịch bản còn lại vẫn dựng, ứng dụng vẫn khởi động.
+Đây là điều kiện bắt buộc — trên deploy, seeder đổ là FE mất luôn backend.
+
+⚠️ **Ổ đĩa của Render bị xoá mỗi lần redeploy.** 6 file Word thuyết minh sinh sẵn phải lưu qua
+**Cloudinary**; nếu đang chạy `LocalDisk` thì sau redeploy bảng `documents` còn dòng mà file thì mất,
+bấm tải sẽ lỗi. Kiểm cấu hình Cloudinary trước khi deploy.
+
 ---
 
 ## 4. Kịch bản demo — đóng vai nào, bấm gì
