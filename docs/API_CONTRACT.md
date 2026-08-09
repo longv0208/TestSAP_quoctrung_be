@@ -677,6 +677,36 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Hồ sơ nghiệm thu — mở rộng 08/08 (C4 + C5)
+
+`GET /api/councils/{councilId}/proposals/{proposalId}/dossier` → `AcceptanceDossierDto`.
+Quyền: **Admin/Staff hoặc thành viên của chính hội đồng đó** (403 nếu người ngoài) — không mở các
+endpoint hợp đồng cho reviewer vì như thế họ thấy hợp đồng của mọi đề tài.
+
+Trước đây chỉ trả báo cáo tiến độ (% + đánh giá), sản phẩm, báo cáo tổng kết — kèm cờ `hasFile`
+**không có đường nào mở file ra xem**. Nay bổ sung:
+
+- **`project`** — thông tin đề tài đầy đủ để đối chiếu với cái đã đăng ký: mã · tên VI/EN · PI (tên,
+  email) · đơn vị chủ trì · loại · lĩnh vực · đợt · thời gian · tổng kinh phí · **mục tiêu / phương
+  pháp / sản phẩm dự kiến** · `members[]` · `proposalFiles[]`.
+- **`contractStartDate` / `contractEndDate` / `contractSignedAt` / `contractTotalAmount` /
+  `contractFiles[]`** (bản hợp đồng đã ký làm minh chứng).
+- **`progressReports[]`** thêm `completedContent` · `pendingContent` · `nextPeriodPlan` ·
+  `piRecommendations` · **`evaluatedByName`** · **`evaluatedByRole`** · `evaluatedAt` ·
+  `reportFileUrl` · **`files[]` của CHÍNH kỳ đó** (xem lại được tất cả các kỳ trước, không chỉ kỳ cuối).
+- **`deliverables[]`** thêm `scientificRequirements` · `fileUrl` (link PI dán) ·
+  `trialEvidenceUrl` (minh chứng thử nghiệm, Điều 13.1) · `files[]`.
+- **`finalReport`** thêm `reportFileUrl` · `summaryFileUrl` · `files[]`.
+
+Mỗi phần tử `files[]` = `{ id, fileName, category, sizeBytes, uploadedAt, downloadUrl }`;
+`downloadUrl` lấy từ `Document.StorageUrl`, các endpoint tải về chỉ yêu cầu đăng nhập nên thành viên
+hội đồng bấm là xem được.
+
+⚠️ **Không có cột điểm cho báo cáo tiến độ.** Note của nhóm ghi *"ai chấm · role gì · **bao nhiêu
+điểm**"*, nhưng theo rule #16 (chốt tuần 10) báo cáo tiến độ giữa kỳ **Staff duyệt trực tiếp, không
+lập hội đồng** nên không có thang điểm — chỉ có `evaluationResult` + `overallCompletionPct`. DTO trả
+kèm `progressReportNote` nói rõ điều này để người chấm không đi tìm cột điểm không tồn tại.
+
 ### Hình thức họp — chỉ còn 2 giá trị (mới 06/08)
 `platform` nay chỉ nhận/trả **`IN_PERSON`** hoặc **`ONLINE`**. Giá trị cũ `GOOGLE_MEET`/`TEAMS`/`ZOOM` **vẫn nhận được** ở request và được map về `ONLINE`; khi đọc cũng quy về `ONLINE` — **không cần migration**. Offline vẫn bắt buộc `location`, online giữ `meetingLink`.
 
