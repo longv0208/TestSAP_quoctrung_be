@@ -48,9 +48,14 @@ sửa luật (chỉ áp khi ≥2 đợt), không sửa test.
 Xong thêm 08/08 (đợt 3): **F4 phụ lục hợp đồng** — `GET /amendments/{id}/export-word` sinh .docx cho
 đề nghị điều chỉnh đã duyệt, có bảng *trước → sau*; riêng gia hạn quy số tháng ra mốc thời gian thật.
 
-Còn: **C3** trường Bên B (cần migration) · **B6** cache AI + pin version bộ tiêu chí · **F1/F2** rà
-validate + viết lại business rule · và **backlog 4 nguồn**
-(xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~30 việc).
+Xong thêm 08/08 (đợt 4): **C3 trường Bên B** — migration `PhaseN_PiContractIdentity`, PI **tự khai**
+số tài khoản/CCCD (Staff không gõ hộ), đọc ra luôn che `****1234`, số đầy đủ chỉ đổ vào file Word
+hợp đồng, mỗi lần đổi ghi `audit_logs`. Phải sửa kèm `GET /users/{id}/profile` vì nó trả **thẳng
+entity** — thêm cột là lộ nguyên số cho Admin/Staff.
+⇒ **Nhóm hợp đồng BM05 (C1–C3, F4) đã đủ**: bản Word xuất ra không còn ô nào để trống vì thiếu dữ liệu.
+
+Còn: **B6** cache AI + pin version bộ tiêu chí · **F1/F2** rà validate + viết lại business rule ·
+và **backlog 4 nguồn** (xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~28 việc).
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).

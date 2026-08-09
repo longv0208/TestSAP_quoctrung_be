@@ -459,7 +459,7 @@ public class DocumentExportService : IDocumentExportService
     public async Task<(byte[] Content, string FileName)> ExportContractDocAsync(Guid contractId)
     {
         var c = await _contracts.Query()
-            .Include(x => x.Project).ThenInclude(p => p.PiUser)
+            .Include(x => x.Project).ThenInclude(p => p.PiUser).ThenInclude(u => u.AcademicProfile)
             .Include(x => x.Project).ThenInclude(p => p.HostingUnit)
             .FirstOrDefaultAsync(x => x.Id == contractId)
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
@@ -527,10 +527,25 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, $"CHỦ NHIỆM ĐỀ TÀI: {pi?.FullName ?? Blank}");
             AppendParagraph(body, $"Đơn vị công tác: {c.Project?.HostingUnit?.Name ?? Blank}");
             AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? "………………"}          Email: {pi?.Email ?? "………………"}");
-            // Hệ thống chưa lưu tài khoản ngân hàng / CCCD của Bên B (chưa chốt có thu thập hay
-            // không — xem PLAN_Week13 mục C3) ⇒ để trống đúng như bản giấy.
-            AppendParagraph(body, $"Số tài khoản: {Blank} tại Ngân hàng {Blank}");
-            AppendParagraph(body, $"Số CCCD: {Blank} Cấp ngày … tháng … năm …… tại {Blank}");
+            // C3 — tài khoản ngân hàng & CCCD của Bên B do CHÍNH CHỦ tự khai trong hồ sơ cá nhân.
+            // Đây là chỗ DUY NHẤT số đầy đủ rời khỏi hệ thống; mọi đường đọc qua API đều bị che.
+            // Chưa khai thì để dấu chấm lửng đúng như bản giấy, ký ngoài điền tay — TUỲ CHỌN, không
+            // chặn việc lập hợp đồng (chốt 08/08). Căn cứ thu thập: BM05 Điều 7.2 (chứng thư số).
+            var identity = pi?.AcademicProfile;
+            var bankNo = string.IsNullOrWhiteSpace(identity?.BankAccountNumber) ? Blank : identity!.BankAccountNumber!;
+            // Mẫu BM05 đã in sẵn chữ "tại Ngân hàng …", mà người khai thường gõ cả cụm
+            // "Ngân hàng TMCP …" ⇒ ghép thẳng ra "tại Ngân hàng Ngân hàng TMCP…". Bỏ tiền tố trùng.
+            var bankRaw = identity?.BankName?.Trim();
+            if (!string.IsNullOrEmpty(bankRaw) && bankRaw.StartsWith("Ngân hàng ", StringComparison.OrdinalIgnoreCase))
+                bankRaw = bankRaw["Ngân hàng ".Length..].TrimStart();
+            var bankName = string.IsNullOrWhiteSpace(bankRaw) ? Blank : bankRaw;
+            var idNo = string.IsNullOrWhiteSpace(identity?.NationalId) ? Blank : identity!.NationalId!;
+            var idPlace = string.IsNullOrWhiteSpace(identity?.NationalIdIssuedPlace) ? Blank : identity!.NationalIdIssuedPlace!;
+            var idDate = identity?.NationalIdIssuedDate is { } issued
+                ? $"Cấp ngày {issued:dd} tháng {issued:MM} năm {issued:yyyy}"
+                : "Cấp ngày … tháng … năm ……";
+            AppendParagraph(body, $"Số tài khoản: {bankNo} tại Ngân hàng {bankName}");
+            AppendParagraph(body, $"Số CCCD: {idNo} {idDate} tại {idPlace}");
             AppendParagraph(body, "");
             AppendParagraph(body, "Cùng thỏa thuận và thống nhất ký kết hợp đồng thực hiện Đề tài nghiên cứu khoa học cấp Trường (sau đây gọi tắt là Hợp đồng) với những điều khoản như sau:");
             AppendParagraph(body, "");

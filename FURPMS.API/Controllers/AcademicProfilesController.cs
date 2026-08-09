@@ -26,7 +26,7 @@ public class AcademicProfilesController : ControllerBase
             throw new UnauthorizedAccessException("You can only view your own profile.");
 
         var profile = await _repo.AcademicProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
-        return Ok(ApiResponse<AcademicProfile?>.Ok(profile));
+        return Ok(ApiResponse<AcademicProfileResponse?>.Ok(profile == null ? null : AcademicProfileResponse.From(profile)));
     }
 
     [HttpPut]
@@ -68,8 +68,77 @@ public class AcademicProfilesController : ControllerBase
         profile.UpdatedAt = DateTime.UtcNow;
 
         await _repo.SaveChangesAsync();
-        return Ok(ApiResponse<AcademicProfile>.Ok(profile));
+        return Ok(ApiResponse<AcademicProfileResponse>.Ok(AcademicProfileResponse.From(profile)));
     }
+}
+
+/// <summary>
+/// Trả về DTO chứ KHÔNG trả thẳng entity: hồ sơ nay có thêm số tài khoản và CCCD (C3), mà endpoint
+/// này Admin/Staff cũng gọi được. Trả entity là lộ nguyên số cho người không phải chính chủ.
+/// Số đầy đủ chỉ ra khỏi hệ thống qua **file Word hợp đồng**; xem `ContractIdentityController`
+/// cho bản đã che dành cho chính chủ.
+/// Tên trường giữ y hệt entity để giao diện không phải sửa gì.
+/// </summary>
+public class AcademicProfileResponse
+{
+    public int Id { get; set; }
+    public Guid UserId { get; set; }
+    public string? AcademicTitle { get; set; }
+    public string? ScientificRank { get; set; }
+    public string? DegreeLevel { get; set; }
+    public string? Specialization { get; set; }
+    public DateOnly? DateOfBirth { get; set; }
+    public string? Gender { get; set; }
+    public string? Hometown { get; set; }
+    public string? Nationality { get; set; }
+    public int? GsPgsYear { get; set; }
+    public string? GsPgsInstitution { get; set; }
+    public int IsiScopusCount { get; set; }
+    public int IntlJournalCount { get; set; }
+    public int DomesticJournalCount { get; set; }
+    public int IntlConferenceCount { get; set; }
+    public int DomesticConferenceCount { get; set; }
+    public int PatentsCount { get; set; }
+    public int PhdSupervisedCount { get; set; }
+    public int MasterSupervisedCount { get; set; }
+    public string? Institution { get; set; }
+    public string? InstitutionAddress { get; set; }
+    public string? SpecializationAreas { get; set; }
+    public int TotalInvitations { get; set; }
+    public bool IsEligiblePi { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+
+    public static AcademicProfileResponse From(AcademicProfile p) => new()
+    {
+        Id = p.Id,
+        UserId = p.UserId,
+        AcademicTitle = p.AcademicTitle,
+        ScientificRank = p.ScientificRank,
+        DegreeLevel = p.DegreeLevel,
+        Specialization = p.Specialization,
+        DateOfBirth = p.DateOfBirth,
+        Gender = p.Gender,
+        Hometown = p.Hometown,
+        Nationality = p.Nationality,
+        GsPgsYear = p.GsPgsYear,
+        GsPgsInstitution = p.GsPgsInstitution,
+        IsiScopusCount = p.IsiScopusCount,
+        IntlJournalCount = p.IntlJournalCount,
+        DomesticJournalCount = p.DomesticJournalCount,
+        IntlConferenceCount = p.IntlConferenceCount,
+        DomesticConferenceCount = p.DomesticConferenceCount,
+        PatentsCount = p.PatentsCount,
+        PhdSupervisedCount = p.PhdSupervisedCount,
+        MasterSupervisedCount = p.MasterSupervisedCount,
+        Institution = p.Institution,
+        InstitutionAddress = p.InstitutionAddress,
+        SpecializationAreas = p.SpecializationAreas,
+        TotalInvitations = p.TotalInvitations,
+        IsEligiblePi = p.IsEligiblePi,
+        CreatedAt = p.CreatedAt,
+        UpdatedAt = p.UpdatedAt
+    };
 }
 
 public class AcademicProfileRequest

@@ -677,6 +677,31 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Thông tin định danh Bên B để lập hợp đồng — mới 08/08 (C3)
+
+`GET /api/users/me/contract-identity` → `ContractIdentityResponse`
+`PUT /api/users/me/contract-identity` ← `UpdateContractIdentityRequest`
+
+Chỉ có đường **`/me`** — **chính chủ tự khai**, Staff/Admin không gõ hộ kể cả khi đang lập hợp đồng
+cho người đó. Căn cứ thu thập: BM05 **Điều 7.2** — Bên B *"ủy quyền cho Trường ĐH FPT khai báo thông
+tin định danh để **cấp chứng thư số**"*.
+
+- Đọc ra **luôn bị che**: `bankAccountNumberMasked` / `nationalIdMasked` = `****1234`. Số đầy đủ
+  **không đi ra khỏi máy chủ qua API**; nó chỉ được đổ thẳng vào **file Word hợp đồng** lúc xuất,
+  đúng chỗ mà bản giấy vốn để trống.
+- `hasBankAccount` / `hasNationalId` để giao diện biết hiện "Khai thông tin" hay "Cập nhật".
+- `missingForContract[]` liệt kê phần còn thiếu — **chỉ để nhắc**, không phải điều kiện chặn:
+  **TUỲ CHỌN**, chưa khai thì hợp đồng vẫn lập được và bản Word để dấu chấm lửng như bản giấy.
+- Trong `PUT`: trường `null` = **giữ nguyên**, chuỗi rỗng = **xoá**. Số tài khoản/CCCD tự bỏ khoảng
+  trắng và dấu chấm (người dùng hay gõ theo nhóm); tên ngân hàng và nơi cấp giữ nguyên khoảng trắng.
+- Kiểm tra: số tài khoản chỉ chữ số · CCCD 12 chữ số (hoặc 9 nếu là CMND cũ) · ngày cấp không ở tương lai.
+- Mỗi lần đổi ghi một dòng `audit_logs` (`UPDATE_CONTRACT_IDENTITY`) — trong đó `old_values` là bản
+  **đã che** và `new_values` chỉ ghi **tên trường đã đổi**, không nhân bản số thật sang bảng khác.
+
+⚠️ **Đổi shape 08/08:** `GET/PUT /api/users/{userId}/profile` nay trả `AcademicProfileResponse`
+thay vì entity `AcademicProfile`. Tên trường **giữ y hệt** nên giao diện không phải sửa; mục đích là
+để 5 cột mới (tài khoản, CCCD) **không lọt ra** ở endpoint mà Admin/Staff cũng gọi được.
+
 ### Phụ lục hợp đồng — mới 08/08 (F4)
 
 `GET /api/amendments/{id}/export-word` → file `.docx` (`PhuLucHopDong_<số HĐ>_<ngày>.docx`).
