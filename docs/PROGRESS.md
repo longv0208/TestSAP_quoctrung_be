@@ -45,9 +45,12 @@ quả nghiệm thu + chưa chi hết thì không quyết toán · **E2** bỏ "n
 Riêng C6 bản đầu viết luật quá rộng, **test đỏ lôi ra** hợp đồng 1 đợt bị cấm luôn tiền tạm ứng ⇒
 sửa luật (chỉ áp khi ≥2 đợt), không sửa test.
 
-Còn: **hợp đồng BM05** (F4 **phụ lục hợp đồng** · C3 trường Bên B cần migration) · **B6** cache AI +
-pin version bộ tiêu chí · **F1/F2** rà validate + viết lại business rule · và **backlog 4 nguồn**
-(xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~32 việc).
+Xong thêm 08/08 (đợt 3): **F4 phụ lục hợp đồng** — `GET /amendments/{id}/export-word` sinh .docx cho
+đề nghị điều chỉnh đã duyệt, có bảng *trước → sau*; riêng gia hạn quy số tháng ra mốc thời gian thật.
+
+Còn: **C3** trường Bên B (cần migration) · **B6** cache AI + pin version bộ tiêu chí · **F1/F2** rà
+validate + viết lại business rule · và **backlog 4 nguồn**
+(xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~30 việc).
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).

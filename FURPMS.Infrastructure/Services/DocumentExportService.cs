@@ -621,6 +621,153 @@ public class DocumentExportService : IDocumentExportService
         return (ms.ToArray(), $"HopDong_{code}.docx");
     }
 
+    // ── Phụ lục hợp đồng (F4) ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Hợp đồng đã ký thì KHÔNG sửa đè lên bản gốc — mỗi điều chỉnh phải có văn bản riêng đính
+    /// kèm, dẫn chiếu hợp đồng gốc và ghi rõ <em>trước → sau</em>. Trước đây duyệt điều chỉnh xong
+    /// chỉ đổi vài dòng trong cơ sở dữ liệu, không có giấy tờ nào đem đi ký, nên hồ sơ quyết toán
+    /// không giải thích được vì sao thời gian/nội dung khác với hợp đồng gốc.
+    /// <para>
+    /// Căn cứ BM05 **Điều 6.1**: *"nếu một trong hai bên có yêu cầu sửa đổi, bổ sung nội dung …
+    /// phải thông báo cho bên kia ít nhất 15 ngày trước"* — ngày duyệt được in ra để đối chiếu mốc này.
+    /// </para>
+    /// </summary>
+    public async Task<(byte[] Content, string FileName)> ExportAmendmentDocAsync(Guid amendmentId)
+    {
+        // IgnoreQueryFilters: `RequestedByUser` và `Contract.Project` là navigation BẮT BUỘC, mà
+        // User/Project đều có global query filter — EF nối INNER JOIN nên chỉ cần một mắt xích bị
+        // lọc là mất luôn bản ghi gốc, báo "không tìm thấy" trong khi nó vẫn nằm đó.
+        var a = await _contracts.Amendments
+            .IgnoreQueryFilters()
+            .Include(x => x.Category)
+            .Include(x => x.RequestedByUser)
+            .Include(x => x.ReviewedByUser)
+            .Include(x => x.Contract).ThenInclude(c => c.Project).ThenInclude(p => p.PiUser)
+            .FirstOrDefaultAsync(x => x.Id == amendmentId)
+            ?? throw new KeyNotFoundException($"Amendment {amendmentId} not found.");
+
+        // Đơn vị chủ trì tra riêng, KHÔNG Include: đây là navigation bắt buộc nên EF nối INNER JOIN,
+        // thiếu đơn vị là mất luôn bản ghi gốc và người dùng nhận 404 khó hiểu thay vì một ô trống.
+        var hostingUnitName = a.Contract?.Project == null
+            ? null
+            : await _masterData.OrganizationalUnits
+                .Where(u => u.Id == a.Contract.Project.HostingUnitId)
+                .Select(u => u.Name)
+                .FirstOrDefaultAsync();
+
+        // Chỉ xuất phụ lục cho đề nghị ĐÃ DUYỆT — bản chờ duyệt mà in ra thì thành giấy tờ khống.
+        if (!string.Equals(a.Status, AmendmentStatus.Approved, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException(
+                $"Đề nghị điều chỉnh đang ở trạng thái \"{a.Status}\" — chỉ xuất phụ lục sau khi đã được duyệt.");
+
+        var c = a.Contract;
+        var pi = c.Project?.PiUser;
+        const string Blank = "……………………………";
+
+        using var ms = new MemoryStream();
+        using (var docx = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document))
+        {
+            var mainPart = docx.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body());
+            var body = mainPart.Document.Body!;
+
+            AppendParagraph(body, "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
+            AppendParagraph(body, "Độc lập - Tự do - Hạnh phúc", bold: true, fontSize: 12);
+            AppendParagraph(body, "");
+            AppendHeading(body, "PHỤ LỤC HỢP ĐỒNG", 15, bold: true, justify: JustificationValues.Center);
+            AppendHeading(body, "NGHIÊN CỨU KHOA HỌC CẤP TRƯỜNG", 13, bold: true, justify: JustificationValues.Center);
+            AppendParagraph(body, "");
+            AppendParagraph(body, $"(Kèm theo Hợp đồng số {c.ContractNumber}" +
+                                  $"{(c.SignedAt.HasValue ? $" ký ngày {c.SignedAt.Value:dd/MM/yyyy}" : "")})");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "Căn cứ Quyết định số 543/QĐ-ĐHFPT ngày 30/5/2024 của Hiệu trưởng Trường Đại học FPT ban hành Quy định quản lý đề tài nghiên cứu khoa học cấp Trường;");
+            AppendParagraph(body, $"Căn cứ Hợp đồng nghiên cứu khoa học cấp Trường số {c.ContractNumber};");
+            AppendParagraph(body, "Căn cứ Điều 6.1 của Hợp đồng về việc sửa đổi, bổ sung nội dung Hợp đồng;");
+            AppendParagraph(body, $"Căn cứ đề nghị điều chỉnh của Chủ nhiệm đề tài ngày {a.RequestedAt:dd/MM/yyyy}" +
+                                  $"{(a.ReviewedAt.HasValue ? $" và ý kiến phê duyệt ngày {a.ReviewedAt.Value:dd/MM/yyyy}" : "")};");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, $"Hôm nay, ngày {(a.ReviewedAt ?? a.RequestedAt):dd} tháng {(a.ReviewedAt ?? a.RequestedAt):MM} năm {(a.ReviewedAt ?? a.RequestedAt):yyyy}, chúng tôi gồm:");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "BÊN A: TRƯỜNG ĐẠI HỌC FPT", bold: true);
+            AppendParagraph(body, $"Đại diện: {c.SideARepresentative ?? Blank}");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "BÊN B: CHỦ NHIỆM ĐỀ TÀI", bold: true);
+            AppendParagraph(body, $"Ông/Bà: {pi?.FullName ?? Blank}");
+            AppendParagraph(body, $"Đơn vị công tác: {(string.IsNullOrWhiteSpace(hostingUnitName) ? Blank : hostingUnitName)}");
+            AppendParagraph(body, $"Điện thoại: {(string.IsNullOrWhiteSpace(pi?.Phone) ? Blank : pi!.Phone)}    Email: {pi?.Email ?? Blank}");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "Hai bên thống nhất ký Phụ lục Hợp đồng với các nội dung sau:");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 1. TÊN ĐỀ TÀI VÀ HỢP ĐỒNG ĐƯỢC ĐIỀU CHỈNH", 13);
+            AppendParagraph(body, $"Tên đề tài: {c.Project?.TitleVi ?? c.ScopeTitle ?? Blank}");
+            AppendParagraph(body, $"Mã số đề tài: {c.Project?.ProjectCode ?? Blank}");
+            AppendParagraph(body, $"Hợp đồng số: {c.ContractNumber}");
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 2. NỘI DUNG ĐIỀU CHỈNH", 13);
+            AppendParagraph(body, $"Loại điều chỉnh: {a.Category?.Name ?? Blank}");
+            AppendParagraph(body, $"Nội dung: {a.ChangeDescription}");
+            AppendParagraph(body, "");
+
+            // Trước → sau là phần cốt lõi: người đọc quyết toán phải thấy ngay cái gì đã đổi.
+            var diff = CreateTable(body, new[] { "Nội dung", "Theo Hợp đồng đã ký", "Sau điều chỉnh" },
+                                   new[] { 2600, 3200, 3200 });
+
+            // Với gia hạn, hệ thống lưu NewValue là SỐ THÁNG (yêu cầu của AmendmentService). In trần
+            // "0 → 3" vào văn bản đem ký thì vô nghĩa — phải quy ra MỐC THỜI GIAN thật của hợp đồng.
+            var isExtension = string.Equals(a.Category?.Code, "EXTENSION", StringComparison.OrdinalIgnoreCase);
+            if (isExtension && int.TryParse(a.NewValue, out var months) && months > 0)
+            {
+                var newEnd = c.EndDate;
+                var oldEnd = newEnd.AddMonths(-months);
+                AddTableRowMulti(diff, new[]
+                {
+                    "Thời gian thực hiện",
+                    $"{c.StartDate:dd/MM/yyyy} – {oldEnd:dd/MM/yyyy}",
+                    $"{c.StartDate:dd/MM/yyyy} – {newEnd:dd/MM/yyyy}"
+                });
+                AddTableRowMulti(diff, new[] { "Số tháng gia hạn", "—", $"{months} tháng" });
+            }
+            else
+            {
+                AddTableRowMulti(diff, new[]
+                {
+                    a.Category?.Name ?? "Nội dung điều chỉnh",
+                    string.IsNullOrWhiteSpace(a.OldValue) ? Blank : a.OldValue!,
+                    string.IsNullOrWhiteSpace(a.NewValue) ? Blank : a.NewValue!
+                });
+            }
+
+            if (a.ChangePercentage.HasValue)
+                AddTableRowMulti(diff, new[] { "Tỷ lệ thay đổi", "—", $"{a.ChangePercentage.Value:0.##}%" });
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 3. LÝ DO ĐIỀU CHỈNH", 13);
+            AppendParagraph(body, a.Justification);
+            AppendParagraph(body, "");
+
+            AppendHeading(body, "ĐIỀU 4. HIỆU LỰC", 13);
+            AppendParagraph(body, "4.1. Phụ lục này là bộ phận không tách rời của Hợp đồng đã ký; các nội dung khác của Hợp đồng không đề cập trong Phụ lục này vẫn giữ nguyên hiệu lực.");
+            AppendParagraph(body, "4.2. Phụ lục có hiệu lực kể từ ngày hai bên ký.");
+            if (a.RequiresRectorApproval)
+                AppendParagraph(body, "4.3. Nội dung điều chỉnh thuộc thẩm quyền phê duyệt của Hiệu trưởng; Phụ lục chỉ có hiệu lực sau khi được Hiệu trưởng phê duyệt.");
+            AppendParagraph(body, "4.4. Phụ lục được thực hiện qua phương thức ký điện tử trên phần mềm Econtract; các bên tự bảo quản và lưu trữ trên thiết bị điện tử của từng Bên./.");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "");
+
+            var sign = CreateTable(body, new[] { "ĐẠI DIỆN BÊN A", "CHỦ NHIỆM ĐỀ TÀI (BÊN B)" }, new[] { 4500, 4500 });
+            AddTableRow(sign, "(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)");
+            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (pi?.FullName ?? ""));
+        }
+
+        var contractCode = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
+        return (ms.ToArray(), $"PhuLucHopDong_{contractCode}_{a.RequestedAt:yyyyMMdd}.docx");
+    }
+
     private static void AppendParagraph(Body body, string text, bool bold = false, int fontSize = 11)
     {
         var para = new Paragraph();

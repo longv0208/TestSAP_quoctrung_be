@@ -677,6 +677,24 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Phụ lục hợp đồng — mới 08/08 (F4)
+
+`GET /api/amendments/{id}/export-word` → file `.docx` (`PhuLucHopDong_<số HĐ>_<ngày>.docx`).
+Quyền **Admin/Staff**. Trả **409** nếu đề nghị điều chỉnh chưa ở trạng thái `APPROVED`.
+
+Hợp đồng đã ký **không sửa đè lên bản gốc** — mỗi thay đổi phải có văn bản riêng dẫn chiếu hợp đồng
+gốc và ghi rõ *trước → sau*. Trước đây duyệt điều chỉnh xong chỉ đổi vài dòng trong cơ sở dữ liệu,
+không có giấy tờ nào đem ký, nên hồ sơ quyết toán không giải thích được vì sao thời gian/nội dung
+khác với hợp đồng gốc.
+
+Nội dung bản Word: căn cứ QĐ543 + hợp đồng gốc + **Điều 6.1** (thông báo trước 15 ngày) · Bên A /
+Bên B · Điều 1 (đề tài & hợp đồng được điều chỉnh) · Điều 2 (**bảng trước → sau**) · Điều 3 (lý do)
+· Điều 4 (hiệu lực, có thêm khoản Hiệu trưởng phê duyệt khi `requiresRectorApproval`) · ô ký hai bên.
+
+Riêng loại **gia hạn**: DB lưu `newValue` là **số tháng**, nên bản Word quy ra **mốc thời gian thật**
+(`01/03/2026 – 01/03/2027` → `01/03/2026 – 01/06/2027`) kèm dòng *"Số tháng gia hạn: 3 tháng"* —
+in trần `0 → 3` vào văn bản đem ký là vô nghĩa.
+
 ### Giải ngân đợt CUỐI & quyết toán — khoá mới 08/08 (C6)
 
 `POST /api/disbursements/{id}/confirm` → **409** khi đợt đang xác nhận là **đợt cuối** của hợp đồng

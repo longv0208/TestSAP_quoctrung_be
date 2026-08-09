@@ -617,6 +617,77 @@ public class ContractLifecycleTests
         Assert.Equal("Bao cao chuyen de", result.DeliverableName);
     }
 
+    // ── F4: phụ lục hợp đồng chỉ xuất cho đề nghị điều chỉnh ĐÃ DUYỆT ────────
+
+    private static async Task<(FURPMS.Infrastructure.Data.FURPMSDbContext db, AmendmentRequest amendment)>
+        SeedAmendmentAsync(string status)
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var pi = MakeUser();
+        var rt = MakeResearchType();
+        db.Users.Add(pi);
+        db.ResearchTypes.Add(rt);
+        var category = new AmendmentCategory { Code = "EXTENSION", Name = "Gia han thoi gian thuc hien", IsActive = true };
+        db.AmendmentCategories.Add(category);
+        await db.SaveChangesAsync();
+
+        var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+
+        var contract = MakeContract(project.Id);
+        db.Contracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        var amendment = new AmendmentRequest
+        {
+            ContractId = contract.Id,
+            CategoryId = category.Id,
+            ChangeDescription = "Gia han them 3 thang",
+            OldValue = "0",
+            NewValue = "3",
+            Justification = "Thieu du lieu doi chung",
+            RequestedBy = pi.Id,
+            Status = status
+        };
+        db.AmendmentRequests.Add(amendment);
+        await db.SaveChangesAsync();
+        return (db, amendment);
+    }
+
+    private static DocumentExportService MakeExportService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
+        new(new ProposalRepository(db), new MasterDataRepository(db), new ContractRepository(db));
+
+    /// <summary>In phụ lục cho đơn chưa duyệt = tạo giấy tờ khống, phải chặn.</summary>
+    [Theory]
+    [InlineData("PENDING")]
+    [InlineData("REJECTED")]
+    public async Task ExportAmendmentDoc_NotApproved_Throws(string status)
+    {
+        var (db, amendment) = await SeedAmendmentAsync(status);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => MakeExportService(db).ExportAmendmentDocAsync(amendment.Id));
+
+        Assert.Contains("sau khi da duoc duyet", RemoveDiacritics(ex.Message));
+    }
+
+    [Fact]
+    public async Task ExportAmendmentDoc_Approved_ProducesDocx()
+    {
+        var (db, amendment) = await SeedAmendmentAsync(AmendmentStatus.Approved);
+
+        var (content, fileName) = await MakeExportService(db).ExportAmendmentDocAsync(amendment.Id);
+
+        Assert.StartsWith("PhuLucHopDong_", fileName);
+        Assert.EndsWith(".docx", fileName);
+        // "PK" = chữ ký của tệp ZIP; .docx rỗng/hỏng sẽ không có.
+        Assert.True(content.Length > 1000);
+        Assert.Equal((byte)'P', content[0]);
+        Assert.Equal((byte)'K', content[1]);
+    }
+
     // ── C6: đợt giải ngân CUỐI chỉ mở sau khi nghiệm thu Đạt (BM05 Điều 4.2) ──
 
     /// <summary>Dựng hợp đồng 3 đợt để có "đợt cuối" thật sự, trạng thái đề tài truyền vào.</summary>
