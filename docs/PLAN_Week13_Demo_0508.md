@@ -239,13 +239,22 @@ Note của nhóm chỉ là **1 trong 4 nguồn việc**. Gộp hết lại để
 | i18n incremental các màn cũ | 🔶 |
 
 ### Nguồn 4 — `PLAN_Week12.md` §"Chờ user quyết định" (Q1–Q5)
+
+> **Q5② — chọn nhiều tệp một lượt (09/08).** Hook chung `useMultiFileUpload`: lọc dung lượng/định
+> dạng ngay trên trình duyệt theo cấu hình hệ thống, tải **tuần tự** (không song song — máy chủ lưu
+> qua Cloudinary, bắn mười yêu cầu cùng lúc vừa dễ chạm giới hạn vừa mất dấu tệp nào hỏng), nút
+> hiện tiến độ `2/5`, kết thúc báo gộp và **nêu đích danh** tệp bị loại kèm lý do.
+> Áp cho **4 ô** thật sự nộp nhiều tệp: tài liệu đề cương · minh chứng giải ngân · hợp đồng đã ký ·
+> file kỳ báo cáo. **Cố ý KHÔNG áp** cho 3 ô còn lại vì mỗi ô là **một chỗ đặt có tên riêng**:
+> báo cáo tổng kết vs bản tóm tắt (2 ô khác nhau), file sản phẩm vs minh chứng thử nghiệm, và
+> `FileDropzone` dùng cho luồng upload-1-file-để-AI-đọc.
 | | Việc | Trạng thái |
 |---|---|---|
 | Q1 | Tìm kiếm ngữ nghĩa: bỏ / thay bằng tìm kiếm nâng cao / làm thật | ⏸ **khuyến nghị: bỏ, thay bằng tìm kiếm nâng cao** |
 | Q2 | AI theo từng role | ✅ đã xử lý |
 | Q3 | Chuẩn hoá validate ở FE (12 schema zod / 17 form) | ⬜ |
 | Q4 | Google Calendar + Meet | ⏸ khuyến nghị để cuối — ⚠️ **A1 đã gộp nền tảng còn online/offline nên việc này càng ít giá trị** |
-| Q5 | Deploy: ① storage ✅ Cloudinary · ② **không upload nhiều file một lần** (7 ô chọn file, 0 ô có `multiple`) · ③ Render ngủ sau 15′ | ⬜ ② và ③ |
+| Q5 | Deploy: ① storage ✅ Cloudinary · ② upload nhiều file một lần · ③ Render ngủ sau 15′ | ✅ ① · ✅ **② XONG 09/08** · ⬜ ③ (đã khuyến nghị: demo bằng local, giữ Render làm dự phòng) |
 
 **Tổng còn lại ≈ 40 đầu việc** trên cả 4 nguồn.
 
