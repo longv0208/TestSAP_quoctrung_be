@@ -277,6 +277,34 @@ public class ProgressReportService : IProgressReportService
             .AnyAsync(r => r.Id == reportId && r.Contract.Project.PiUserId == userId);
     }
 
+    /// <summary>
+    /// Xoá một kỳ báo cáo lỡ tạo nhầm. Đã nộp hoặc đã đánh giá thì KHÔNG xoá — báo cáo tiến độ là
+    /// căn cứ mở đợt giải ngân và là một mục trong hồ sơ nghiệm thu; xoá đi thì hội đồng thấy đề
+    /// tài "nhảy cóc" một kỳ mà không ai giải thích được.
+    /// <para>Chủ nhiệm xoá bản nháp của mình; Staff xoá kỳ do chính Staff sinh nhầm bằng lịch.</para>
+    /// </summary>
+    public async Task DeleteAsync(Guid reportId, Guid actingUserId, bool isStaff)
+    {
+        var report = await _contracts.ProgressReports
+            .Include(r => r.Contract).ThenInclude(c => c.Project)
+            .FirstOrDefaultAsync(r => r.Id == reportId)
+            ?? throw new KeyNotFoundException($"Không tìm thấy báo cáo tiến độ {reportId}.");
+
+        if (!isStaff && report.Contract.Project.PiUserId != actingUserId)
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài hoặc phòng QLKH mới xoá được báo cáo này.");
+
+        if (report.Status != ProgressReportStatus.Draft)
+            throw new InvalidOperationException(
+                $"Báo cáo đang ở trạng thái {report.Status} — chỉ xoá được bản nháp. " +
+                "Báo cáo đã nộp là căn cứ trong hồ sơ nghiệm thu, không xoá khỏi lịch sử.");
+
+        var items = await _contracts.ProgressReportItems.Where(i => i.ReportId == reportId).ToListAsync();
+        if (items.Count > 0) _contracts.RemoveProgressReportItemsRange(items);
+
+        _contracts.RemoveProgressReportsRange(new[] { report });
+        await _contracts.SaveChangesAsync();
+    }
+
     public async Task<ProgressReportDto> EvaluateAsync(Guid reportId, EvaluateProgressReportRequest request, Guid staffId)
     {
         // QĐ543 Điều 10 / BM06: kết quả đánh giá tiến độ = Đạt / Không đạt / Có điều kiện.

@@ -141,4 +141,14 @@ public class ProgressReportsController : ControllerBase
         var result = await _service.EvaluateAsync(id, request, staffId);
         return Ok(ApiResponse<ProgressReportDto>.Ok(result));
     }
+
+    // Xoá kỳ báo cáo tạo nhầm — chỉ bản NHÁP. Đã nộp là căn cứ trong hồ sơ nghiệm thu.
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var isStaff = User.IsInRole("Admin") || User.IsInRole("Staff");
+        await _service.DeleteAsync(id, userId, isStaff);
+        return Ok(ApiResponse.Ok("Đã xoá kỳ báo cáo."));
+    }
 }

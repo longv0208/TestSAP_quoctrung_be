@@ -103,6 +103,71 @@ public class DeliverableService : IDeliverableService
         return url;
     }
 
+    /// <summary>
+    /// Staff sửa mô tả/hạn/loại sản phẩm. Sản phẩm đã nghiệm thu ĐẠT thì khoá — sửa tên một sản
+    /// phẩm đã được hội đồng thông qua là làm sai lệch chính cái hội đồng đã duyệt.
+    /// </summary>
+    public async Task<DeliverableResponse> UpdateAsync(int deliverableId, CreateDeliverableRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.ProductName))
+            throw new ArgumentException("Phải nhập tên sản phẩm.");
+
+        var d = await _contracts.Deliverables
+            .Include(x => x.Category)
+            .FirstOrDefaultAsync(x => x.Id == deliverableId)
+            ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm {deliverableId}.");
+
+        if (d.AcceptanceStatus == AcceptanceStatus.Passed)
+            throw new InvalidOperationException(
+                $"Sản phẩm \"{d.ProductName}\" đã nghiệm thu ĐẠT — không sửa được nữa.");
+
+        d.ProductName = request.ProductName.Trim();
+        d.Description = request.Description;
+        if (request.CategoryId.HasValue) d.CategoryId = request.CategoryId;
+        if (!string.IsNullOrWhiteSpace(request.DueDate))
+        {
+            if (!DateOnly.TryParse(request.DueDate, out var due))
+                throw new ArgumentException("Hạn nộp sản phẩm không hợp lệ (định dạng yyyy-MM-dd).");
+            d.DueDate = due;
+        }
+
+        await _contracts.SaveChangesAsync();
+        return Map(d);
+    }
+
+    /// <summary>
+    /// Xoá sản phẩm khỏi hợp đồng. Ba cửa khoá, theo thứ tự hậu quả nặng dần:
+    /// đã nộp minh chứng · đã nghiệm thu · đang là điều kiện của một đợt giải ngân.
+    /// Cái cuối nguy nhất: xoá đi là đợt giải ngân mất căn cứ mở, không ai truy lại được vì sao.
+    /// </summary>
+    public async Task DeleteAsync(int deliverableId)
+    {
+        var d = await _contracts.Deliverables
+            .FirstOrDefaultAsync(x => x.Id == deliverableId)
+            ?? throw new KeyNotFoundException($"Không tìm thấy sản phẩm {deliverableId}.");
+
+        if (d.AcceptanceStatus == AcceptanceStatus.Passed)
+            throw new InvalidOperationException(
+                $"Sản phẩm \"{d.ProductName}\" đã nghiệm thu ĐẠT — không xoá được.");
+
+        if (d.SubmittedAt != null)
+            throw new InvalidOperationException(
+                $"Sản phẩm \"{d.ProductName}\" đã được nộp minh chứng — không xoá được. " +
+                "Nếu nộp nhầm, đánh giá Không đạt để chủ nhiệm nộp lại.");
+
+        var linkedTranche = await _contracts.Disbursements
+            .Where(x => x.DeliverableId == deliverableId)
+            .Select(x => (int?)x.RoundNumber)
+            .FirstOrDefaultAsync();
+        if (linkedTranche.HasValue)
+            throw new InvalidOperationException(
+                $"Sản phẩm \"{d.ProductName}\" đang là minh chứng của đợt giải ngân {linkedTranche} " +
+                "— gỡ khỏi đợt đó trước rồi mới xoá được.");
+
+        _contracts.RemoveDeliverable(d);
+        await _contracts.SaveChangesAsync();
+    }
+
     public async Task<DeliverableResponse> SubmitAsync(
         int deliverableId, SubmitDeliverableRequest request, Guid submittedBy)
     {

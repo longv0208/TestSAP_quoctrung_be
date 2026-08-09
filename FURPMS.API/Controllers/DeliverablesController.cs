@@ -70,4 +70,23 @@ public class DeliverablesController : ControllerBase
         var result = await _service.EvaluateAsync(id, request, userId);
         return Ok(ApiResponse<DeliverableResponse>.Ok(result));
     }
+
+    // Staff sửa/xoá sản phẩm nhập nhầm. Sản phẩm đã nghiệm thu ĐẠT, đã nộp minh chứng, hoặc đang
+    // là điều kiện của một đợt giải ngân đều KHÔNG xoá được — xem DeliverableService.
+    [ProducesResponseType(typeof(ApiResponse<DeliverableResponse>), StatusCodes.Status200OK)]
+    [HttpPut("{id:int}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> Update(int id, [FromBody] CreateDeliverableRequest request)
+    {
+        var result = await _service.UpdateAsync(id, request);
+        return Ok(ApiResponse<DeliverableResponse>.Ok(result, "Đã cập nhật sản phẩm."));
+    }
+
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        await _service.DeleteAsync(id);
+        return Ok(ApiResponse.Ok("Đã xoá sản phẩm."));
+    }
 }

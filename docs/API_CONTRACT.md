@@ -677,6 +677,25 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Bổ sung SỬA/XOÁ còn thiếu — mới 09/08
+
+Rà CRUD 05/08 phát hiện ba chỗ **có thêm mà không có sửa/xoá**. Nay bổ sung, kèm cửa khoá:
+
+| Endpoint | Quyền | Chặn khi |
+|---|---|---|
+| `PUT /api/deliverables/{id}` | Admin/Staff | sản phẩm đã nghiệm thu **Đạt** → 409 |
+| `DELETE /api/deliverables/{id}` | Admin/Staff | đã nghiệm thu Đạt · **đã nộp minh chứng** · **đang là điều kiện của một đợt giải ngân** (kèm số đợt) → 409 |
+| `DELETE /api/progress-reports/{id}` | PI của đề tài, hoặc Admin/Staff | báo cáo **không còn là bản nháp** → 409. Xoá kèm các dòng `progress_report_items` |
+| `PUT /api/proposals/{proposalId}/team-members/{memberId}` | **chỉ chủ nhiệm** | đề cương không còn `DRAFT`/`REVISION_REQUIRED` → 409 |
+| `DELETE /api/proposals/{proposalId}/team-members/{memberId}` | **chỉ chủ nhiệm** | đề cương đã nộp → 409 · thành viên là **chủ nhiệm** → 409 · thành viên **đang có dòng thuê khoán trong dự toán** → 409 |
+
+Hai điểm cố ý:
+- **`isPi` không sửa được qua `PUT` thành viên** — chủ nhiệm là cột neo của đề tài
+  (`Project.PiUserId`); đổi người phải đi qua đề nghị thay đổi nhân sự (BM07), không sửa lén trong
+  danh sách.
+- **Báo cáo đã nộp không xoá khỏi lịch sử** — nó là căn cứ mở đợt giải ngân và là một mục trong hồ
+  sơ nghiệm thu; xoá đi thì hội đồng thấy đề tài "nhảy cóc" một kỳ mà không ai giải thích được.
+
 ### Rà validate toàn hệ thống — thay đổi hành vi 09/08 (F1)
 
 | Thay đổi | Trước | Nay |

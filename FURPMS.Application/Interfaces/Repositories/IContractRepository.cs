@@ -19,6 +19,7 @@ public interface IContractRepository : IRepository<Contract>
     void AddDisbursementsRange(IEnumerable<ContractDisbursement> items);
     Task AddAmendmentAsync(AmendmentRequest amendment);
     void AddDeliverable(ProjectDeliverable deliverable);
+    void RemoveDeliverable(ProjectDeliverable deliverable);
     Task AddProgressReportAsync(ProgressReport report);
     void AddProgressReportItemsRange(IEnumerable<ProgressReportItem> items);
     void RemoveProgressReportItemsRange(IEnumerable<ProgressReportItem> items);
