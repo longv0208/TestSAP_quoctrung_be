@@ -2,6 +2,7 @@ using FURPMS.Application.DTOs.MasterData;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.MasterData;
+using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.Infrastructure.Services;
@@ -9,10 +10,13 @@ namespace FURPMS.Infrastructure.Services;
 public class PersonnelRoleTypeService : IPersonnelRoleTypeService
 {
     private readonly IMasterDataRepository _masterData;
+    // Kiểm tham chiếu chéo sang bảng nghiệp vụ ⇒ đọc thẳng DbContext.
+    private readonly FURPMSDbContext _db;
 
-    public PersonnelRoleTypeService(IMasterDataRepository masterData)
+    public PersonnelRoleTypeService(IMasterDataRepository masterData, FURPMSDbContext db)
     {
         _masterData = masterData;
+        _db = db;
     }
 
     public async Task<IEnumerable<PersonnelRoleTypeResponse>> GetAllAsync()
@@ -80,4 +84,23 @@ public class PersonnelRoleTypeService : IPersonnelRoleTypeService
         DefaultCoefficient = e.DefaultCoefficient,
         IsActive = e.IsActive
     };
+
+    /// <summary>
+    /// Xoá vĩnh viễn chỉ khi KHÔNG ai tham chiếu — giống cách đã làm với loại đề tài.
+    /// Còn dùng thì vô hiệu hoá (<c>isActive = false</c>) để dữ liệu cũ không mồ côi.
+    /// </summary>
+    public async Task DeleteAsync(int id)
+    {
+        var entity = await _masterData.PersonnelRoleTypes.FirstOrDefaultAsync(x => x.Id == id)
+            ?? throw new KeyNotFoundException($"Không tìm thấy vai trò nhân sự {id}.");
+
+        var used = await _db.ProjectMembers.AnyAsync(m => m.MemberRoleCode == entity.Code);
+        if (used)
+            throw new InvalidOperationException(
+                $"Vai trò \"{entity.Name}\" đang được thành viên đề tài sử dụng — " +
+                "chỉ có thể vô hiệu hoá, không xoá vĩnh viễn được.");
+
+        _masterData.Remove(entity);
+        await _masterData.SaveChangesAsync();
+    }
 }

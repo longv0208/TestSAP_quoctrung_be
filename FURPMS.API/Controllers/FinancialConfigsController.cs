@@ -50,4 +50,13 @@ public class FinancialConfigsController : ControllerBase
         var result = await _service.UpdateAsync(id, request);
         return Ok(ApiResponse<SystemFinancialConfigResponse>.Ok(result, "Financial config updated."));
     }
+
+    // Xoá vĩnh viễn chỉ khi không ai tham chiếu; còn dùng thì vô hiệu hoá (xem service).
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        await _service.DeleteAsync(id);
+        return Ok(ApiResponse.Ok("Đã xoá vĩnh viễn cấu hình tài chính."));
+    }
 }

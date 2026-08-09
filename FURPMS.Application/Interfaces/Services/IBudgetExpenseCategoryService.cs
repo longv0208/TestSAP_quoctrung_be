@@ -8,4 +8,5 @@ public interface IBudgetExpenseCategoryService
     Task<BudgetExpenseCategoryResponse> GetByIdAsync(int id);
     Task<BudgetExpenseCategoryResponse> CreateAsync(UpsertBudgetExpenseCategoryRequest request);
     Task<BudgetExpenseCategoryResponse> UpdateAsync(int id, UpsertBudgetExpenseCategoryRequest request);
+    Task DeleteAsync(int id);
 }

@@ -1,6 +1,7 @@
 using FURPMS.Application.Common;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Domain.Entities.MasterData;
+using FURPMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +14,15 @@ namespace FURPMS.API.Controllers;
 public class ProductCategoriesController : ControllerBase
 {
     private readonly IMasterDataRepository _repo;
+    // Kiểm tham chiếu chéo nhiều bảng ngoài phạm vi master data ⇒ đọc thẳng DbContext,
+    // không nhét thêm cả chục IQueryable vào IMasterDataRepository chỉ để phục vụ một phép đếm.
+    private readonly FURPMSDbContext _db;
 
-    public ProductCategoriesController(IMasterDataRepository repo) => _repo = repo;
+    public ProductCategoriesController(IMasterDataRepository repo, FURPMSDbContext db)
+    {
+        _repo = repo;
+        _db = db;
+    }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] bool? activeOnly)
@@ -59,6 +67,24 @@ public class ProductCategoriesController : ControllerBase
         _repo.Update(entity);
         await _repo.SaveChangesAsync();
         return Ok(ApiResponse<ProductCategory>.Ok(entity));
+    }
+
+    /// <summary>Xoá vĩnh viễn chỉ khi chưa sản phẩm nào xếp vào loại này; còn dùng thì vô hiệu hoá.</summary>
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var entity = await _repo.ProductCategories.FirstOrDefaultAsync(c => c.Id == id)
+            ?? throw new KeyNotFoundException($"Không tìm thấy loại sản phẩm {id}.");
+
+        if (await _db.ProjectDeliverables.AnyAsync(d => d.CategoryId == id))
+            throw new InvalidOperationException(
+                $"Loại sản phẩm \"{entity.Name}\" đang được sản phẩm của đề tài sử dụng — " +
+                "chỉ có thể vô hiệu hoá, không xoá vĩnh viễn được.");
+
+        _repo.Remove(entity);
+        await _repo.SaveChangesAsync();
+        return Ok(ApiResponse.Ok("Đã xoá vĩnh viễn loại sản phẩm."));
     }
 }
 

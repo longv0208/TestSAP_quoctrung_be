@@ -2,6 +2,7 @@ using FURPMS.Application.DTOs.MasterData;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.MasterData;
+using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.Infrastructure.Services;
@@ -9,10 +10,13 @@ namespace FURPMS.Infrastructure.Services;
 public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
 {
     private readonly IMasterDataRepository _masterData;
+    // Kiểm tham chiếu chéo sang bảng nghiệp vụ ⇒ đọc thẳng DbContext.
+    private readonly FURPMSDbContext _db;
 
-    public BudgetExpenseCategoryService(IMasterDataRepository masterData)
+    public BudgetExpenseCategoryService(IMasterDataRepository masterData, FURPMSDbContext db)
     {
         _masterData = masterData;
+        _db = db;
     }
 
     public async Task<IEnumerable<BudgetExpenseCategoryResponse>> GetAllAsync()
@@ -80,4 +84,23 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
         Sequence = e.Sequence,
         IsActive = e.IsActive
     };
+
+    /// <summary>
+    /// Xoá vĩnh viễn chỉ khi KHÔNG ai tham chiếu — giống cách đã làm với loại đề tài.
+    /// Còn dùng thì vô hiệu hoá (<c>isActive = false</c>) để dữ liệu cũ không mồ côi.
+    /// </summary>
+    public async Task DeleteAsync(int id)
+    {
+        var entity = await _masterData.BudgetExpenseCategories.FirstOrDefaultAsync(x => x.Id == id)
+            ?? throw new KeyNotFoundException($"Không tìm thấy hạng mục chi {id}.");
+
+        var used = await _db.ProposalBudgetItems.AnyAsync(i => i.CategoryId == id);
+        if (used)
+            throw new InvalidOperationException(
+                $"Hạng mục chi \"{entity.Name}\" đang có trong dự toán của đề tài — " +
+                "chỉ có thể vô hiệu hoá, không xoá vĩnh viễn được.");
+
+        _masterData.Remove(entity);
+        await _masterData.SaveChangesAsync();
+    }
 }

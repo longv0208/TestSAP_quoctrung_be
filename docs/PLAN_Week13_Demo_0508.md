@@ -226,7 +226,7 @@ Note của nhóm chỉ là **1 trong 4 nguồn việc**. Gộp hết lại để
 | Lịch họp SỬA + XOÁ | ✅ 06/08 |
 | **Rà `DisbursementsPanel` + `SettlementPanel`** xem có sai vai như 3 panel kia | ⬜ |
 | **XOÁ**: sản phẩm · kỳ báo cáo · thành viên đề tài | ✅ **09/08** — thêm cả **SỬA** cho sản phẩm và thành viên. Cửa khoá: sản phẩm đã nghiệm thu Đạt / đã nộp minh chứng / **đang là điều kiện của đợt giải ngân** đều không xoá; báo cáo chỉ xoá được bản nháp (đã nộp là căn cứ trong hồ sơ nghiệm thu); thành viên chỉ sửa/xoá khi đề cương còn nháp, không xoá được chủ nhiệm, không xoá khi còn dòng thuê khoán trong dự toán. `isPi` không sửa qua đây — đổi chủ nhiệm phải đi BM07. Thêm 6 test |
-| **XOÁ master data** (5 màn Admin: đơn vị · loại sản phẩm · vai trò nhân sự · hạng mục chi · cấu hình tài chính) | ⬜ |
+| **XOÁ master data** (5 màn Admin: đơn vị · loại sản phẩm · vai trò nhân sự · hạng mục chi · cấu hình tài chính) | ✅ **09/08** — theo khuôn đã có ở loại đề tài: **xoá vĩnh viễn chỉ khi không ai tham chiếu**, còn dùng thì 409 + bảo vô hiệu hoá. Thông báo nêu tên bản ghi và **liệt kê chỗ đang dùng** để Admin biết gỡ ở đâu. Vai trò nhân sự khớp theo `memberRoleCode` (không phải FK). Cấu hình tài chính không bảng nào trỏ tới ⇒ cho xoá thẳng. Kiểm cả 2 chiều bằng API |
 | **Chốt 4 loại điều chỉnh** (kinh phí/nội dung/thành viên/khác) + quan hệ với BM07 | ⬜ **gấp hơn** từ khi merge PR #1 — nay cả 2 cơ chế đều có UI |
 | **4 việc UI lớn**: màn quản lý hội đồng CRUD · gom nhóm + số liệu ở màn Xét duyệt · **trang chi tiết đề tài** (gỡ bớt khỏi sheet hợp đồng đang ngột ngạt) · lọc danh sách hợp đồng theo đề tài đã qua vòng 1 | ⬜ |
 

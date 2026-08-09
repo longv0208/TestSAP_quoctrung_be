@@ -8,4 +8,5 @@ public interface IPersonnelRoleTypeService
     Task<PersonnelRoleTypeResponse> GetByIdAsync(int id);
     Task<PersonnelRoleTypeResponse> CreateAsync(UpsertPersonnelRoleTypeRequest request);
     Task<PersonnelRoleTypeResponse> UpdateAsync(int id, UpsertPersonnelRoleTypeRequest request);
+    Task DeleteAsync(int id);
 }

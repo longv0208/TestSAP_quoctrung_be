@@ -677,6 +677,23 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### XOÁ master data — mới 09/08
+
+Năm màn Admin trước đây chỉ có thêm/sửa. Nay có `DELETE`, quyền **Admin**, theo đúng khuôn đã dùng
+cho loại đề tài: **xoá vĩnh viễn chỉ khi KHÔNG ai tham chiếu**; còn dùng thì báo 409 và bảo
+**vô hiệu hoá** (`isActive = false`) — dữ liệu cũ không được để mồ côi.
+
+| Endpoint | Chặn khi đang được… |
+|---|---|
+| `DELETE /api/organizational-units/{id}` | người dùng · đề tài · danh mục đặt hàng · đơn vị con |
+| `DELETE /api/product-categories/{id}` | sản phẩm của đề tài |
+| `DELETE /api/personnel-role-types/{id}` | thành viên đề tài (khớp theo **`memberRoleCode`**, không phải khoá ngoại) |
+| `DELETE /api/budget-expense-categories/{id}` | dòng dự toán của đề tài |
+| `DELETE /api/financial-configs/{id}` | *(không bảng nào trỏ tới — cấu hình chỉ được **đọc** lúc tính dự toán, số đã tính nằm sẵn trong đề tài, nên cho xoá thẳng)* |
+
+Thông báo nêu **tên** bản ghi và **liệt kê chỗ đang dùng**, để Admin biết phải gỡ ở đâu thay vì
+đoán mò.
+
 ### Bổ sung SỬA/XOÁ còn thiếu — mới 09/08
 
 Rà CRUD 05/08 phát hiện ba chỗ **có thêm mà không có sửa/xoá**. Nay bổ sung, kèm cửa khoá:

@@ -8,4 +8,5 @@ public interface ISystemFinancialConfigService
     Task<SystemFinancialConfigResponse> GetByIdAsync(int id);
     Task<SystemFinancialConfigResponse> CreateAsync(UpsertSystemFinancialConfigRequest request);
     Task<SystemFinancialConfigResponse> UpdateAsync(int id, UpsertSystemFinancialConfigRequest request);
+    Task DeleteAsync(int id);
 }

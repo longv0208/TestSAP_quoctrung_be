@@ -2,6 +2,7 @@ using FURPMS.Application.DTOs.MasterData;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.MasterData;
+using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.Infrastructure.Services;
@@ -9,10 +10,13 @@ namespace FURPMS.Infrastructure.Services;
 public class SystemFinancialConfigService : ISystemFinancialConfigService
 {
     private readonly IMasterDataRepository _masterData;
+    // Kiểm tham chiếu chéo sang bảng nghiệp vụ ⇒ đọc thẳng DbContext.
+    private readonly FURPMSDbContext _db;
 
-    public SystemFinancialConfigService(IMasterDataRepository masterData)
+    public SystemFinancialConfigService(IMasterDataRepository masterData, FURPMSDbContext db)
     {
         _masterData = masterData;
+        _db = db;
     }
 
     public async Task<IEnumerable<SystemFinancialConfigResponse>> GetAllAsync()
@@ -78,4 +82,20 @@ public class SystemFinancialConfigService : ISystemFinancialConfigService
         EffectiveDate = e.EffectiveDate,
         IsActive = e.IsActive
     };
+
+    /// <summary>
+    /// Xoá vĩnh viễn chỉ khi KHÔNG ai tham chiếu — giống cách đã làm với loại đề tài.
+    /// Còn dùng thì vô hiệu hoá (<c>isActive = false</c>) để dữ liệu cũ không mồ côi.
+    /// </summary>
+    public async Task DeleteAsync(int id)
+    {
+        var entity = await _masterData.SystemFinancialConfigs.FirstOrDefaultAsync(x => x.Id == id)
+            ?? throw new KeyNotFoundException($"Không tìm thấy cấu hình tài chính {id}.");
+
+        // Cấu hình tài chính không có bảng nào trỏ tới bằng khoá ngoại; nó được ĐỌC lúc tính
+        // dự toán. Xoá không làm vỡ dữ liệu cũ (số đã tính rồi nằm trong đề tài), nên cho xoá thẳng.
+
+        _masterData.Remove(entity);
+        await _masterData.SaveChangesAsync();
+    }
 }
