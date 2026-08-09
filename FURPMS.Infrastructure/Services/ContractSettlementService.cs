@@ -1,3 +1,4 @@
+using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Settlements;
 using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
@@ -42,6 +43,20 @@ public class ContractSettlementService : IContractSettlementService
 
         if (request.TotalContractedAmount < 0 || request.TotalDisbursedAmount < 0 || request.TotalReturnedAmount < 0)
             throw new ArgumentException("Amounts must be non-negative.");
+
+        // Quyết toán là bước ĐÓNG hợp đồng, nên phải đi sau khi mọi mốc giải ngân đã xong —
+        // trong đó đợt cuối chỉ mở sau khi nghiệm thu Đạt (BM05 Điều 4.2, xem DisbursementService).
+        // Không chặn ở đây thì hợp đồng đóng được trong khi vẫn còn đợt treo, và cái treo đó không
+        // còn đường nào để chi nữa.
+        var pending = await _contracts.Disbursements
+            .Where(x => x.ContractId == contractId && x.Status != DisbursementStatus.Disbursed)
+            .OrderBy(x => x.RoundNumber)
+            .Select(x => x.RoundNumber)
+            .ToListAsync();
+        if (pending.Count > 0)
+            throw new InvalidOperationException(
+                $"Còn {pending.Count} đợt giải ngân chưa đánh dấu đã chi (đợt {string.Join(", ", pending)}) " +
+                "— chưa thể lập quyết toán. Đợt cuối chỉ mở sau khi hội đồng nghiệm thu kết luận Đạt.");
 
         var settlement = new ContractSettlement
         {

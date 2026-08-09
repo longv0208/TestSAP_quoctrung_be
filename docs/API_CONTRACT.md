@@ -677,6 +677,21 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Giải ngân đợt CUỐI & quyết toán — khoá mới 08/08 (C6)
+
+`POST /api/disbursements/{id}/confirm` → **409** khi đợt đang xác nhận là **đợt cuối** của hợp đồng
+**và** đề tài chưa được công nhận Đạt (`Project.Status != COMPLETED`). Căn cứ QĐ543 **BM05 Điều
+4.2** — *"Đợt cuối: giải ngân kinh phí còn lại **sau khi đề tài được công nhận kết quả Đạt**"*.
+Không chặn thì chi hết tiền xong mới họp nghiệm thu, mất đòn bẩy cuối cùng của mốc giải ngân.
+
+- Chỉ áp khi hợp đồng có **≥ 2 đợt**. Hợp đồng 1 đợt thì đợt đó vừa đầu vừa cuối — chặn là cấm luôn
+  khoản tạm ứng sau khi ký, đề tài không có tiền bắt đầu.
+- Các đợt **trước** đợt cuối không bị ảnh hưởng; luật cũ (đợt gắn sản phẩm minh chứng thì sản phẩm
+  phải nghiệm thu Đạt) vẫn giữ nguyên.
+
+`POST /api/contracts/{contractId}/settlement` → **409** khi còn đợt giải ngân chưa đánh dấu đã chi,
+kèm danh sách số đợt còn treo. Quyết toán là bước **đóng** hợp đồng nên phải đi sau mọi mốc giải ngân.
+
 ### Hồ sơ nghiệm thu — mở rộng 08/08 (C4 + C5)
 
 `GET /api/councils/{councilId}/proposals/{proposalId}/dossier` → `AcceptanceDossierDto`.

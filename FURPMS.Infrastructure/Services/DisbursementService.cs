@@ -121,6 +121,8 @@ public class DisbursementService : IDisbursementService
                 $"Sản phẩm minh chứng \"{d.Deliverable.ProductName}\" chưa nghiệm thu Đạt " +
                 "— chưa thể đánh dấu đã giải ngân đợt này.");
 
+        await AssertFinalTrancheUnlockedAsync(d);
+
         if (request.ActualAmount.HasValue) d.ActualAmount = request.ActualAmount;   // optional, không bắt buộc
         if (!string.IsNullOrWhiteSpace(request.BankReference)) d.BankReference = request.BankReference;
         d.Notes = request.Notes;
@@ -130,6 +132,40 @@ public class DisbursementService : IDisbursementService
 
         await _contracts.SaveChangesAsync();
         return Map(d);
+    }
+
+    /// <summary>
+    /// QĐ543 **BM05 Điều 4.2**: *"Đợt cuối: giải ngân kinh phí còn lại **sau khi đề tài được công
+    /// nhận kết quả Đạt**"*. Trước đây đợt cuối chi được bất cứ lúc nào, nên có thể chi hết tiền
+    /// rồi mới họp nghiệm thu — mất luôn đòn bẩy cuối cùng của mốc giải ngân.
+    /// <para>
+    /// Mốc "công nhận Đạt" đọc qua <c>Project.Status == COMPLETED</c> — trạng thái này CHỈ được đặt
+    /// ở một đường duy nhất: Chủ tịch chốt biên bản vòng NGHIỆM THU với kết quả Đạt
+    /// (<c>ReviewScoringService.ApproveMinutesAsync</c>).
+    /// </para>
+    /// </summary>
+    private async Task AssertFinalTrancheUnlockedAsync(ContractDisbursement d)
+    {
+        // Hợp đồng chỉ có MỘT đợt thì đợt đó vừa là đầu vừa là cuối — chặn nó là cấm luôn khoản
+        // tạm ứng sau khi ký, tức là đề tài không có tiền để bắt đầu. "Đợt cuối" theo BM05 chỉ có
+        // nghĩa khi hợp đồng chia thành nhiều đợt.
+        var tranches = await _contracts.Disbursements
+            .Where(x => x.ContractId == d.ContractId)
+            .Select(x => x.RoundNumber)
+            .ToListAsync();
+        if (tranches.Count < 2) return;
+        if (tranches.Any(n => n > d.RoundNumber)) return;   // chưa phải đợt cuối
+
+        var project = await _contracts.Query()
+            .Where(c => c.Id == d.ContractId)
+            .Select(c => new { c.Project.Status, c.Project.TitleVi })
+            .FirstOrDefaultAsync();
+        if (project == null || project.Status == ProjectStatus.Completed) return;
+
+        throw new InvalidOperationException(
+            $"Đợt {d.RoundNumber} là đợt giải ngân CUỐI — theo QĐ543 (BM05 Điều 4.2) chỉ được chi " +
+            "kinh phí còn lại sau khi đề tài được hội đồng nghiệm thu công nhận kết quả Đạt. " +
+            $"Đề tài đang ở trạng thái \"{project.Status}\", chưa có kết luận nghiệm thu Đạt.");
     }
 
     private async Task<List<ContractDisbursement>> GenerateWholeAsync(Domain.Entities.Contracts.Contract contract)

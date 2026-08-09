@@ -617,6 +617,85 @@ public class ContractLifecycleTests
         Assert.Equal("Bao cao chuyen de", result.DeliverableName);
     }
 
+    // ── C6: đợt giải ngân CUỐI chỉ mở sau khi nghiệm thu Đạt (BM05 Điều 4.2) ──
+
+    /// <summary>Dựng hợp đồng 3 đợt để có "đợt cuối" thật sự, trạng thái đề tài truyền vào.</summary>
+    private static async Task<(FURPMS.Infrastructure.Data.FURPMSDbContext db, List<ContractDisbursement> tranches)>
+        SeedThreeTranchesAsync(string projectStatus)
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var pi = MakeUser();
+        var rt = MakeResearchType();
+        db.Users.Add(pi);
+        db.ResearchTypes.Add(rt);
+        await db.SaveChangesAsync();
+
+        var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        project.Status = projectStatus;
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+
+        var contract = MakeContract(project.Id);
+        db.Contracts.Add(contract);
+        await db.SaveChangesAsync();
+
+        var tranches = Enumerable.Range(1, 3).Select(n => new ContractDisbursement
+        {
+            ContractId = contract.Id,
+            RoundNumber = n,
+            Percentage = n == 3 ? 20m : 40m,
+            PlannedAmount = n == 3 ? 200_000m : 400_000m,
+            ConditionDescription = $"Dot {n}",
+            Status = "PENDING"
+        }).ToList();
+        db.ContractDisbursements.AddRange(tranches);
+        await db.SaveChangesAsync();
+        return (db, tranches);
+    }
+
+    /// <summary>
+    /// BM05 Điều 4.2 — đợt cuối chỉ chi sau khi đề tài được công nhận Đạt. Không chặn thì chi hết
+    /// tiền xong mới họp nghiệm thu, mất luôn đòn bẩy cuối cùng của mốc giải ngân.
+    /// </summary>
+    [Theory]
+    [InlineData("IN_PROGRESS")]
+    [InlineData("ACCEPTANCE")]
+    public async Task Confirm_FinalTranche_BeforeAcceptancePassed_Throws(string projectStatus)
+    {
+        var (db, tranches) = await SeedThreeTranchesAsync(projectStatus);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            MakeDisbursementService(db).ConfirmAsync(
+                tranches[2].Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid()));
+
+        Assert.Contains("dot giai ngan CUOI", RemoveDiacritics(ex.Message));
+        Assert.Equal("PENDING", (await db.ContractDisbursements.FindAsync(tranches[2].Id))!.Status);
+    }
+
+    /// <summary>Các đợt TRƯỚC đợt cuối vẫn chi bình thường — luật chỉ gác đúng đợt cuối.</summary>
+    [Fact]
+    public async Task Confirm_EarlierTranche_BeforeAcceptance_Succeeds()
+    {
+        var (db, tranches) = await SeedThreeTranchesAsync("IN_PROGRESS");
+
+        var result = await MakeDisbursementService(db).ConfirmAsync(
+            tranches[0].Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid());
+
+        Assert.Equal("DISBURSED", result.Status);
+    }
+
+    [Fact]
+    public async Task Confirm_FinalTranche_AfterAcceptancePassed_Succeeds()
+    {
+        var (db, tranches) = await SeedThreeTranchesAsync("COMPLETED");
+
+        var result = await MakeDisbursementService(db).ConfirmAsync(
+            tranches[2].Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid());
+
+        Assert.Equal("DISBURSED", result.Status);
+    }
+
     /// <summary>Không cho lấy sản phẩm của hợp đồng khác làm minh chứng.</summary>
     [Fact]
     public async Task LinkDeliverable_FromAnotherContract_Throws()

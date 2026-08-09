@@ -39,9 +39,15 @@ Dựng data demo lôi ra **2 lỗi thật** đã sửa luôn: **A12** hội đ�
 bản dù đủ phiếu (quorum chỉ đếm phiếu chấm điểm, bỏ qua phiếu Đạt/Không đạt) · **A13** biên bản
 nghiệm thu luôn hiện 0 phiếu hợp lệ. Cả hai chỉ lộ khi có dữ liệu đứng đúng ở bước nghiệm thu.
 
-Còn: **hợp đồng BM05** (F4 **phụ lục hợp đồng** · C3 trường Bên B cần migration) · **hồ sơ nghiệm
-thu** (C4–C6) · **B6** cache AI + pin version bộ tiêu chí · và **backlog 4 nguồn**
-(xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~35 việc).
+Xong thêm 08/08 (đợt 2): **C4+C5 hồ sơ nghiệm thu** (thông tin đề tài đầy đủ · file mở được thật ·
+từng kỳ báo cáo có ai duyệt/vai gì/file của chính kỳ đó) · **C6** đợt giải ngân cuối khoá theo kết
+quả nghiệm thu + chưa chi hết thì không quyết toán · **E2** bỏ "năm học", dùng năm dương lịch.
+Riêng C6 bản đầu viết luật quá rộng, **test đỏ lôi ra** hợp đồng 1 đợt bị cấm luôn tiền tạm ứng ⇒
+sửa luật (chỉ áp khi ≥2 đợt), không sửa test.
+
+Còn: **hợp đồng BM05** (F4 **phụ lục hợp đồng** · C3 trường Bên B cần migration) · **B6** cache AI +
+pin version bộ tiêu chí · **F1/F2** rà validate + viết lại business rule · và **backlog 4 nguồn**
+(xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~32 việc).
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).
