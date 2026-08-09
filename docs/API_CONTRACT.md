@@ -677,6 +677,32 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Khoá bộ tiêu chí đã dùng để chấm — mới 09/08 (rule #13)
+
+Một phiếu chấm chỉ lưu `(criterionId, givenScore)`. **Sửa tên tiêu chí là đổi nghĩa phiếu đã ký** —
+biên bản in hôm nay khác biên bản in hôm qua từ cùng một dữ liệu. **Hạ điểm tối đa còn tệ hơn**:
+phiếu cũ chấm 20 trên tiêu chí nay trần chỉ còn 10 ⇒ tổng sai mà không ai biết vì sao.
+
+Xoá bộ và xoá tiêu chí vốn đã bị chặn; chỗ hở là **SỬA** — trước đây không kiểm gì. Nay bộ **đã có
+người chấm bằng nó** thì khoá nội dung, **409** ở cả 4 đường:
+
+| Endpoint | Chặn khi |
+|---|---|
+| `PATCH /api/rubric-templates/{id}` | đổi **tên** hoặc loại đề tài áp dụng *(bật/tắt bộ vẫn cho — tắt chỉ ngăn dùng cho vòng MỚI)* |
+| `POST /api/rubric-templates/{id}/criteria` | thêm tiêu chí |
+| `PUT /api/rubric-templates/{id}/criteria/{cid}` | sửa tiêu chí |
+| `DELETE /api/rubric-templates/{id}/criteria/{cid}` | xoá **và cả tắt** tiêu chí |
+
+**Đường thoát:** `POST /api/rubric-templates/{id}/duplicate` → sửa bản sao → gắn cho vòng chấm mới.
+Vòng đang dùng bộ cũ giữ nguyên. Đúng rule #13: *"đổi active chỉ áp đề tài mới"*.
+
+`GET /api/rubric-templates` trả thêm **`ballotCount`** và **`isLocked`** để màn quản lý làm mờ nút
+Sửa/Xoá kèm lời giải thích, thay vì để người dùng bấm rồi mới ăn 409.
+
+> **Vì sao không đánh số version thật:** "khoá + nhân bản" giữ nguyên lịch sử, **không cần
+> migration**, và dùng lại đúng nút "Nhân bản" đã có. Đánh version thật chỉ đáng làm khi cần so
+> sánh giữa các bản — chưa ai yêu cầu.
+
 ### Cảnh báo quỹ giờ buổi họp — mới 09/08
 
 `GET /api/councils/{id}/slots` → `CouncilSlotBoardDto` thêm 4 trường:

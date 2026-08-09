@@ -233,7 +233,7 @@ Note của nhóm chỉ là **1 trong 4 nguồn việc**. Gộp hết lại để
 ### Nguồn 3 — `README.md` §"Code chưa làm / làm dở"
 | Việc | Ghi chú |
 |---|---|
-| **Pin biểu mẫu chấm theo version** (rule #13: *"biểu mẫu pin version active tại thời điểm tạo đề tài"*) | ⬜ Cần migration. **Liên quan trực tiếp tới B6**: đổi bộ tiêu chí giữa chừng thì gợi ý chấm đã cache bị lệch |
+| **Pin biểu mẫu chấm theo version** (rule #13) | ✅ **XONG 09/08 — KHÔNG cần migration** | Thực thi bằng **khoá + nhân bản** thay vì đánh số version: bộ đã có người chấm thì khoá nội dung (409 ở cả 4 đường sửa: đổi tên bộ · thêm/sửa/xoá tiêu chí), muốn đổi thì bấm **Nhân bản** rồi gắn bản sao cho vòng mới — vòng cũ giữ nguyên. Chỗ hở thật là **SỬA** (xoá vốn đã chặn từ trước): sửa tên tiêu chí = đổi nghĩa phiếu đã ký; hạ điểm tối đa = tổng điểm phiếu cũ sai mà không ai biết. `GET` trả thêm `ballotCount`/`isLocked` để FE làm mờ nút. Kiểm cả 4 đường chặn + đường thoát bằng API thật. Đánh version thật chỉ đáng làm khi cần **so sánh giữa các bản** — chưa ai yêu cầu |
 | Dropdown loại đề tài ở form nộp còn cứng 2 lựa chọn | ⬜ chỉ là hiển thị |
 | Thùng rác toàn hệ thống (mới làm mẫu ở ResearchType) | ⬜ để sau |
 | i18n incremental các màn cũ | 🔶 |

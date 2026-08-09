@@ -54,8 +54,16 @@ public class RubricTemplatesController : ControllerBase
             .Include(t => t.Scopes)
             .OrderBy(t => t.TemplateType).ThenBy(t => t.Name)
             .ToListAsync();
+
+        // Đếm phiếu theo từng bộ trong MỘT truy vấn, không hỏi vòng từng bộ.
+        var ballots = await _review.ReviewScores
+            .GroupBy(s => s.TemplateId)
+            .Select(g => new { TemplateId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.TemplateId, x => x.Count);
+
         // Màn quản lý: hiện cả tiêu chí đã tắt để còn bật lại được.
-        return Ok(ApiResponse<IEnumerable<object>>.Ok(items.Select(t => Map(t, includeInactive: true))));
+        return Ok(ApiResponse<IEnumerable<object>>.Ok(items.Select(t =>
+            Map(t, includeInactive: true, ballotCount: ballots.GetValueOrDefault(t.Id)))));
     }
 
     // GET /api/rubric-templates/resolve?cycleId=&trackId=&templateType=
@@ -112,6 +120,12 @@ public class RubricTemplatesController : ControllerBase
     {
         var t = await _repo.RubricTemplates.FirstOrDefaultAsync(x => x.Id == id)
             ?? throw new KeyNotFoundException("Không tìm thấy bộ tiêu chí.");
+
+        // Đổi TÊN và loại đề tài áp dụng đều làm lệch nghĩa phiếu đã chấm ⇒ khoá.
+        // Riêng BẬT/TẮT bộ vẫn cho, vì tắt chỉ ngăn dùng cho vòng MỚI, không đụng phiếu cũ.
+        var contentChanged = !string.IsNullOrWhiteSpace(request.Name)
+                             || request.AppliesBasic.HasValue || request.AppliesApplied.HasValue;
+        if (contentChanged) await AssertTemplateEditableAsync(id, "sửa");
 
         if (!string.IsNullOrWhiteSpace(request.Name)) t.Name = request.Name.Trim();
         if (request.AppliesBasic.HasValue) t.AppliesBasic = request.AppliesBasic.Value;
@@ -239,6 +253,8 @@ public class RubricTemplatesController : ControllerBase
             throw new ArgumentException("Tên tiêu chí là bắt buộc.");
         if (request.MaxScore <= 0)
             throw new ArgumentException("Điểm tối đa phải lớn hơn 0.");
+        // Thêm tiêu chí vào bộ đã chấm = phiếu cũ thiếu tiêu chí đó, tổng không còn so được.
+        await AssertTemplateEditableAsync(id, "thêm tiêu chí");
         EnsureTotalWithinCap(tpl, addingScore: request.MaxScore);
 
         var criterion = new RubricCriterion
@@ -267,6 +283,8 @@ public class RubricTemplatesController : ControllerBase
             .FirstOrDefaultAsync(t => t.Id == id)
             ?? throw new KeyNotFoundException("Không tìm thấy bộ tiêu chí.");
 
+        await AssertTemplateEditableAsync(id, "sửa tiêu chí");
+
         if (!string.IsNullOrWhiteSpace(request.CriterionName)) c.CriterionName = request.CriterionName.Trim();
         if (request.MaxScore > 0)
         {
@@ -290,6 +308,10 @@ public class RubricTemplatesController : ControllerBase
     {
         var c = await _repo.RubricCriteria.FirstOrDefaultAsync(x => x.Id == criterionId && x.TemplateId == id)
             ?? throw new KeyNotFoundException("Tiêu chí không thuộc bộ này.");
+
+        // Bộ đã dùng chấm thì bỏ bớt tiêu chí cũng là đổi nghĩa phiếu cũ — kể cả chỉ TẮT, vì tắt
+        // xong tổng không còn cộng đủ trần và không ai chấm tiếp được bằng bộ đó.
+        await AssertTemplateEditableAsync(id, "xoá tiêu chí");
 
         // Đã có điểm chấm theo tiêu chí này ⇒ chỉ tắt, giữ lịch sử.
         if (await _review.ReviewScoreDetails.AnyAsync(d => d.CriterionId == criterionId))
@@ -338,7 +360,36 @@ public class RubricTemplatesController : ControllerBase
 
         _repo.Add(copy);
         await _repo.SaveChangesAsync();
-        return Ok(ApiResponse<object>.Ok(Map(copy), "Đã sao chép bộ tiêu chí."));
+        return Ok(ApiResponse<object>.Ok(Map(copy),
+            "Đã sao chép bộ tiêu chí. Sửa bản sao rồi gắn cho vòng chấm mới — vòng đang dùng bộ cũ giữ nguyên."));
+    }
+
+    /// <summary>
+    /// Rule #13 — *"biểu mẫu pin version active tại thời điểm tạo đề tài; đổi active chỉ áp đề tài
+    /// mới"*. Cách thực thi: **bộ đã có người chấm bằng nó thì KHOÁ nội dung**, muốn sửa thì
+    /// "Nhân bản" ra bộ mới rồi gắn cho vòng sau.
+    /// <para>
+    /// Vì sao phải chặn: một phiếu chấm chỉ lưu <c>(criterionId, givenScore)</c>. Sửa tên tiêu chí
+    /// là **đổi nghĩa phiếu đã ký** — biên bản in ra hôm nay khác biên bản in hôm qua từ cùng một
+    /// dữ liệu. Hạ điểm tối đa còn tệ hơn: phiếu cũ chấm 20 trên một tiêu chí nay trần chỉ còn 10
+    /// ⇒ tổng điểm sai và không ai biết vì sao. Xoá bộ và xoá tiêu chí đã bị chặn từ trước; chỗ
+    /// hở là **SỬA** — vốn không kiểm gì.
+    /// </para>
+    /// <para>
+    /// Chọn "khoá + nhân bản" thay vì đánh số version thật: giữ nguyên lịch sử, **không cần
+    /// migration**, và dùng lại đúng nút "Nhân bản" đã có. Đánh version thật chỉ đáng làm khi cần
+    /// so sánh giữa các bản, thứ chưa ai yêu cầu.
+    /// </para>
+    /// </summary>
+    private async Task AssertTemplateEditableAsync(int templateId, string action)
+    {
+        var ballots = await _review.ReviewScores.CountAsync(s => s.TemplateId == templateId);
+        if (ballots == 0) return;
+
+        throw new InvalidOperationException(
+            $"Bộ tiêu chí này đã được dùng để chấm ({ballots} phiếu) nên không {action} được nữa — " +
+            "sửa là đổi nghĩa những phiếu đã chấm. Hãy bấm \"Nhân bản\" để tạo bộ mới rồi gắn cho " +
+            "vòng chấm sau; các vòng đang dùng bộ cũ giữ nguyên (rule #13).");
     }
 
     /// <summary>
@@ -368,7 +419,7 @@ public class RubricTemplatesController : ControllerBase
     /// bị tắt tự động (do đã có điểm chấm) biến mất vĩnh viễn, không có đường khôi phục.
     /// Còn khi RESOLVE để chấm thì chỉ lấy tiêu chí đang bật.
     /// </param>
-    private static object Map(RubricTemplate t, bool includeInactive = false) => new
+    private static object Map(RubricTemplate t, bool includeInactive = false, int ballotCount = 0) => new
     {
         t.Id,
         t.TemplateType,
@@ -386,6 +437,10 @@ public class RubricTemplatesController : ControllerBase
         Criteria = t.Criteria.Where(c => includeInactive || c.IsActive).OrderBy(c => c.Sequence)
             .Select(c => new { c.Id, c.CriterionName, c.MaxScore, c.Sequence, c.IsActive }),
         Scopes = t.Scopes.Select(s => new { s.Id, s.CycleId, s.TrackId }),
+        // Rule #13: bộ đã có người chấm thì KHOÁ nội dung — trả cờ ra để màn quản lý làm mờ nút
+        // Sửa/Xoá kèm lời giải thích, thay vì để người dùng bấm rồi mới ăn 409.
+        BallotCount = ballotCount,
+        IsLocked = ballotCount > 0,
     };
 }
 
