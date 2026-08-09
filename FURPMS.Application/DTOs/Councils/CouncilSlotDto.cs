@@ -22,6 +22,24 @@ public class CouncilSlotBoardDto
     public int? MeetingDurationMinutes { get; set; }
     public int AssignedMinutes { get; set; }
     public List<CouncilSlotDto> Slots { get; set; } = new();
+
+    /// <summary>Tổng số đề tài hội đồng này phải chấm.</summary>
+    public int ProjectCount { get; set; }
+    /// <summary>Số đề tài CHƯA được chia khung giờ.</summary>
+    public int UnscheduledCount { get; set; }
+    /// <summary>Thời lượng buổi họp còn trống sau khi trừ các khung đã chia. Âm = đã vượt.</summary>
+    public int? RemainingMinutes { get; set; }
+
+    /// <summary>
+    /// Cảnh báo cho Staff, <c>null</c> nếu không có gì bất thường. **Cảnh báo chứ không chặn** —
+    /// rule #17 cho đổi lịch bất kỳ lúc nào, nên khoá cứng ở đây sẽ cản đúng thao tác hợp lệ.
+    /// <para>
+    /// Có vì thứ tự thao tác thực tế: Staff đặt lịch họp trước, rồi mới gán thêm đề tài 2, 3 vào
+    /// cùng hội đồng. Trước đây không có gì nhắc, nên buổi họp 90 phút gán 5 đề tài vẫn lưu được
+    /// và chỉ vỡ ra vào đúng hôm họp.
+    /// </para>
+    /// </summary>
+    public string? Warning { get; set; }
 }
 
 public class SlotEntryDto

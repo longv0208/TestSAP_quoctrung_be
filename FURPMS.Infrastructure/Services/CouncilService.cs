@@ -541,14 +541,45 @@ public class CouncilService : ICouncilService
             .OrderBy(m => m.ScheduledAt)
             .FirstOrDefaultAsync();
 
+        var assigned = slots.Sum(x => x.SlotDurationMinutes ?? 0);
+        var unscheduled = slots.Count(x => x.SlotStartAt == null || (x.SlotDurationMinutes ?? 0) <= 0);
+        int? remaining = meeting == null ? null : meeting.DurationMinutes - assigned;
+
         return new CouncilSlotBoardDto
         {
             MeetingId = meeting?.Id,
             MeetingStartAt = meeting?.ScheduledAt,
             MeetingDurationMinutes = meeting?.DurationMinutes,
-            AssignedMinutes = slots.Sum(x => x.SlotDurationMinutes ?? 0),
+            AssignedMinutes = assigned,
+            ProjectCount = slots.Count,
+            UnscheduledCount = unscheduled,
+            RemainingMinutes = remaining,
+            Warning = BuildSlotWarning(meeting?.DurationMinutes, assigned, remaining, unscheduled),
             Slots = slots
         };
+    }
+
+    /// <summary>
+    /// Chỉ nói bằng phép tính có thật — tổng khung đã chia, thời lượng buổi họp, số đề tài chưa
+    /// xếp — chứ KHÔNG tự đặt ra "mỗi đề tài tối thiểu bao nhiêu phút". QĐ543 không quy định con
+    /// số đó, bịa ra là cắm một tham số nghiệp vụ vào code. Staff nhìn số rồi tự cân.
+    /// </summary>
+    private static string? BuildSlotWarning(int? meetingMinutes, int assigned, int? remaining, int unscheduled)
+    {
+        if (meetingMinutes is null or <= 0) return null;
+
+        if (assigned > meetingMinutes)
+            return $"Tổng khung giờ đã chia ({assigned} phút) vượt quá thời lượng buổi họp " +
+                   $"({meetingMinutes} phút). Rút ngắn khung của một số đề tài hoặc kéo dài buổi họp.";
+
+        if (unscheduled > 0 && remaining is <= 0)
+            return $"Còn {unscheduled} đề tài chưa có khung giờ mà buổi họp đã kín " +
+                   $"({assigned}/{meetingMinutes} phút). Kéo dài buổi họp hoặc tách sang buổi khác.";
+
+        if (unscheduled > 0)
+            return $"Còn {unscheduled} đề tài chưa có khung giờ, buổi họp còn trống {remaining} phút.";
+
+        return null;
     }
 
     public async Task<IEnumerable<CouncilSlotDto>> GetCouncilSlotsAsync(Guid councilId)

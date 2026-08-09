@@ -677,6 +677,25 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Cảnh báo quỹ giờ buổi họp — mới 09/08
+
+`GET /api/councils/{id}/slots` → `CouncilSlotBoardDto` thêm 4 trường:
+`projectCount` · `unscheduledCount` · `remainingMinutes` (âm = đã vượt) · **`warning`** (`null` khi
+không có gì bất thường).
+
+Có vì thứ tự thao tác thực tế: Staff đặt lịch họp trước, **rồi mới** gán thêm đề tài 2, 3 vào cùng
+hội đồng. Trước đây không có gì nhắc, nên buổi họp 90 phút gán 5 đề tài vẫn lưu được và chỉ vỡ ra
+vào đúng hôm họp.
+
+Ba trường hợp `warning` khác `null`:
+1. Tổng khung đã chia **vượt** thời lượng buổi họp
+2. Còn đề tài **chưa có khung giờ** mà buổi họp đã kín
+3. Còn đề tài chưa có khung giờ, kèm số phút còn trống
+
+⚠️ **Cảnh báo chứ KHÔNG chặn** — rule #17 cho đổi lịch bất kỳ lúc nào, khoá cứng sẽ cản đúng thao
+tác hợp lệ. Và cố ý **không tự đặt ra "mỗi đề tài tối thiểu bao nhiêu phút"**: QĐ543 không quy định
+con số đó, bịa ra là cắm một tham số nghiệp vụ vào code. Chỉ nói bằng phép tính có thật, Staff tự cân.
+
 ### XOÁ master data — mới 09/08
 
 Năm màn Admin trước đây chỉ có thêm/sửa. Nay có `DELETE`, quyền **Admin**, theo đúng khuôn đã dùng

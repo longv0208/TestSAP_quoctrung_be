@@ -224,7 +224,7 @@ Note của nhóm chỉ là **1 trong 4 nguồn việc**. Gộp hết lại để
 |---|---|
 | Hợp đồng SỬA + XOÁ | ✅ 05/08 |
 | Lịch họp SỬA + XOÁ | ✅ 06/08 |
-| **Rà `DisbursementsPanel` + `SettlementPanel`** xem có sai vai như 3 panel kia | ⬜ |
+| **Rà `DisbursementsPanel` + `SettlementPanel`** xem có sai vai như 3 panel kia | ✅ **09/08** — hai panel này vốn đã nhận `canManage`. Nhưng rà ra lỗi **to hơn**: `canManage` tính từ `user.roles.includes(STAFF)` tức **vai người đó CÓ**, trong khi sidebar/dashboard lại đọc `activeRole` — **vai đang chọn**. Người đa vai (rule #23) chuyển sang Giảng viên thì menu đổi sang PI nhưng mở chi tiết hợp đồng **vẫn thấy nút Phòng QLKH**. Nay có hook chung `useActiveRole.ts` (`useIsManaging` / `useIsAdmin`), sửa 4 chỗ gác quyền. Là chuyện nhất quán giao diện — hàng rào thật vẫn ở BE |
 | **XOÁ**: sản phẩm · kỳ báo cáo · thành viên đề tài | ✅ **09/08** — thêm cả **SỬA** cho sản phẩm và thành viên. Cửa khoá: sản phẩm đã nghiệm thu Đạt / đã nộp minh chứng / **đang là điều kiện của đợt giải ngân** đều không xoá; báo cáo chỉ xoá được bản nháp (đã nộp là căn cứ trong hồ sơ nghiệm thu); thành viên chỉ sửa/xoá khi đề cương còn nháp, không xoá được chủ nhiệm, không xoá khi còn dòng thuê khoán trong dự toán. `isPi` không sửa qua đây — đổi chủ nhiệm phải đi BM07. Thêm 6 test |
 | **XOÁ master data** (5 màn Admin: đơn vị · loại sản phẩm · vai trò nhân sự · hạng mục chi · cấu hình tài chính) | ✅ **09/08** — theo khuôn đã có ở loại đề tài: **xoá vĩnh viễn chỉ khi không ai tham chiếu**, còn dùng thì 409 + bảo vô hiệu hoá. Thông báo nêu tên bản ghi và **liệt kê chỗ đang dùng** để Admin biết gỡ ở đâu. Vai trò nhân sự khớp theo `memberRoleCode` (không phải FK). Cấu hình tài chính không bảng nào trỏ tới ⇒ cho xoá thẳng. Kiểm cả 2 chiều bằng API |
 | **Chốt 4 loại điều chỉnh** (kinh phí/nội dung/thành viên/khác) + quan hệ với BM07 | ⬜ **gấp hơn** từ khi merge PR #1 — nay cả 2 cơ chế đều có UI |
@@ -271,9 +271,11 @@ Hội đồng được tạo **kèm sẵn đề tài** (`CreateCouncilAsync` b�
   khi thêm đề tài. Buổi họp 90 phút gán 5 đề tài vẫn lưu được.
 
 **Đề xuất:**
-1. Gán thêm đề tài vào hội đồng đã có lịch họp ⇒ **cảnh báo** nếu tổng slot đã đặt + đề tài mới
-   vượt thời lượng buổi họp (cảnh báo, không chặn — rule #17 cho đổi lịch bất kỳ lúc nào).
-2. **Ẩn phần lịch chấm khi hội đồng chỉ có 1 đề tài** — bớt rối cho ca thường gặp nhất.
+1. ✅ **XONG 09/08** — `GET /councils/{id}/slots` trả thêm `projectCount` · `unscheduledCount` ·
+   `remainingMinutes` · **`warning`**; FE hiện banner vàng **ngay đầu** sheet chi tiết hội đồng,
+   không bắt Staff mở tab "Lịch chấm" mới thấy. Cảnh báo chứ không chặn. Cố ý **không** tự đặt ra
+   "mỗi đề tài tối thiểu bao nhiêu phút" — QĐ543 không quy định, bịa ra là hardcode tham số nghiệp vụ.
+2. ✅ **đã có sẵn** — `CouncilDetailSheet` ẩn tab "Lịch chấm" khi hội đồng chỉ 1 đề tài.
 
 
 ## 🎬 E7 — KỊCH BẢN DATA DEMO (thiết kế 06/08, làm sau)
