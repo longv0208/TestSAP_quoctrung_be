@@ -95,10 +95,10 @@ public class DossierProgressReportDto
     public string? NextPeriodPlan { get; set; }
     public string? PiRecommendations { get; set; }
 
-    /// <summary>Kết quả Staff đánh giá: ACHIEVED / DELAYED / FAILED…</summary>
+    /// <summary>Kết quả Staff đánh giá — chỉ 3 giá trị: PASS / CONDITIONAL / FAIL (QĐ543 Điều 10, BM06).</summary>
     public string? EvaluationResult { get; set; }
     public string? EvaluationComments { get; set; }
-    /// <summary>AI DUYỆT kỳ này — thiếu cái này thì hội đồng không truy được trách nhiệm.</summary>
+    /// <summary>Người duyệt kỳ này — thiếu thì hội đồng không truy được trách nhiệm.</summary>
     public string? EvaluatedByName { get; set; }
     /// <summary>Vai của người duyệt (Staff / Admin) tại thời điểm xem.</summary>
     public string? EvaluatedByRole { get; set; }

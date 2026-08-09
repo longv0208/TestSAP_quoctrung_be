@@ -296,7 +296,7 @@ public class CycleService : ICycleService
             ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
 
         if (cycle.Status == CycleStatus.Open)
-            throw new InvalidOperationException("Cycle is already open.");
+            throw new InvalidOperationException("Đợt này đang mở rồi.");
 
         cycle.Status = CycleStatus.Open;
         cycle.UpdatedAt = DateTime.UtcNow;
@@ -311,7 +311,7 @@ public class CycleService : ICycleService
             ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
 
         if (cycle.Status != CycleStatus.Open)
-            throw new InvalidOperationException($"Cycle is '{cycle.Status}'; only OPEN cycles can be closed.");
+            throw new InvalidOperationException($"Đợt đang ở trạng thái {cycle.Status} — chỉ đóng được đợt đang mở.");
 
         cycle.Status = CycleStatus.Closed;
         cycle.UpdatedAt = DateTime.UtcNow;
@@ -407,7 +407,7 @@ public class CycleService : ICycleService
             ?? throw new KeyNotFoundException($"Track {trackId} not found.");
 
         if (!track.IsActive)
-            throw new InvalidOperationException("Track is already inactive.");
+            throw new InvalidOperationException("Lĩnh vực này đã ngừng hoạt động.");
 
         track.IsActive = false;
         _masterData.Update(track);

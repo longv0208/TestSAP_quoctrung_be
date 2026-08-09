@@ -24,7 +24,7 @@ public class ResearchOrderService : IResearchOrderService
         var order = await _cycles.Orders.FirstOrDefaultAsync(o => o.Id == orderId)
             ?? throw new KeyNotFoundException("Research order not found.");
         if (order.Status != OrderOpen)
-            throw new InvalidOperationException("Only OPEN orders can be matched.");
+            throw new InvalidOperationException("Chỉ ghép được đề tài vào danh mục đặt hàng đang mở.");
 
         var winner = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project)

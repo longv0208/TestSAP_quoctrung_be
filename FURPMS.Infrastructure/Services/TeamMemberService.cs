@@ -42,9 +42,9 @@ public class TeamMemberService : ITeamMemberService
     public async Task<TeamMemberResponse> AddTeamMemberAsync(Guid proposalId, CreateTeamMemberRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.FullName))
-            throw new ArgumentException("FullName is required.");
+            throw new ArgumentException("Phải nhập họ tên thành viên.");
         if (string.IsNullOrWhiteSpace(request.WorkContent))
-            throw new ArgumentException("WorkContent is required.");
+            throw new ArgumentException("Phải nhập nội dung công việc của thành viên.");
 
         var projectId = await ResolveProjectIdAsync(proposalId);
 

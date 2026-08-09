@@ -140,7 +140,7 @@ public class DeliverableService : IDeliverableService
         int deliverableId, EvaluateDeliverableRequest request, Guid evaluatedBy)
     {
         if (request.AcceptanceStatus is not (AcceptanceStatus.Passed or AcceptanceStatus.Failed))
-            throw new ArgumentException("AcceptanceStatus must be PASSED or FAILED.");
+            throw new ArgumentException("Kết quả nghiệm thu sản phẩm chỉ nhận Đạt (PASSED) hoặc Không đạt (FAILED).");
 
         var deliverable = await _contracts.Deliverables
             .Include(d => d.Category)

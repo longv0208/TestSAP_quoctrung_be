@@ -31,13 +31,13 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
     public async Task<BudgetExpenseCategoryResponse> CreateAsync(UpsertBudgetExpenseCategoryRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Code))
-            throw new ArgumentException("Code is required.");
+            throw new ArgumentException("Phải nhập mã hạng mục.");
         if (string.IsNullOrWhiteSpace(request.Name))
-            throw new ArgumentException("Name is required.");
+            throw new ArgumentException("Phải nhập tên hạng mục.");
 
         var exists = await _masterData.BudgetExpenseCategories.AnyAsync(x => x.Code == request.Code);
         if (exists)
-            throw new InvalidOperationException($"BudgetExpenseCategory with code '{request.Code}' already exists.");
+            throw new InvalidOperationException($"Đã có hạng mục chi mang mã {request.Code}.");
 
         var entity = new BudgetExpenseCategory
         {
@@ -54,7 +54,7 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
     public async Task<BudgetExpenseCategoryResponse> UpdateAsync(int id, UpsertBudgetExpenseCategoryRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
-            throw new ArgumentException("Name is required.");
+            throw new ArgumentException("Phải nhập tên hạng mục.");
 
         var entity = await _masterData.BudgetExpenseCategories.FirstOrDefaultAsync(x => x.Id == id)
             ?? throw new KeyNotFoundException($"BudgetExpenseCategory {id} not found.");
@@ -62,7 +62,7 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
         var codeConflict = await _masterData.BudgetExpenseCategories
             .AnyAsync(x => x.Code == request.Code.ToUpperInvariant() && x.Id != id);
         if (codeConflict)
-            throw new InvalidOperationException($"BudgetExpenseCategory with code '{request.Code}' already exists.");
+            throw new InvalidOperationException($"Đã có hạng mục chi mang mã {request.Code}.");
 
         entity.Code = request.Code.ToUpperInvariant();
         entity.Name = request.Name;

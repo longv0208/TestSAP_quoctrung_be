@@ -14,6 +14,7 @@
 | **`QD_543_DHFPT_Quy_dinh_quan_ly_de_tai_NCKH_clean.docx`** | **Văn bản pháp quy của trường.** Toàn bộ nghiệp vụ của đồ án phải khớp với nó: quy trình, thẩm quyền, thời hạn, 12 biểu mẫu (BM01–BM12) | **Trước khi code bất kỳ luồng nghiệp vụ nào**, và mỗi khi có tranh cãi "cái này đúng chưa" |
 | `Mau-1_Thuyet-minh-khoa-hoc_V-14082020_v5.docx` | Mẫu thuyết minh đề cương (BM01) — đúng từng mục PI phải điền | Khi sửa wizard nộp đề cương, hoặc export thuyết minh |
 | `NH_Son_Mau 3-Du toan kinh phi_Final-Tri_v5_final.xlsx` | Mẫu dự toán kinh phí (BM03) | Khi sửa phần dự toán / export Excel |
+| **`BUSINESS_RULES.md`** | **Bảng tra quy tắc nghiệp vụ** — 62 luật chia 6 nhóm: luật → căn cứ (điều/biểu mẫu QĐ543 hoặc buổi chốt với thầy) → **nơi thực thi trong code** → mã lỗi. Kèm mục "đã rà và KHÔNG có luật" + độ phủ test | Khi bị hỏi *"quy tắc này ở đâu ra?"*, trước khi sửa một ràng buộc, và khi ôn bảo vệ |
 | **`QD543_Compliance.md`** | **Bảng đối chiếu QĐ543 ↔ code**: từng biểu mẫu map vào entity/endpoint nào, đã làm chưa. §2 map từng mục BM04 ↔ field BE | Mở **cùng lúc** với file .docx ở trên — nó là bản dịch từ văn bản luật sang code |
 
 > ⚠️ File `.docx`/`.xlsx` đọc bằng cách bóc XML (xem lệnh mẫu ở cuối file này), đừng đoán nội dung.

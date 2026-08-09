@@ -88,7 +88,7 @@ public class AmendmentService : IAmendmentService
             ?? throw new KeyNotFoundException($"Amendment {amendmentId} not found.");
 
         if (amendment.Status != AmendmentStatus.Pending)
-            throw new InvalidOperationException($"Amendment is already '{amendment.Status}'.");
+            throw new InvalidOperationException($"Đề nghị điều chỉnh đã ở trạng thái {amendment.Status} — không xử lý lại được.");
 
         // Chặn cả ở lúc DUYỆT chứ không chỉ lúc gửi: đơn có thể nằm chờ từ trước khi đề tài được
         // nghiệm thu, tới lúc Staff bấm duyệt thì đề tài đã xong từ đời nào.
@@ -120,7 +120,7 @@ public class AmendmentService : IAmendmentService
             ?? throw new KeyNotFoundException($"Amendment {amendmentId} not found.");
 
         if (amendment.Status != AmendmentStatus.Pending)
-            throw new InvalidOperationException($"Amendment is already '{amendment.Status}'.");
+            throw new InvalidOperationException($"Đề nghị điều chỉnh đã ở trạng thái {amendment.Status} — không xử lý lại được.");
 
         amendment.Status = AmendmentStatus.Rejected;
         amendment.ReviewedBy = reviewedBy;

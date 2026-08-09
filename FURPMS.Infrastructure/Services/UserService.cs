@@ -40,15 +40,15 @@ public class UserService : IUserService
     public async Task<UserDto> CreateUserAsync(CreateUserRequest request, Guid createdBy)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
-            throw new ArgumentException("Email is required.");
+            throw new ArgumentException("Phải nhập email.");
         if (string.IsNullOrWhiteSpace(request.FullName))
-            throw new ArgumentException("FullName is required.");
+            throw new ArgumentException("Phải nhập họ tên.");
         if (string.IsNullOrWhiteSpace(request.TemporaryPassword))
-            throw new ArgumentException("TemporaryPassword is required.");
+            throw new ArgumentException("Phải nhập mật khẩu tạm.");
 
         var exists = await _users.Query().AnyAsync(u => u.Email == request.Email && !u.IsDeleted);
         if (exists)
-            throw new InvalidOperationException($"A user with email '{request.Email}' already exists.");
+            throw new InvalidOperationException($"Đã có tài khoản dùng email {request.Email}.");
 
         foreach (var roleId in request.Roles)
         {
@@ -86,7 +86,7 @@ public class UserService : IUserService
     public async Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.FullName))
-            throw new ArgumentException("FullName is required.");
+            throw new ArgumentException("Phải nhập họ tên.");
 
         var user = await _users.Query()
             .Include(u => u.UserRoles)

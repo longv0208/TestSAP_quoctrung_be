@@ -42,7 +42,7 @@ public class CouncilService : ICouncilService
         var joined = await _review.ProjectRounds
             .AnyAsync(pr => pr.RoundId == request.RoundId && pr.ProjectId == reqProposal.ProjectId);
         if (!joined)
-            throw new ArgumentException("The project has not joined the specified review round.");
+            throw new ArgumentException("Đề tài chưa tham gia vòng chấm này.");
 
         // QĐ543 quy định cỡ hội đồng KHÁC NHAU cho hai loại (xem CouncilSizeFor).
         var (minSize, maxSize) = CouncilSizeFor(round.RoundType);
@@ -109,7 +109,7 @@ public class CouncilService : ICouncilService
         await ReviewShared.AssertNoCoiAsync(_proposals, assignedProjectIds, new[] { request.UserId });
 
         if (council.Members.Any(m => m.UserId == request.UserId))
-            throw new InvalidOperationException("This user is already a member of the council.");
+            throw new InvalidOperationException("Người này đã có tên trong hội đồng.");
 
         // Trước đây `MaxMembersAllowed` chỉ là con số nằm trong DB, không ai kiểm — thêm 10 người
         // vào hội đồng vẫn được.
@@ -292,7 +292,7 @@ public class CouncilService : ICouncilService
             ?? throw new KeyNotFoundException($"Council membership {memberId} not found.");
 
         if (member.UserId != userId)
-            throw new ForbiddenException("You can only respond to your own invitations.");
+            throw new ForbiddenException("Bạn chỉ trả lời được thư mời gửi cho chính mình.");
 
         if (member.Status == CouncilMemberStatus.Declined)
             throw new InvalidOperationException("Bạn đã từ chối lời mời này.");

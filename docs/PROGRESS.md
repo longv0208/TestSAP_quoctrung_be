@@ -54,8 +54,14 @@ hợp đồng, mỗi lần đổi ghi `audit_logs`. Phải sửa kèm `GET /user
 entity** — thêm cột là lộ nguyên số cho Admin/Staff.
 ⇒ **Nhóm hợp đồng BM05 (C1–C3, F4) đã đủ**: bản Word xuất ra không còn ô nào để trống vì thiếu dữ liệu.
 
-Còn: **B6** cache AI + pin version bộ tiêu chí · **F1/F2** rà validate + viết lại business rule ·
-và **backlog 4 nguồn** (xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~28 việc).
+Xong thêm 09/08: **F1 rà toàn bộ validate** — soi 277 chốt chặn, ra **5 lỗi thật** (phương diện
+FINANCE còn sót · chốt "phải đạt vòng tiên quyết" thành **code chết** nên đề tài trượt vẫn vào được
+vòng nghiệm thu · hai đường xử lý khác nhau · luật "phải có bản báo cáo mới đánh giá" **chỉ khoá ở
+FE** · seeder ghi sai giá trị `EvaluationResult`), dịch nốt **88 câu lỗi tiếng Anh** ⇒ còn **0**.
+**F2**: viết `docs/BUSINESS_RULES.md` — 62 luật, tra được **luật → căn cứ QĐ543 → dòng code → mã lỗi**.
+
+Còn: **B6** cache AI + pin version bộ tiêu chí (chờ ý thầy) · **E5/F6** cần hỏi lại thầy ·
+và **backlog 4 nguồn** (xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~26 việc).
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).

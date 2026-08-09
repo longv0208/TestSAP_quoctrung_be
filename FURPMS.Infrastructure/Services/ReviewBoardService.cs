@@ -120,9 +120,12 @@ public class ReviewBoardService : IReviewBoardService
 
     public async Task<ReviewRoundResponse> CreateRoundForTrackAsync(int cycleId, int trackId, CreateTrackRoundRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.Dimension) ||
-            (request.Dimension != ReviewRoundDimension.Science && request.Dimension != ReviewRoundDimension.Finance))
-            throw new ArgumentException("Dimension must be SCIENCE or FINANCE.");
+        // Rule #16 (thầy chốt tuần 10): bỏ hẳn phương diện TÀI CHÍNH — chỉ còn 2 hội đồng
+        // (xét duyệt đề cương + nghiệm thu), báo cáo giữa kỳ do Staff duyệt thẳng.
+        if (string.IsNullOrWhiteSpace(request.Dimension) || request.Dimension != ReviewRoundDimension.Science)
+            throw new ArgumentException(
+                "Phương diện chấm chỉ còn SCIENCE (khoa học). Phương diện TÀI CHÍNH đã bỏ theo " +
+                "kết luận tuần 10 — báo cáo tiến độ giữa kỳ do Phòng QLKH duyệt trực tiếp, không lập hội đồng.");
 
         if (string.IsNullOrWhiteSpace(request.RoundType) ||
             !new[] { "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
@@ -137,7 +140,7 @@ public class ReviewBoardService : IReviewBoardService
             var prereq = await _review.GetRoundByIdAsync(request.PrerequisiteRoundId.Value)
                 ?? throw new KeyNotFoundException($"Prerequisite round {request.PrerequisiteRoundId} not found.");
             if (prereq.CycleTrackId != cycleTrack.Id)
-                throw new ArgumentException("Prerequisite round does not belong to this track.");
+                throw new ArgumentException("Vòng tiên quyết không thuộc lĩnh vực này.");
         }
 
         // DÙNG CHUNG round theo track (helper chung với ReviewRoundService).
@@ -232,13 +235,17 @@ public class ReviewBoardService : IReviewBoardService
         if (existingLink)
             throw new InvalidOperationException("Đề tài đã tham gia vòng chấm này rồi.");
 
-        if (round.Dimension == ReviewRoundDimension.Finance && round.PrerequisiteRoundId.HasValue)
+        // Vòng nào có vòng tiên quyết thì đề tài phải ĐẠT vòng đó mới được vào.
+        // Trước đây điều kiện là `Dimension == FINANCE`, mà FINANCE đã bỏ theo rule #16 ⇒ nhánh này
+        // thành CODE CHẾT: đề tài trượt vòng xét duyệt vẫn gán được vào vòng nghiệm thu.
+        if (round.PrerequisiteRoundId.HasValue)
         {
             var prereqLink = await _review.ProjectRounds
                 .FirstOrDefaultAsync(pr => pr.ProjectId == projectId && pr.RoundId == round.PrerequisiteRoundId.Value);
             if (prereqLink == null || prereqLink.Status != ReviewRoundStatus.Passed)
                 throw new InvalidOperationException(
-                    $"Đề tài chưa ĐẠT vòng tiên quyết (hiện: {prereqLink?.Status ?? "chưa tham gia"}). Không thể vào vòng FINANCE.");
+                    $"Đề tài chưa ĐẠT vòng tiên quyết (hiện: {prereqLink?.Status ?? "chưa tham gia"}) " +
+                    "— chưa thể đưa vào vòng này.");
         }
 
         await _review.AddProjectRoundAsync(new ProjectRound
@@ -281,7 +288,7 @@ public class ReviewBoardService : IReviewBoardService
         var validRoles = new[] { "Member", "Chair", "Secretary", "Opponent" };
         foreach (var m in request.Members)
             if (!validRoles.Contains(m.MemberRole))
-                throw new ArgumentException("MemberRole must be Member, Chair, Secretary, or Opponent.");
+                throw new ArgumentException("Vai trong hội đồng chỉ nhận: Thành viên, Chủ tịch, Thư ký hoặc Phản biện.");
 
         // 1 người chỉ giữ 1 vị trí / hội đồng — không được vừa Chủ tịch vừa Thư ký/Thành viên
         // (trước đây loop add thẳng nên gán trùng 1 người cho 3 vai vẫn lọt). AddMemberAsync đã chặn

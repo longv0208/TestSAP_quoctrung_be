@@ -93,11 +93,11 @@ public class ReviewScoringService : IReviewScoringService
         var lockedDecision = await _review.Decisions
             .AnyAsync(d => d.CouncilId == councilId && d.ProjectId == projectId && d.FinalizedAt != null);
         if (council.Status == CouncilStatus.Decided || lockedDecision)
-            throw new InvalidOperationException("Council decision is already finalized; cannot modify scores.");
+            throw new InvalidOperationException("Biên bản đã được Chủ tịch chốt — không sửa được điểm nữa.");
 
         var member = await _review.CouncilMembers
             .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId)
-            ?? throw new ForbiddenException("You are not a member of this review council.");
+            ?? throw new ForbiddenException("Bạn không thuộc hội đồng này.");
         AssertConfirmed(member);
 
         var template = await _masterData.RubricTemplates
@@ -144,7 +144,7 @@ public class ReviewScoringService : IReviewScoringService
 
             var criterion = template.Criteria.FirstOrDefault(c => c.Id == detail.CriterionId);
             if (criterion == null)
-                throw new ArgumentException($"Criterion {detail.CriterionId} does not belong to this template.");
+                throw new ArgumentException($"Tiêu chí {detail.CriterionId} không thuộc bộ tiêu chí đang dùng.");
             if (detail.GivenScore < 0 || detail.GivenScore > criterion.MaxScore)
                 throw new ArgumentException(
                     $"Score {detail.GivenScore} for '{criterion.CriterionName}' is out of range [0, {criterion.MaxScore}].");
@@ -243,7 +243,7 @@ public class ReviewScoringService : IReviewScoringService
     {
         var validResults = new[] { ReviewResult.Approved, ReviewResult.Rejected, ReviewResult.RevisionRequired };
         if (!validResults.Contains(request.Result))
-            throw new ArgumentException($"Result must be one of: {string.Join(", ", validResults)}.");
+            throw new ArgumentException($"Kết quả chỉ nhận: {string.Join(", ", validResults)}.");
 
         var council = await _review.Query().Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == councilId)

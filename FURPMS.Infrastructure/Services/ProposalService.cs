@@ -130,12 +130,12 @@ public class ProposalService : IProposalService
     public async Task<ProposalDto> CreateProposalAsync(CreateProposalRequest request, Guid piUserId)
     {
         if (string.IsNullOrWhiteSpace(request.TitleVI))
-            throw new ArgumentException("Title is required.");
+            throw new ArgumentException("Phải nhập tên đề tài.");
         if (request.DurationMonths <= 0)
-            throw new ArgumentException("DurationMonths must be positive.");
+            throw new ArgumentException("Thời gian thực hiện phải lớn hơn 0 tháng.");
 
         if (!int.TryParse(request.TrackId, out int trackId))
-            throw new ArgumentException("TrackId must be a valid integer.");
+            throw new ArgumentException("Lĩnh vực nghiên cứu không hợp lệ.");
 
         _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
             ?? throw new KeyNotFoundException($"Track {request.TrackId} not found.");
@@ -148,7 +148,7 @@ public class ProposalService : IProposalService
                 .Where(c => c.Status == CycleStatus.Open)
                 .OrderByDescending(c => c.CycleYear)
                 .FirstOrDefaultAsync()
-              ?? throw new InvalidOperationException("No open research cycle found. Cannot submit proposal.");
+              ?? throw new InvalidOperationException("Hiện không có đợt nào đang mở nhận đề cương.");
 
         // Loại đề tài LẤY TỪ ĐỢT (rule #7: 1 đợt = đúng 1 loại) — KHÔNG lấy từ input PI để tránh lệch dữ liệu.
         var researchType = await _masterData.ResearchTypes
@@ -338,14 +338,14 @@ public class ProposalService : IProposalService
         var project = proposal.Project;
 
         if (project.PiUserId != userId)
-            throw new ForbiddenException("Only the PI can edit this proposal.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới sửa được đề cương này.");
 
         // DRAFT: sửa tại chỗ. REVISION_REQUIRED: tạo BẢN MỚI (versioning — Review 2 điểm a).
         if (proposal.Status == ProposalStatus.RevisionRequired && proposal.IsCurrent)
             return await CreateRevisionAsync(proposal, request, userId);
 
         if (proposal.Status != ProposalStatus.Draft)
-            throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only DRAFT proposals can be edited. Withdraw it first.");
+            throw new InvalidOperationException($"Đề cương đang ở trạng thái {proposal.Status} — chỉ sửa được bản nháp. Hãy rút lại trước khi sửa.");
 
         // Hết hạn đợt → khóa, không cho sửa nháp nữa (đồng bộ với chặn nộp quá hạn).
         var todayEdit = DateOnly.FromDateTime(_clock.UtcNow);
@@ -355,11 +355,11 @@ public class ProposalService : IProposalService
                 $"Đã quá hạn nộp của đợt (hạn {cycle.SubmissionDeadline:dd/MM/yyyy}). Không thể sửa đề cương.");
 
         if (string.IsNullOrWhiteSpace(request.TitleVI))
-            throw new ArgumentException("Title is required.");
+            throw new ArgumentException("Phải nhập tên đề tài.");
         if (request.DurationMonths <= 0)
-            throw new ArgumentException("DurationMonths must be positive.");
+            throw new ArgumentException("Thời gian thực hiện phải lớn hơn 0 tháng.");
         if (!int.TryParse(request.TrackId, out int trackId))
-            throw new ArgumentException("TrackId must be a valid integer.");
+            throw new ArgumentException("Lĩnh vực nghiên cứu không hợp lệ.");
 
         _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
             ?? throw new KeyNotFoundException($"Track {request.TrackId} not found.");
@@ -417,9 +417,9 @@ public class ProposalService : IProposalService
     private async Task<ProposalDto> CreateRevisionAsync(Proposal oldVersion, CreateProposalRequest request, Guid userId)
     {
         if (string.IsNullOrWhiteSpace(request.TitleVI))
-            throw new ArgumentException("Title is required.");
+            throw new ArgumentException("Phải nhập tên đề tài.");
         if (request.DurationMonths <= 0)
-            throw new ArgumentException("DurationMonths must be positive.");
+            throw new ArgumentException("Thời gian thực hiện phải lớn hơn 0 tháng.");
 
         var project = oldVersion.Project;
         var maxVersion = await _proposals.Query().IgnoreQueryFilters()
@@ -501,10 +501,10 @@ public class ProposalService : IProposalService
         var project = proposal.Project;
 
         if (project.PiUserId != userId)
-            throw new ForbiddenException("Only the PI can submit this proposal.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được đề cương này.");
 
         if (proposal.Status != ProposalStatus.Draft)
-            throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only DRAFT proposals can be submitted.");
+            throw new InvalidOperationException($"Đề cương đang ở trạng thái {proposal.Status} — chỉ nộp được bản nháp.");
 
         // Chặn nộp quá hạn (dùng đồng hồ hệ thống — công cụ tua thời gian test được).
         // Bản revision (v2+) không bị chặn deadline nộp lần đầu — deadline sửa nằm ở RevisionDeadline.
@@ -547,10 +547,10 @@ public class ProposalService : IProposalService
             ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
 
         if (proposal.Project.PiUserId != userId)
-            throw new ForbiddenException("Only the PI can withdraw this proposal.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới rút lại được đề cương này.");
 
         if (proposal.Status != ProposalStatus.Submitted)
-            throw new InvalidOperationException($"Proposal is '{proposal.Status}'; only SUBMITTED proposals can be withdrawn.");
+            throw new InvalidOperationException($"Đề cương đang ở trạng thái {proposal.Status} — chỉ rút lại được đề cương đã nộp.");
 
         proposal.Status = ProposalStatus.Draft;
         proposal.SubmittedAt = null;

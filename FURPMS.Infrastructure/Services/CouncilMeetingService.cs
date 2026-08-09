@@ -219,7 +219,7 @@ public class CouncilMeetingService : ICouncilMeetingService
             ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
 
         if (meeting.Status != MeetingStatus.Scheduled)
-            throw new InvalidOperationException($"Meeting is '{meeting.Status}'; only SCHEDULED meetings can be started.");
+            throw new InvalidOperationException($"Buổi họp đang ở trạng thái {meeting.Status} — chỉ buổi đã lên lịch mới bắt đầu được.");
 
         meeting.ActualStartAt = DateTime.UtcNow;
         meeting.Status = MeetingStatus.InProgress;
@@ -234,7 +234,7 @@ public class CouncilMeetingService : ICouncilMeetingService
             ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
 
         if (meeting.Status != MeetingStatus.InProgress)
-            throw new InvalidOperationException($"Meeting is '{meeting.Status}'; only IN_PROGRESS meetings can be ended.");
+            throw new InvalidOperationException($"Buổi họp đang ở trạng thái {meeting.Status} — chỉ buổi đang diễn ra mới kết thúc được.");
 
         meeting.ActualEndAt = DateTime.UtcNow;
         meeting.Status = MeetingStatus.Completed;

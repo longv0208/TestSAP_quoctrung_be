@@ -727,7 +727,7 @@ public class DemoScenarioSeeder
             Status = ProgressReportStatus.Evaluated,
             EvaluatedBy = ctx.Staff.Id,
             EvaluatedAt = now.AddDays(-175),
-            EvaluationResult = "ACHIEVED",
+            EvaluationResult = "PASS",
             EvaluationComments = "Tiến độ đạt yêu cầu, số liệu minh chứng đầy đủ.",
             CreatedAt = now.AddDays(-185),
             UpdatedAt = now.AddDays(-175)
@@ -877,7 +877,7 @@ public class DemoScenarioSeeder
                 Status = ProgressReportStatus.Evaluated,
                 EvaluatedBy = ctx.Staff.Id,
                 EvaluatedAt = now.AddDays(round == 1 ? -375 : -205),
-                EvaluationResult = "ACHIEVED",
+                EvaluationResult = "PASS",
                 EvaluationComments = "Tiến độ đạt yêu cầu.",
                 CreatedAt = now.AddDays(round == 1 ? -385 : -215),
                 UpdatedAt = now.AddDays(round == 1 ? -375 : -205)

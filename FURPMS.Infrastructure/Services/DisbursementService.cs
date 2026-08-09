@@ -86,7 +86,7 @@ public class DisbursementService : IDisbursementService
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
         if (contract.Disbursements.Any())
-            throw new InvalidOperationException("Disbursement tranches already generated for this contract.");
+            throw new InvalidOperationException("Hợp đồng này đã sinh các đợt giải ngân rồi.");
 
         var fundingMethod = contract.Project?.Proposals.FirstOrDefault()?.FundingMethod ?? FundingMethod.Whole;
 
@@ -111,7 +111,7 @@ public class DisbursementService : IDisbursementService
             ?? throw new KeyNotFoundException($"Disbursement {disbursementId} not found.");
 
         if (d.Status == DisbursementStatus.Disbursed)
-            throw new InvalidOperationException("Disbursement already confirmed.");
+            throw new InvalidOperationException("Đợt giải ngân này đã được đánh dấu đã chi.");
 
         // Đợt nào có gắn sản phẩm minh chứng thì sản phẩm phải nghiệm thu ĐẠT rồi mới
         // được đánh dấu đã giải ngân (QĐ543 Điều 16 — giải ngân theo tiến độ thực hiện).

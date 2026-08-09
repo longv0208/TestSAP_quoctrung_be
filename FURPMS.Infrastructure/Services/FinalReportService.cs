@@ -34,7 +34,7 @@ public class FinalReportService : IFinalReportService
     public async Task<FinalReportDto> SubmitAsync(Guid contractId, SubmitFinalReportRequest request, Guid userId)
     {
         if (string.IsNullOrWhiteSpace(request.ReportFileUrl))
-            throw new ArgumentException("ReportFileUrl is required.");
+            throw new ArgumentException("Phải nộp file báo cáo tổng kết.");
 
         var contract = await _contracts.Query()
             .Include(c => c.Project)
@@ -42,7 +42,7 @@ public class FinalReportService : IFinalReportService
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
         if (contract.Project.PiUserId != userId)
-            throw new ForbiddenException("Only the PI may submit the final report.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được báo cáo tổng kết.");
 
         var existing = await _contracts.FinalReports
             .FirstOrDefaultAsync(r => r.ProjectId == contract.ProjectId);
@@ -50,7 +50,7 @@ public class FinalReportService : IFinalReportService
         if (existing != null)
         {
             if (existing.Status == FinalReportStatus.Accepted || existing.Status == FinalReportStatus.Archived)
-                throw new InvalidOperationException($"Final report is already '{existing.Status}' and cannot be modified.");
+                throw new InvalidOperationException($"Báo cáo tổng kết đang ở trạng thái {existing.Status} — không sửa được nữa.");
 
             // Resubmission after revision
             existing.ReportFileUrl = request.ReportFileUrl;
@@ -83,14 +83,14 @@ public class FinalReportService : IFinalReportService
     public async Task<FinalReportDto> RequestRevisionAsync(Guid reportId, RequestRevisionRequest request, Guid staffId)
     {
         if (string.IsNullOrWhiteSpace(request.RevisionNotes))
-            throw new ArgumentException("RevisionNotes is required.");
+            throw new ArgumentException("Phải ghi rõ nội dung cần chỉnh sửa.");
 
         var report = await _contracts.FinalReports
             .FirstOrDefaultAsync(r => r.Id == reportId)
             ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
 
         if (report.Status != FinalReportStatus.Submitted)
-            throw new InvalidOperationException($"Report is '{report.Status}'; only SUBMITTED reports can request revision.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ yêu cầu chỉnh sửa được với báo cáo đã nộp.");
 
         report.Status = FinalReportStatus.RevisionRequired;
         report.RevisionNotes = request.RevisionNotes;
@@ -106,7 +106,7 @@ public class FinalReportService : IFinalReportService
             ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
 
         if (report.Status != FinalReportStatus.Submitted)
-            throw new InvalidOperationException($"Report is '{report.Status}'; only SUBMITTED reports can be accepted.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ chấp nhận được báo cáo đã nộp.");
 
         report.Status = FinalReportStatus.Accepted;
         report.ArchivalDeadline = DateOnly.FromDateTime(_clock.UtcNow.AddMonths(3));
@@ -121,7 +121,7 @@ public class FinalReportService : IFinalReportService
             ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
 
         if (report.Status != FinalReportStatus.Accepted)
-            throw new InvalidOperationException($"Report is '{report.Status}'; only ACCEPTED reports can be archived.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ lưu trữ được báo cáo đã được chấp nhận.");
 
         report.Status = FinalReportStatus.Archived;
         report.ArchivedAt = _clock.UtcNow;

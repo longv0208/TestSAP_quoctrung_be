@@ -52,10 +52,10 @@ public class AcceptanceEvaluationService : IAcceptanceEvaluationService
     {
         var validResults = new[] { EvaluationResult.Pass, EvaluationResult.Fail };
         if (!validResults.Contains(request.Result))
-            throw new ArgumentException("Result must be PASS or FAIL.");
+            throw new ArgumentException("Kết quả nghiệm thu chỉ nhận Đạt (PASS) hoặc Không đạt (FAIL).");
 
         if (request.Result == EvaluationResult.Fail && string.IsNullOrWhiteSpace(request.FailReason))
-            throw new ArgumentException("FailReason is required when result is FAIL.");
+            throw new ArgumentException("Phiếu Không đạt phải ghi rõ lý do.");
 
         var member = await _review.CouncilMembers
             .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId)

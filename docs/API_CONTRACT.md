@@ -677,6 +677,20 @@ Nguồn: QĐ543 **BM12 mục 10.1** *"Số phiếu phát ra … thu về … h�
 - **Quorum** (`POST …/minutes`, `POST …/minutes/approve`) đếm **hợp** hai bảng, distinct theo thành viên; rule *"nghiệm thu phải có phản biện dự"* (Điều 12.3.b) cũng nhận phiếu BM11.
 - **`CouncilDecisionDto`** của vòng nghiệm thu: `attendingMembers`/`validBallots`/`invalidBallots` tính cả phiếu Đạt/Không đạt; `averageScore` vẫn **`null`** vì nghiệm thu không chấm điểm.
 
+### Rà validate toàn hệ thống — thay đổi hành vi 09/08 (F1)
+
+| Thay đổi | Trước | Nay |
+|---|---|---|
+| `dimension` khi tạo vòng chấm | nhận `SCIENCE` hoặc `FINANCE` | **chỉ `SCIENCE`** — bỏ phương diện tài chính (rule #16). Gửi `FINANCE` → **400** |
+| Gán đề tài vào vòng có **vòng tiên quyết** | chỉ kiểm khi `dimension == FINANCE` ⇒ **không bao giờ chạy** | luôn kiểm: đề tài phải **ĐẠT** vòng tiên quyết; **chưa từng tham gia cũng là chưa đạt** → **409** |
+| `POST /progress-reports/{id}/evaluate` | đánh giá được báo cáo **không có file lẫn link** | phải có **file đính kèm hoặc link** mới đánh giá được → **409** |
+| Thông báo lỗi nghiệp vụ | 88 câu tiếng Anh | **toàn bộ tiếng Việt** |
+
+`evaluationResult` chỉ nhận **`PASS` / `CONDITIONAL` / `FAIL`** (QĐ543 Điều 10, BM06) — giá trị
+`ACHIEVED` từng xuất hiện trong dữ liệu demo là **sai**, đã sửa và seed lại.
+
+📘 Toàn bộ quy tắc nghiệp vụ tra ở **`docs/BUSINESS_RULES.md`** (luật → căn cứ QĐ543 → dòng code → mã lỗi).
+
 ### Thông tin định danh Bên B để lập hợp đồng — mới 08/08 (C3)
 
 `GET /api/users/me/contract-identity` → `ContractIdentityResponse`

@@ -39,10 +39,10 @@ public class ContractSettlementService : IContractSettlementService
 
         var exists = await _contracts.Settlements.AnyAsync(s => s.ContractId == contractId);
         if (exists)
-            throw new InvalidOperationException("A settlement already exists for this contract.");
+            throw new InvalidOperationException("Hợp đồng này đã có bản quyết toán.");
 
         if (request.TotalContractedAmount < 0 || request.TotalDisbursedAmount < 0 || request.TotalReturnedAmount < 0)
-            throw new ArgumentException("Amounts must be non-negative.");
+            throw new ArgumentException("Các khoản tiền không được âm.");
 
         // Quyết toán là bước ĐÓNG hợp đồng, nên phải đi sau khi mọi mốc giải ngân đã xong —
         // trong đó đợt cuối chỉ mở sau khi nghiệm thu Đạt (BM05 Điều 4.2, xem DisbursementService).
@@ -83,7 +83,7 @@ public class ContractSettlementService : IContractSettlementService
             ?? throw new KeyNotFoundException("Settlement not found.");
 
         if (settlement.SettlementSignedAt.HasValue)
-            throw new InvalidOperationException("Settlement is already signed.");
+            throw new InvalidOperationException("Bản quyết toán đã ký, không sửa được nữa.");
 
         var signee = await _users.Query().FirstOrDefaultAsync(u => u.Id == request.SideASigneeId)
             ?? throw new KeyNotFoundException("Signee user not found.");

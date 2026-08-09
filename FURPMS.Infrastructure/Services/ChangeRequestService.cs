@@ -32,9 +32,9 @@ public class ChangeRequestService : IChangeRequestService
     public async Task<ChangeRequestDto> CreateAsync(Guid proposalId, CreateChangeRequestRequest request, Guid requestedBy)
     {
         if (!TypeNames.ContainsKey(request.Type))
-            throw new ArgumentException("Type must be 1..5 (ExtendTime/ContentChange/PersonnelChange/BudgetChange/Suspend).");
+            throw new ArgumentException("Loại đề nghị phải từ 1 đến 5 (gia hạn / đổi nội dung / đổi nhân sự / đổi kinh phí / tạm dừng).");
         if (string.IsNullOrWhiteSpace(request.Description))
-            throw new ArgumentException("Description is required.");
+            throw new ArgumentException("Phải mô tả nội dung đề nghị.");
 
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project)
@@ -43,7 +43,7 @@ public class ChangeRequestService : IChangeRequestService
 
         var project = proposal.Project;
         if (project.PiUserId != requestedBy)
-            throw new ForbiddenException("Only the PI can create a change request for this project.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới gửi được đề nghị điều chỉnh.");
 
         if (project.Status is ProjectStatus.Completed or ProjectStatus.Cancelled or ProjectStatus.Terminated)
             throw new InvalidOperationException($"Đề tài đã ở trạng thái '{project.Status}' — không thể gửi yêu cầu thay đổi.");

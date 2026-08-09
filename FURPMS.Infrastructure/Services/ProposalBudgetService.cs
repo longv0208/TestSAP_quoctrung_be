@@ -36,7 +36,7 @@ public class ProposalBudgetService : IProposalBudgetService
     public async Task<BudgetResponse> UpdateBudgetAsync(Guid proposalId, UpdateBudgetRequest request)
     {
         if (request.Items.Count == 0)
-            throw new ArgumentException("At least one budget item is required.");
+            throw new ArgumentException("Phải có ít nhất một khoản dự toán kinh phí.");
 
         var itemSum = request.Items.Sum(i => i.Amount);
         if (itemSum != request.TotalAmount)

@@ -31,11 +31,11 @@ public class SystemFinancialConfigService : ISystemFinancialConfigService
     public async Task<SystemFinancialConfigResponse> CreateAsync(UpsertSystemFinancialConfigRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Code))
-            throw new ArgumentException("Code is required.");
+            throw new ArgumentException("Phải nhập mã cấu hình.");
 
         var exists = await _masterData.SystemFinancialConfigs.AnyAsync(x => x.Code == request.Code);
         if (exists)
-            throw new InvalidOperationException($"SystemFinancialConfig with code '{request.Code}' already exists.");
+            throw new InvalidOperationException($"Đã có cấu hình mang mã {request.Code}.");
 
         var entity = new SystemFinancialConfig
         {
@@ -58,7 +58,7 @@ public class SystemFinancialConfigService : ISystemFinancialConfigService
         var codeConflict = await _masterData.SystemFinancialConfigs
             .AnyAsync(x => x.Code == request.Code.ToUpperInvariant() && x.Id != id);
         if (codeConflict)
-            throw new InvalidOperationException($"SystemFinancialConfig with code '{request.Code}' already exists.");
+            throw new InvalidOperationException($"Đã có cấu hình mang mã {request.Code}.");
 
         entity.Code = request.Code.ToUpperInvariant();
         entity.Value = request.Value;

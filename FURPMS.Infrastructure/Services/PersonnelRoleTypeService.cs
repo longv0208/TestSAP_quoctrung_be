@@ -31,13 +31,13 @@ public class PersonnelRoleTypeService : IPersonnelRoleTypeService
     public async Task<PersonnelRoleTypeResponse> CreateAsync(UpsertPersonnelRoleTypeRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Code))
-            throw new ArgumentException("Code is required.");
+            throw new ArgumentException("Phải nhập mã chức danh.");
         if (string.IsNullOrWhiteSpace(request.Name))
-            throw new ArgumentException("Name is required.");
+            throw new ArgumentException("Phải nhập tên chức danh.");
 
         var exists = await _masterData.PersonnelRoleTypes.AnyAsync(x => x.Code == request.Code);
         if (exists)
-            throw new InvalidOperationException($"PersonnelRoleType with code '{request.Code}' already exists.");
+            throw new InvalidOperationException($"Đã có chức danh mang mã {request.Code}.");
 
         var entity = new PersonnelRoleType
         {
@@ -54,7 +54,7 @@ public class PersonnelRoleTypeService : IPersonnelRoleTypeService
     public async Task<PersonnelRoleTypeResponse> UpdateAsync(int id, UpsertPersonnelRoleTypeRequest request)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
-            throw new ArgumentException("Name is required.");
+            throw new ArgumentException("Phải nhập tên chức danh.");
 
         var entity = await _masterData.PersonnelRoleTypes.FirstOrDefaultAsync(x => x.Id == id)
             ?? throw new KeyNotFoundException($"PersonnelRoleType {id} not found.");
@@ -62,7 +62,7 @@ public class PersonnelRoleTypeService : IPersonnelRoleTypeService
         var codeConflict = await _masterData.PersonnelRoleTypes
             .AnyAsync(x => x.Code == request.Code.ToUpperInvariant() && x.Id != id);
         if (codeConflict)
-            throw new InvalidOperationException($"PersonnelRoleType with code '{request.Code}' already exists.");
+            throw new InvalidOperationException($"Đã có chức danh mang mã {request.Code}.");
 
         entity.Code = request.Code.ToUpperInvariant();
         entity.Name = request.Name;

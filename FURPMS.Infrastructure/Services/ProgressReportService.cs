@@ -16,12 +16,15 @@ public class ProgressReportService : IProgressReportService
     // Dùng IClock (không phải DateTime.UtcNow) để test tua được thời gian — các service khác
     // trong dự án đã theo quy ước này.
     private readonly IClock _clock;
+    private readonly IDocumentRepository _documents;
 
-    public ProgressReportService(IContractRepository contracts, IProposalRepository proposals, IClock clock)
+    public ProgressReportService(IContractRepository contracts, IProposalRepository proposals, IClock clock,
+        IDocumentRepository documents)
     {
         _contracts = contracts;
         _proposals = proposals;
         _clock = clock;
+        _documents = documents;
     }
 
     // QĐ543 Điều 10.1: Ứng dụng 2 kỳ, Cơ bản 1 kỳ. Applied = loại có đặt hàng (RequireOrderingUnit).
@@ -103,19 +106,19 @@ public class ProgressReportService : IProgressReportService
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
         if (contract.Project.PiUserId != userId)
-            throw new ForbiddenException("Only the PI of this contract may create progress reports.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài của hợp đồng này mới tạo được báo cáo tiến độ.");
 
         // QĐ543 Điều 10.1 gợi ý Ứng dụng 2 / Cơ bản 1 kỳ, NHƯNG không chặn cứng (thầy 29/07:
         // Staff phải chỉnh được số lần) — chỉ dùng làm mặc định khi sinh kỳ tự động.
 
         if (!DateOnly.TryParse(request.ReportingPeriodStart, out var periodStart))
-            throw new ArgumentException("ReportingPeriodStart must be a valid date (yyyy-MM-dd).");
+            throw new ArgumentException("Ngày bắt đầu kỳ báo cáo không hợp lệ (định dạng yyyy-MM-dd).");
         if (!DateOnly.TryParse(request.ReportingPeriodEnd, out var periodEnd))
-            throw new ArgumentException("ReportingPeriodEnd must be a valid date (yyyy-MM-dd).");
+            throw new ArgumentException("Ngày kết thúc kỳ báo cáo không hợp lệ (định dạng yyyy-MM-dd).");
         if (periodEnd <= periodStart)
-            throw new ArgumentException("ReportingPeriodEnd must be after ReportingPeriodStart.");
+            throw new ArgumentException("Ngày kết thúc kỳ báo cáo phải sau ngày bắt đầu.");
         if (request.OverallCompletionPct is < 0 or > 100)
-            throw new ArgumentException("OverallCompletionPct must be between 0 and 100.");
+            throw new ArgumentException("Tỷ lệ hoàn thành phải nằm trong khoảng 0–100%.");
 
         var nextRound = await _contracts.ProgressReports
             .Where(r => r.ContractId == contractId)
@@ -174,7 +177,7 @@ public class ProgressReportService : IProgressReportService
             ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
 
         if (report.Contract.Project.PiUserId != userId)
-            throw new ForbiddenException("Only the PI may edit this report.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới sửa được báo cáo này.");
 
         // Cho sửa đến khi Staff ĐÃ ĐÁNH GIÁ, không phải khoá ngay lúc nộp.
         // Khoá ngay lúc nộp là bất nhất với sản phẩm (cho nộp lại tới khi ĐẠT) và báo cáo
@@ -184,7 +187,7 @@ public class ProgressReportService : IProgressReportService
                 "Kỳ báo cáo này đã được đánh giá — không sửa được nữa. Liên hệ phòng QLKH nếu cần điều chỉnh.");
 
         if (request.OverallCompletionPct is < 0 or > 100)
-            throw new ArgumentException("OverallCompletionPct must be between 0 and 100.");
+            throw new ArgumentException("Tỷ lệ hoàn thành phải nằm trong khoảng 0–100%.");
 
         report.CompletedContent = request.CompletedContent ?? "";   // NOT NULL
         report.PendingContent = request.PendingContent;
@@ -224,10 +227,10 @@ public class ProgressReportService : IProgressReportService
             ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
 
         if (report.Contract.Project.PiUserId != userId)
-            throw new ForbiddenException("Only the PI may submit this report.");
+            throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được báo cáo này.");
 
         if (report.Status != ProgressReportStatus.Draft)
-            throw new InvalidOperationException($"Report is '{report.Status}'; only DRAFT reports can be submitted.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ nộp được bản nháp.");
 
         /*
          * QĐ543 Điều 10.1: báo cáo tiến độ là báo cáo **ĐỊNH KỲ** — kỳ sau chỉ có nghĩa khi kỳ
@@ -280,14 +283,24 @@ public class ProgressReportService : IProgressReportService
         // (Trước đây BE nhận SATISFACTORY/… còn FE gửi APPROVED/… → Staff bấm đánh giá luôn 400.)
         var validResults = new[] { "PASS", "FAIL", "CONDITIONAL" };
         if (!validResults.Contains(request.EvaluationResult))
-            throw new ArgumentException($"EvaluationResult must be one of: {string.Join(", ", validResults)}.");
+            throw new ArgumentException($"Kết quả đánh giá chỉ nhận: {string.Join(", ", validResults)} (Đạt / Không đạt / Đạt có điều kiện).");
 
         var report = await _contracts.ProgressReports
             .FirstOrDefaultAsync(r => r.Id == reportId)
             ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
 
         if (report.Status != ProgressReportStatus.Submitted)
-            throw new InvalidOperationException($"Report is '{report.Status}'; only SUBMITTED reports can be evaluated.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ đánh giá được báo cáo đã nộp.");
+
+        // Thầy 29/07: "Staff phải xem được bản báo cáo mới đánh giá". Trước đây luật này CHỈ khoá ở
+        // giao diện (nút mờ đi) — gọi thẳng API là đánh giá được báo cáo trắng trơn, không có gì để
+        // đọc. Chấp nhận một trong hai: file đính kèm HOẶC link PI dán (file lớn thì dán link).
+        var hasAttachment = await _documents.Query()
+            .AnyAsync(d => d.EntityType == "ProgressReport" && d.EntityId == reportId.ToString() && !d.IsDeleted);
+        if (!hasAttachment && string.IsNullOrWhiteSpace(report.ReportFileUrl))
+            throw new InvalidOperationException(
+                "Báo cáo chưa có file đính kèm lẫn link — chưa có gì để đọc thì chưa đánh giá được. " +
+                "Đề nghị chủ nhiệm bổ sung bản báo cáo trước.");
 
         report.Status = ProgressReportStatus.Evaluated;
         report.EvaluatedBy = staffId;

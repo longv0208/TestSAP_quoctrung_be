@@ -85,9 +85,11 @@ public class ReviewRoundService : IReviewRoundService
 
     public async Task<ReviewRoundResponse> CreateRoundAsync(Guid proposalId, CreateReviewRoundRequest request, Guid createdBy)
     {
-        if (string.IsNullOrWhiteSpace(request.Dimension) ||
-            (request.Dimension != ReviewRoundDimension.Science && request.Dimension != ReviewRoundDimension.Finance))
-            throw new ArgumentException("Dimension must be SCIENCE or FINANCE.");
+        // Rule #16: bỏ hẳn phương diện TÀI CHÍNH, chỉ còn 2 hội đồng.
+        if (string.IsNullOrWhiteSpace(request.Dimension) || request.Dimension != ReviewRoundDimension.Science)
+            throw new ArgumentException(
+                "Phương diện chấm chỉ còn SCIENCE (khoa học). Phương diện TÀI CHÍNH đã bỏ theo " +
+                "kết luận tuần 10 — báo cáo tiến độ giữa kỳ do Phòng QLKH duyệt trực tiếp, không lập hội đồng.");
 
         if (string.IsNullOrWhiteSpace(request.RoundType) ||
             !new[] { "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
@@ -100,17 +102,22 @@ public class ReviewRoundService : IReviewRoundService
             var prereq = await _review.GetRoundByIdAsync(request.PrerequisiteRoundId.Value)
                 ?? throw new KeyNotFoundException($"Prerequisite round {request.PrerequisiteRoundId} not found.");
             if (prereq.CycleTrackId != cycleTrackId)
-                throw new ArgumentException("Prerequisite round does not belong to this cycle-track.");
+                throw new ArgumentException("Vòng tiên quyết không thuộc lĩnh vực trong đợt này.");
         }
 
-        // Rule #2 per-project: đề tài chỉ vào round FINANCE khi round SCIENCE của nó PASSED.
-        if (request.Dimension == ReviewRoundDimension.Finance && request.PrerequisiteRoundId.HasValue)
+        // Vòng nào có vòng tiên quyết thì đề tài phải ĐẠT vòng đó mới được vào. Điều kiện cũ là
+        // `Dimension == FINANCE` — FINANCE bỏ rồi nên nhánh đó thành code chết, không chặn được gì.
+        if (request.PrerequisiteRoundId.HasValue)
         {
             var prereqProjectRound = await _review.ProjectRounds
                 .FirstOrDefaultAsync(pr => pr.ProjectId == projectId && pr.RoundId == request.PrerequisiteRoundId.Value);
-            if (prereqProjectRound != null && prereqProjectRound.Status != ReviewRoundStatus.Passed)
+            // Chưa TỪNG tham gia vòng tiên quyết cũng là chưa đạt. Trước đây `!= null &&` khiến
+            // đề tài chưa hề qua vòng trước lại lọt thẳng vào vòng sau, trong khi đường
+            // `ReviewBoardService` cùng làm việc này thì chặn — hai lối vào, hai luật khác nhau.
+            if (prereqProjectRound == null || prereqProjectRound.Status != ReviewRoundStatus.Passed)
                 throw new InvalidOperationException(
-                    $"Đề tài chưa ĐẠT vòng tiên quyết (hiện: {prereqProjectRound.Status}). Không thể vào vòng FINANCE.");
+                    $"Đề tài chưa ĐẠT vòng tiên quyết (hiện: {prereqProjectRound?.Status ?? "chưa tham gia"}) " +
+                    "— chưa thể đưa vào vòng này.");
         }
 
         // DÙNG CHUNG round theo track (helper chung với ReviewBoardService).
@@ -139,7 +146,7 @@ public class ReviewRoundService : IReviewRoundService
             ?? throw new KeyNotFoundException($"Round {roundId} not found.");
 
         if (round.Status != ReviewRoundStatus.Pending)
-            throw new InvalidOperationException($"Round is already {round.Status}; only PENDING rounds can be opened.");
+            throw new InvalidOperationException($"Vòng đang ở trạng thái {round.Status} — chỉ mở được vòng chưa bắt đầu.");
 
         if (round.PrerequisiteRoundId.HasValue)
         {
@@ -162,7 +169,7 @@ public class ReviewRoundService : IReviewRoundService
     {
         if (string.IsNullOrWhiteSpace(request.Result) ||
             !new[] { ReviewResult.Approved, ReviewResult.Rejected, ReviewResult.RevisionRequired }.Contains(request.Result))
-            throw new ArgumentException("Result must be APPROVED, REJECTED, or REVISION_REQUIRED.");
+            throw new ArgumentException("Kết quả chỉ nhận: Đạt, Không đạt hoặc Yêu cầu chỉnh sửa.");
 
         var round = await _review.ReviewRounds
             .Include(r => r.Councils)
@@ -171,7 +178,7 @@ public class ReviewRoundService : IReviewRoundService
             ?? throw new KeyNotFoundException($"Round {roundId} not found.");
 
         if (round.Status != ReviewRoundStatus.Open)
-            throw new InvalidOperationException($"Round is {round.Status}; only OPEN rounds can be closed.");
+            throw new InvalidOperationException($"Vòng đang ở trạng thái {round.Status} — chỉ đóng được vòng đang mở.");
 
         // Kết quả áp cho TỪNG đề tài (project_round). Round nhiều đề tài → phải chỉ rõ.
         var targetLink = ResolveTargetProjectRound(round, request.ProposalProjectId);
@@ -252,7 +259,7 @@ public class ReviewRoundService : IReviewRoundService
     public async Task<CouncilMemberResponse> AddRoundMemberAsync(Guid roundId, AddRoundMemberRequest request, Guid addedBy)
     {
         if (!new[] { "Member", "Chair", "Secretary", "Opponent" }.Contains(request.MemberRole))
-            throw new ArgumentException("MemberRole must be Member, Chair, Secretary, or Opponent.");
+            throw new ArgumentException("Vai trong hội đồng chỉ nhận: Thành viên, Chủ tịch, Thư ký hoặc Phản biện.");
 
         var round = await _review.ReviewRounds
             .Include(r => r.ProjectRounds)
@@ -298,7 +305,7 @@ public class ReviewRoundService : IReviewRoundService
         await ReviewShared.AssertNoCoiAsync(_proposals, assignedProjectIds, new[] { request.ReviewerId });
 
         if (council.Members.Any(m => m.UserId == request.ReviewerId))
-            throw new InvalidOperationException("This user is already a member of the council.");
+            throw new InvalidOperationException("Người này đã có tên trong hội đồng.");
 
         // Chỉ GÁN, chưa gửi thư mời — Staff bấm "Gửi thư mời" sau (tránh spam, rule #13).
         var member = new CouncilMember
