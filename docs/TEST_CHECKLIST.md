@@ -50,11 +50,23 @@ Những mục dưới đây tôi đã chạy thật bằng API hoặc có test t
 
 ---
 
+## ✅ Đã chạy trên trình duyệt 09/08
+
+| Phần | Kết quả |
+|---|---|
+| **§3 Hội đồng** ⭐ | Chạy trọn vòng: chấm điểm → BM12 đủ 5/5 → Thư ký lưu nháp → Chủ tịch "Duyệt & khoá". **Tìm được 2 lỗi nặng đã sửa** (thiếu `projectId`, cấu hình bước nhảy điểm chưa từng chạy) |
+| **9 ràng buộc** | Chặn đúng, thông báo tiếng Việt có dẫn chiếu QĐ543 — chi tiết ở `RANG_BUOC_TREN_MAN_HINH.md` |
+| **§1 PI** | Menu · danh sách đề cương · trạng thái Việt hoá · card thông tin hợp đồng che `****NNNN` — **xanh, 0 lỗi** |
+| **§4 Hợp đồng** | Danh sách 3 hợp đồng · chi tiết có 7 tab (Tiến trình · Giải ngân · Sản phẩm · Báo cáo tiến độ · Báo cáo tổng kết · Điều chỉnh · Quyết toán) · nút "Xuất hợp đồng (Word)" · **không còn "Phạm vi ký"** — **xanh, 0 lỗi** |
+
+**Chưa chạy tay:** thao tác ghi thật ở §1/§4 (nộp đề cương từ wizard, upload nhiều tệp, xuất Word,
+duyệt báo cáo) — mới kiểm màn hiện đúng chứ chưa bấm hết.
+
 ## 1. PI — nộp đề cương
 
 | Mã | Bấm gì | Phải thấy gì |
 |---|---|---|
-| P-01 | `pi.demo` → "Đề tài của tôi" | Thấy các đề tài của mình, trạng thái tiếng Việt (không còn `SUBMITTED`, `DRAFT`…) |
+| P-01 | `pi.demo` → **"Đề cương của tôi"** | Thấy các đề tài của mình, trạng thái tiếng Việt (không còn `SUBMITTED`, `DRAFT`…) |
 | P-02 | Mở `NCKH-2026-001` (bản nháp) → đi hết wizard 5 bước → **Nộp** | Nộp được, trạng thái đổi sang "Đã nộp" |
 | P-03 | Tạo đề tài mới → **upload file Word** | AI trích xuất → prefill form → sửa được → nộp |
 | P-04 | Ở tab tài liệu, **chọn 3–4 tệp một lượt** | Nút hiện `2/4`, xong báo "Đã tải lên N tệp"; danh sách có đủ |
@@ -63,7 +75,7 @@ Những mục dưới đây tôi đã chạy thật bằng API hoặc có test t
 | P-07 | Thử xoá **chính mình (chủ nhiệm)** khỏi nhóm | Bị chặn: *"không xoá được chủ nhiệm đề tài"* |
 | P-08 | Mở đề tài **đã nộp** → thử sửa thành viên | Bị chặn, chỉ đường sang BM07 |
 | P-09 | `NCKH-2026-004` (yêu cầu chỉnh sửa) → sửa & nộp lại | Nộp lại được, vòng chấm mở lại |
-| P-10 | Hồ sơ cá nhân → card **"Thông tin để lập hợp đồng"** → khai số tài khoản + CCCD | Lưu xong hiện **`****7890`**, không hiện số đầy đủ |
+| P-10 | **Menu avatar góc phải → "Hồ sơ"** (không nằm ở thanh trái) → card **"Thông tin để lập hợp đồng"** → khai số tài khoản + CCCD | Lưu xong hiện **`****7890`**, không hiện số đầy đủ |
 | P-11 | Bấm "Cập nhật" lại card đó | Ô nhập **để trống**, không đổ sẵn `****7890` |
 | P-12 | Nhập CCCD 5 chữ số | Báo lỗi ngay tại ô, chưa gửi đi |
 

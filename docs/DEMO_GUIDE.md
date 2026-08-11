@@ -108,10 +108,19 @@ bấm tải sẽ lỗi. Kiểm cấu hình Cloudinary trước khi deploy.
 
 ## 4. Kịch bản demo — đóng vai nào, bấm gì
 
+> **Tên mục điều hướng thật** (chụp từ app 09/08 — dùng đúng tên này khi diễn):
+> **PI**: Bảng điều khiển · Đề cương của tôi · Nộp đề cương · Báo cáo tiến độ · Sản phẩm ·
+> Lịch họp của tôi · Báo cáo tổng kết · Điều chỉnh hợp đồng · Tiến trình đề tài · Tìm kiếm AI.
+> **Hội đồng**: Lời mời · Đề tài được phân công · Thành viên hội đồng · Chấm điểm · Lịch họp.
+> **Staff/Admin**: Đợt nghiên cứu · Loại đề tài · Đặt hàng nghiên cứu · Người dùng · Đơn vị ·
+> Tiêu chí chấm · Hội đồng & Chấm · Kho tài liệu · Thống kê · Cấu hình.
+> **Hồ sơ cá nhân** nằm ở **menu avatar góc phải**, không phải thanh điều hướng trái.
+
+
 > Mỗi mục dưới đây **độc lập**, mở thẳng vào là diễn được, không phải chạy mục trước.
 
 **① PI nộp đề cương** (`pi.demo`) — dùng `NCKH-2026-001`
-1. "Đề tài của tôi" → bản **nháp** → mở ra, đi hết wizard 5 bước → **Nộp**.
+1. **"Đề cương của tôi"** → bản **nháp** → mở ra, đi hết wizard 5 bước → **Nộp**.
 2. Hoặc tạo mới: **upload file Word** → AI trích xuất → prefill form → PI sửa → nộp (rule #10, #20).
 
 **② Staff mở vòng chấm** (`staff.demo`) — dùng `NCKH-2026-002`
