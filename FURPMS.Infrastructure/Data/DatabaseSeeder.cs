@@ -289,7 +289,7 @@ public class DatabaseSeeder
         _db.Proposals.Add(proposal);
         await _db.SaveChangesAsync();
 
-        _db.ProposalBudgets.Add(new ProposalBudget { ProposalId = proposal.Id, TotalAmount = 450_000_000m });
+        _db.ProposalBudgets.Add(new ProposalBudget { ProposalId = proposal.Id, TotalAmount = 145_000_000m });
         _db.ProjectMembers.AddRange(
             new ProjectMember { ProjectId = project.Id, FullName = pi.FullName, Email = pi.Email, UnitName = "Khoa CNTT", WorkContent = "Chủ nhiệm", WorkMonths = 8, IsPi = true, Sequence = 1 },
             new ProjectMember { ProjectId = project.Id, FullName = "Đỗ Thị Em", Email = "em.dt@fpt.edu.vn", UnitName = "SE", WorkContent = "Thành viên chính", WorkMonths = 5, Sequence = 2 }
@@ -304,7 +304,7 @@ public class DatabaseSeeder
             ScopeTitle = "Toàn bộ nội dung đề tài (2 giai đoạn)",
             Status = ContractStatus.Active,
             SignedAt = now.AddDays(-25),
-            TotalAmount = 450_000_000m,
+            TotalAmount = 145_000_000m,
             StartDate = new DateOnly(2026, 3, 1),
             EndDate = new DateOnly(2027, 3, 1),
             OriginalEndDate = new DateOnly(2027, 3, 1),
@@ -318,8 +318,8 @@ public class DatabaseSeeder
         await _db.SaveChangesAsync();
 
         // Giai đoạn thực hiện trong hợp đồng (Review 2 điểm e)
-        var phase1 = new ContractPhase { ContractId = contract.Id, PhaseNo = 1, Name = "Giai đoạn 1 — Mô hình & bài báo", StartDate = new DateOnly(2026, 3, 1), EndDate = new DateOnly(2026, 9, 1), Amount = 270_000_000m, Status = "IN_PROGRESS" };
-        var phase2 = new ContractPhase { ContractId = contract.Id, PhaseNo = 2, Name = "Giai đoạn 2 — Tích hợp LMS & nghiệm thu", StartDate = new DateOnly(2026, 9, 1), EndDate = new DateOnly(2027, 3, 1), Amount = 180_000_000m, Status = "PLANNED" };
+        var phase1 = new ContractPhase { ContractId = contract.Id, PhaseNo = 1, Name = "Giai đoạn 1 — Mô hình & bài báo", StartDate = new DateOnly(2026, 3, 1), EndDate = new DateOnly(2026, 9, 1), Amount = 87_000_000m, Status = "IN_PROGRESS" };
+        var phase2 = new ContractPhase { ContractId = contract.Id, PhaseNo = 2, Name = "Giai đoạn 2 — Tích hợp LMS & nghiệm thu", StartDate = new DateOnly(2026, 9, 1), EndDate = new DateOnly(2027, 3, 1), Amount = 58_000_000m, Status = "PLANNED" };
         _db.ContractPhases.AddRange(phase1, phase2);
         await _db.SaveChangesAsync();
 
@@ -332,10 +332,10 @@ public class DatabaseSeeder
         // QĐ543 Điều 16.1 — đề tài ỨNG DỤNG giải ngân 04 đợt 30–30–30–10 (khớp bảng
         // disbursement_templates ở SeedDisbursementTemplatesAsync).
         _db.ContractDisbursements.AddRange(
-            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 1, PhaseId = phase1.Id, Percentage = 30m, PlannedAmount = 135_000_000m, ActualAmount = 135_000_000m, ConditionDescription = "Sau khi ký kết Hợp đồng NCKH với Chủ nhiệm đề tài", Status = DisbursementStatus.Disbursed, DisbursedAt = now.AddDays(-24), BankReference = "FT2026030100123" },
-            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 2, PhaseId = phase1.Id, Percentage = 30m, PlannedAmount = 135_000_000m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 1 đạt yêu cầu", Status = DisbursementStatus.Pending, DeliverableId = deliv1.Id },
-            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 3, PhaseId = phase2.Id, Percentage = 30m, PlannedAmount = 135_000_000m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 2 đạt yêu cầu", Status = DisbursementStatus.Pending, DeliverableId = deliv2.Id },
-            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 4, PhaseId = phase2.Id, Percentage = 10m, PlannedAmount = 45_000_000m,  ConditionDescription = "Sau khi Hội đồng nghiệm thu đánh giá \"Đạt\"", Status = DisbursementStatus.Pending, DeliverableId = deliv2.Id }
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 1, PhaseId = phase1.Id, Percentage = 30m, PlannedAmount = 43_500_000m, ActualAmount = 43_500_000m, ConditionDescription = "Sau khi ký kết Hợp đồng NCKH với Chủ nhiệm đề tài", Status = DisbursementStatus.Disbursed, DisbursedAt = now.AddDays(-24), BankReference = "FT2026030100123" },
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 2, PhaseId = phase1.Id, Percentage = 30m, PlannedAmount = 43_500_000m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 1 đạt yêu cầu", Status = DisbursementStatus.Pending, DeliverableId = deliv1.Id },
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 3, PhaseId = phase2.Id, Percentage = 30m, PlannedAmount = 43_500_000m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 2 đạt yêu cầu", Status = DisbursementStatus.Pending, DeliverableId = deliv2.Id },
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 4, PhaseId = phase2.Id, Percentage = 10m, PlannedAmount = 14_500_000m,  ConditionDescription = "Sau khi Hội đồng nghiệm thu đánh giá \"Đạt\"", Status = DisbursementStatus.Pending, DeliverableId = deliv2.Id }
         );
         await _db.SaveChangesAsync();
     }
@@ -671,7 +671,10 @@ public class DatabaseSeeder
             {
                 Code = "APPLIED",
                 Name = "Nghiên cứu ứng dụng",
-                MaxBudgetCap = 900_000_000m,
+                // QĐ543 Điều 14.1.b — ứng dụng/triển khai tối đa 150 triệu/đề tài.
+                // Điều 14.3 cho phép vượt trần nhưng phải do Hiệu trưởng quyết định ⇒ trường hợp đó
+                // Admin nâng trần ở màn Loại đề tài, hệ thống không tự mở.
+                MaxBudgetCap = 150_000_000m,
                 RequireOrderingUnit = true,
                 RequirePublication = true,
                 IsActive = true
@@ -687,7 +690,8 @@ public class DatabaseSeeder
             {
                 Code = "BASIC",
                 Name = "Nghiên cứu cơ bản",
-                MaxBudgetCap = 500_000_000m,
+                // QĐ543 Điều 14.1.a — nghiên cứu cơ bản tối đa 100 triệu/đề tài.
+                MaxBudgetCap = 100_000_000m,
                 RequireOrderingUnit = false,
                 RequirePublication = false,
                 IsActive = true
@@ -943,7 +947,9 @@ public class DatabaseSeeder
         var budget = new ProposalBudget
         {
             ProposalId = proposal.Id,
-            TotalAmount = 900_000_000m,
+            // QĐ543 Điều 14.1.b — đề tài ứng dụng tối đa 150tr. Dự toán mẫu trước đây lấy từ mẫu
+            // thuyết minh cấp Bộ (900tr) nên vượt trần gấp 6 lần ngay trên màn demo.
+            TotalAmount = 145_000_000m,
             LaborAmount = 0,
             EquipmentAmount = 0,
             ExternalServiceAmount = 0,
@@ -960,18 +966,18 @@ public class DatabaseSeeder
         var advisoryCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "ADVISORY_COUNCIL");
         var mgmtCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "MANAGEMENT_FEE");
         _db.ProposalBudgetItems.AddRange(
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = laborCat.Id, Amount = 849_747_000m, SourceKhoan = 849_747_000m, Sequence = 1 },
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = officeCat.Id, Amount = 1_003_000m, SourceNsnn = 1_003_000m, Sequence = 5 },
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = advisoryCat.Id, Amount = 7_250_000m, SourceNsnn = 7_250_000m, Sequence = 7 },
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = mgmtCat.Id, Amount = 42_000_000m, SourceNsnn = 42_000_000m, Sequence = 12 }
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = laborCat.Id, Amount = 118_000_000m, SourceKhoan = 118_000_000m, Sequence = 1 },
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = officeCat.Id, Amount = 3_000_000m, SourceNsnn = 3_000_000m, Sequence = 5 },
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = advisoryCat.Id, Amount = 7_000_000m, SourceNsnn = 7_000_000m, Sequence = 7 },
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = mgmtCat.Id, Amount = 17_000_000m, SourceNsnn = 17_000_000m, Sequence = 12 }
         );
         await _db.SaveChangesAsync();
 
         // Labor details (FK → project_member)
         _db.ProposalBudgetLaborDetails.AddRange(
-            new ProposalBudgetLaborDetail { ProposalId = proposal.Id, ProjectMemberId = member1.Id, TotalResearchHours = 255 * 8m, HourlyRate = 0, WorkDays = 255, Coefficient = 0.79m, DailyRate = 0.79m * 1_490_000m, Sequence = 1 },
-            new ProposalBudgetLaborDetail { ProposalId = proposal.Id, ProjectMemberId = member2.Id, TotalResearchHours = 215 * 8m, HourlyRate = 0, WorkDays = 215, Coefficient = 0.49m, DailyRate = 0.49m * 1_490_000m, Sequence = 2 },
-            new ProposalBudgetLaborDetail { ProposalId = proposal.Id, ProjectMemberId = member3.Id, TotalResearchHours = 141 * 8m, HourlyRate = 0, WorkDays = 141, Coefficient = 0.49m, DailyRate = 0.49m * 1_490_000m, Sequence = 3 }
+            new ProposalBudgetLaborDetail { ProposalId = proposal.Id, ProjectMemberId = member1.Id, TotalResearchHours = 50 * 8m, HourlyRate = 0, WorkDays = 50, Coefficient = 0.79m, DailyRate = 0.79m * 1_490_000m, Sequence = 1 },
+            new ProposalBudgetLaborDetail { ProposalId = proposal.Id, ProjectMemberId = member2.Id, TotalResearchHours = 40 * 8m, HourlyRate = 0, WorkDays = 40, Coefficient = 0.49m, DailyRate = 0.49m * 1_490_000m, Sequence = 2 },
+            new ProposalBudgetLaborDetail { ProposalId = proposal.Id, ProjectMemberId = member3.Id, TotalResearchHours = 30 * 8m, HourlyRate = 0, WorkDays = 30, Coefficient = 0.49m, DailyRate = 0.49m * 1_490_000m, Sequence = 3 }
         );
         await _db.SaveChangesAsync();
     }

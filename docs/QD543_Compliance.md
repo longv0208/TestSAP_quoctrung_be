@@ -54,7 +54,10 @@
 | **Điều 10** | Báo cáo tiến độ + điều chỉnh thời gian | ✅ BE (ProgressReport + ChangeRequest) |
 | **Điều 11–12** | Nghiệm thu + HĐ nghiệm thu | ✅ BE (round ACCEPTANCE + AcceptanceEvaluation) |
 | **Điều 13** | Lưu trữ kết quả & sản phẩm | ⚠️ có `Document`/`ProjectDeliverable`; lưu **đĩa local** (ephemeral khi deploy) |
-| **Điều 14–17** | Kinh phí, dự toán, giải ngân, quyết toán | ✅ BE đầy đủ (rule #3/#6) |
+| **Điều 14** | Trần kinh phí (cơ bản ≤100tr · ứng dụng ≤150tr) | ✅ **BE chặn 12/08** — `BudgetPolicyService`, trần ở master data (Điều 14.3 cho phép Hiệu trưởng duyệt vượt) |
+| **Điều 15** | Trần **% theo hạng mục** (thù lao 100% · thiết bị 60% · thuê ngoài 60% · hội thảo 30% · VPP 20% · phát sinh/SHTT 10%) | ❌ **CHƯA thực thi.** `ProposalBudget` có sẵn 6 cột tương ứng nhưng không được ghi; 12 hạng mục đang seed lấy từ mẫu cấp Bộ, ánh xạ về 6 nhóm của Điều 15 là **quyết định nghiệp vụ cần hỏi** |
+| **Điều 16** | Giải ngân theo **loại đề tài** (ứng dụng 4 đợt 30–30–30–10 · cơ bản 1 đợt sau nghiệm thu) | ✅ **sửa 11/08** — `DisbursementService.GenerateFromTemplateAsync` + `disbursement_templates`; bỏ nhánh `FundingMethod` (khái niệm không có trong QĐ543) |
+| **Điều 17** | Quyết toán | ✅ BE (`ContractSettlementService`) |
 | **Điều 18** | Kinh phí hoạt động hội đồng | ⚠️ có bảng `CouncilRemunerationRate`, **chưa seed + chưa dùng** |
 
 ## 4. Việc phát sinh từ QĐ 543 (chưa có trong backlog cũ)

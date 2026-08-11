@@ -258,11 +258,15 @@ Key hiện có:
 ```
 - `budgetItems[].category` = **tên hạng mục** lấy từ `GET /api/budget-expense-categories` (khớp theo tên; không khớp → "Chi khác").
 - Backend lưu đầy đủ members (kèm email/đơn vị) + budget items (kèm ghi chú) và **tự tính lại tổng kinh phí**.
+- **`totalBudget`** (mới 12/08): tổng dự toán khi chủ nhiệm chưa tách hạng mục — wizard FE gửi trường này. Có `budgetItems` thì tổng **luôn** lấy từ tổng hạng mục, `totalBudget` bị bỏ qua.
+- ⚠️ **400 nếu vượt trần kinh phí** (QĐ543 **Điều 14**: cơ bản ≤ 100tr · ứng dụng ≤ 150tr). Áp cho `POST /proposals`, `PUT /proposals/{id}`, tạo bản chỉnh sửa, `PUT /proposals/{id}/budget`, và kiểm lại ở `POST /proposals/{id}/submit`. Thông báo lỗi nêu rõ trần + cách xử lý khi được duyệt cấp vượt trần (Điều 14.3).
+- ❌ **`fundingMethod` (WHOLE/PARTIAL) không còn được dùng** — lịch giải ngân do loại đề tài quyết định (Điều 16). Trường vẫn nhận để tương thích ngược nhưng không ảnh hưởng gì; FE đã gỡ khỏi form.
 
 ### Sub-resources của đề xuất
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
-| GET/PUT | `/api/proposals/{id}/budget` | * | Bảng kinh phí tổng hợp (`BudgetResponse`) |
+| GET/PUT | `/api/proposals/{id}/budget` | * | Bảng kinh phí tổng hợp (`BudgetResponse`). **PUT: 400 nếu vượt trần Điều 14** (mới 12/08) |
+| GET | `/api/proposals/{id}/budget/cap` | * | **Trần kinh phí đang áp** (mới 12/08): `{ researchTypeName, typeCap, orderCap, effectiveCap }`. `effectiveCap` = trần **nghiêm ngặt hơn** giữa trần loại đề tài (Điều 14) và trần riêng của đơn đặt hàng; `null` = chưa cấu hình ⇒ không chặn. FE hiện giới hạn ngay trên form thay vì để chủ nhiệm điền xong mới ăn lỗi |
 | GET | `/api/proposals/{id}/budget/labor` | * | Chi tiết công lao động |
 | PUT | `/api/proposals/{id}/budget/labor/{detailId}` | * | Sửa 1 dòng công lao động |
 | GET/POST | `/api/proposals/{id}/team-members` | * | Liệt kê / thêm thành viên |

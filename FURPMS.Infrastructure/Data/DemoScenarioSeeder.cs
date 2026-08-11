@@ -424,7 +424,7 @@ public class DemoScenarioSeeder
             "1. Xây dựng kho ngữ liệu bài báo khoa học tiếng Việt có gán nhãn đạo văn.\n2. Phát triển mô hình đối sánh ngữ nghĩa đạt độ chính xác ≥ 0,85.\n3. Triển khai công cụ kiểm tra dùng được cho Phòng QLKH.",
             "Học sâu với mô hình ngôn ngữ tiếng Việt (PhoBERT), đối sánh vector ngữ nghĩa, đánh giá trên tập kiểm thử do chuyên gia gán nhãn.",
             "01 bài báo hội nghị trong nước; 01 công cụ kiểm tra đạo văn tích hợp cổng nộp bài.",
-            12, 180_000_000m,
+            12, 148_000_000m,
             new[] { "Xây dựng kho ngữ liệu và gán nhãn", "Phát triển mô hình đối sánh ngữ nghĩa", "Triển khai và đánh giá công cụ" },
             new[] { "01 bài báo hội nghị trong nước", "Công cụ kiểm tra đạo văn" }),
             ctx.Pi1, ctx.OpenTrack, ctx.OpenOrder, ctx.Applied,
@@ -446,7 +446,7 @@ public class DemoScenarioSeeder
             "1. Thiết kế mạng cảm biến chi phí thấp phủ 6 điểm trọng yếu.\n2. Xây dựng nền tảng thu thập và cảnh báo thời gian thực.\n3. Đánh giá độ tin cậy số liệu so với thiết bị chuẩn.",
             "Thiết kế phần cứng dựa trên vi điều khiển ESP32, truyền dữ liệu MQTT, hiệu chuẩn cảm biến bằng thiết bị đo chuẩn.",
             "01 bài báo tạp chí trong nước; 01 hệ thống giám sát vận hành thực tế tại cơ sở Hoà Lạc.",
-            12, 240_000_000m,
+            12, 135_000_000m,
             new[] { "Thiết kế và chế tạo nút cảm biến", "Xây dựng nền tảng thu thập dữ liệu", "Hiệu chuẩn và đánh giá độ tin cậy" },
             new[] { "01 bài báo tạp chí trong nước", "Hệ thống giám sát môi trường", "Bộ số liệu quan trắc 6 tháng" }),
             ctx.Pi2, ctx.OpenTrack, ctx.OpenOrder, ctx.Applied,
@@ -500,7 +500,7 @@ public class DemoScenarioSeeder
             "1. Phân tích các yếu tố ảnh hưởng tới quyết định bỏ học.\n2. Xây dựng mô hình tổ hợp đạt AUC ≥ 0,85 trên dữ liệu thực.\n3. Đề xuất quy trình can thiệp sớm cho cố vấn học tập.",
             "Học máy tổ hợp (Random Forest, XGBoost, LightGBM), giải thích mô hình bằng SHAP, kiểm định chéo theo khoá học.",
             "01 bài báo tạp chí trong nước; 01 mô hình dự báo và bảng điều khiển cảnh báo sớm.",
-            18, 320_000_000m,
+            18, 98_000_000m,
             new[] { "Thu thập và làm sạch dữ liệu học tập", "Xây dựng và tinh chỉnh mô hình tổ hợp", "Xây dựng bảng điều khiển cảnh báo sớm" },
             new[] { "01 bài báo tạp chí trong nước", "Mô hình dự báo nguy cơ bỏ học", "Bảng điều khiển cảnh báo sớm" }),
             ctx.Pi1, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
@@ -514,7 +514,7 @@ public class DemoScenarioSeeder
             "1. Xây dựng ngân hàng học liệu có gán mức độ khó.\n2. Cài đặt thuật toán điều phối học liệu thích ứng.\n3. Thử nghiệm đối chứng trên 2 lớp học phần.",
             "Lý thuyết ứng đáp câu hỏi (IRT), mô hình theo vết tri thức (knowledge tracing), thử nghiệm đối chứng có nhóm chứng.",
             "01 bài báo hội nghị quốc tế; 01 nền tảng học liệu thích ứng.",
-            12, 260_000_000m,
+            12, 92_000_000m,
             new[] { "Xây dựng ngân hàng học liệu", "Cài đặt thuật toán điều phối thích ứng", "Thử nghiệm đối chứng" },
             new[] { "01 bài báo hội nghị quốc tế", "Nền tảng học liệu thích ứng" }),
             ctx.Pi1, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
@@ -528,7 +528,7 @@ public class DemoScenarioSeeder
             "1. Xây dựng bộ dữ liệu phản hồi có gán nhãn khía cạnh.\n2. Phát triển mô hình phân tích cảm xúc theo khía cạnh đạt F1 ≥ 0,80.\n3. Xây dựng báo cáo tự động cho lãnh đạo khoa.",
             "Phân tích cảm xúc theo khía cạnh (ABSA) trên mô hình ngôn ngữ tiếng Việt, đánh giá bằng đối chiếu với chuyên gia.",
             "01 bài báo tạp chí trong nước; 01 công cụ phân tích phản hồi tích hợp hệ thống khảo sát.",
-            12, 210_000_000m,
+            12, 88_000_000m,
             new[] { "Xây dựng bộ dữ liệu phản hồi có gán nhãn", "Phát triển mô hình phân tích theo khía cạnh", "Xây dựng báo cáo tự động" },
             new[] { "01 bài báo tạp chí trong nước", "Công cụ phân tích phản hồi sinh viên" }),
             ctx.Pi2, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
@@ -612,7 +612,7 @@ public class DemoScenarioSeeder
             "1. Mô hình hoá ràng buộc lịch thi thực tế của Trường.\n2. Cài đặt thuật toán di truyền lai tìm kiếm cục bộ.\n3. So sánh với lịch thi lập thủ công trên 2 học kỳ.",
             "Thuật toán di truyền kết hợp tìm kiếm cục bộ, đánh giá bằng hàm phạt trên tập ràng buộc cứng/mềm.",
             "01 bài báo hội nghị trong nước; 01 phần mềm xếp lịch thi.",
-            12, 200_000_000m,
+            12, 95_000_000m,
             new[] { "Mô hình hoá ràng buộc lịch thi", "Cài đặt thuật toán di truyền lai", "Thử nghiệm và so sánh với lịch thủ công" },
             new[] { "01 bài báo hội nghị trong nước", "Phần mềm xếp lịch thi" }),
             ctx.Pi1, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
@@ -623,7 +623,7 @@ public class DemoScenarioSeeder
         proposal.ApprovedAt = now.AddDays(-160);
         proposal.ApprovedBy = ctx.Admin.Id;
 
-        var contract = await CreateContractAsync(ctx, project, "HĐ-2026-006", 200_000_000m,
+        var contract = await CreateContractAsync(ctx, project, "HĐ-2026-006", 95_000_000m,
             start, start.AddMonths(12), ContractStatus.Active, now.AddDays(-150), maxExtensionMonths: 6);
 
         await AttachDeliverablesToContractAsync(project.Id, contract, start.AddMonths(6), start.AddMonths(12));
@@ -639,7 +639,7 @@ public class DemoScenarioSeeder
             CompletedContent = "Đã mô hình hoá đầy đủ ràng buộc lịch thi của Trường và cài đặt phiên bản đầu của thuật toán di truyền. Bộ giải chạy được trên dữ liệu học kỳ Thu 2026 với 412 học phần.",
             PendingContent = "Chưa hoàn thiện phần tìm kiếm cục bộ; thời gian chạy còn 22 phút, mục tiêu dưới 10 phút.",
             OverallCompletionPct = 45m,
-            ExpenditureToDate = 80_000_000m,
+            ExpenditureToDate = 38_000_000m,
             NextPeriodPlan = "Tối ưu hiệu năng, chạy đối chứng trên học kỳ Xuân 2027 và viết bài báo hội nghị.",
             PiRecommendations = "Đề nghị Phòng Khảo thí cung cấp thêm dữ liệu lịch sử 2 học kỳ để mở rộng tập kiểm thử.",
             ReportFileUrl = "https://drive.google.com/file/d/1demo-bao-cao-ky-1/view",
@@ -685,7 +685,7 @@ public class DemoScenarioSeeder
             "1. Xây dựng tập dữ liệu chữ viết tay tiếng Việt trên biểu mẫu thực tế.\n2. Phát triển mô hình nhận dạng đạt độ chính xác ký tự ≥ 0,92.\n3. Tích hợp vào quy trình số hoá hồ sơ.",
             "Mạng nơ-ron tích chập kết hợp mô hình chuỗi (CRNN + CTC), tăng cường dữ liệu, đánh giá trên tập biểu mẫu thật.",
             "01 bài báo tạp chí trong nước; 01 mô hình nhận dạng và công cụ số hoá biểu mẫu.",
-            12, 280_000_000m,
+            12, 100_000_000m,
             new[] { "Xây dựng tập dữ liệu chữ viết tay", "Huấn luyện mô hình nhận dạng", "Tích hợp công cụ số hoá biểu mẫu" },
             new[] { "01 bài báo tạp chí trong nước", "Mô hình nhận dạng chữ viết tay", "Công cụ số hoá biểu mẫu" }),
             ctx.Pi1, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
@@ -696,7 +696,7 @@ public class DemoScenarioSeeder
         proposal.ApprovedAt = now.AddDays(-350);
         proposal.ApprovedBy = ctx.Admin.Id;
 
-        var contract = await CreateContractAsync(ctx, project, "HĐ-2025-007", 280_000_000m,
+        var contract = await CreateContractAsync(ctx, project, "HĐ-2025-007", 100_000_000m,
             start, start.AddMonths(12), ContractStatus.Active, now.AddDays(-340), maxExtensionMonths: 6);
         var deliverables = await AttachDeliverablesToContractAsync(
             project.Id, contract, start.AddMonths(6), start.AddMonths(12));
@@ -721,7 +721,7 @@ public class DemoScenarioSeeder
             ReportingPeriodEnd = start.AddMonths(6),
             CompletedContent = "Hoàn thành thu thập 12.400 mẫu chữ viết tay trên 8 loại biểu mẫu và huấn luyện mô hình cơ sở.",
             OverallCompletionPct = 55m,
-            ExpenditureToDate = 140_000_000m,
+            ExpenditureToDate = 50_000_000m,
             NextPeriodPlan = "Tinh chỉnh mô hình và tích hợp công cụ số hoá.",
             SubmittedAt = now.AddDays(-180),
             Status = ProgressReportStatus.Evaluated,
@@ -822,7 +822,7 @@ public class DemoScenarioSeeder
             "1. Mô hình hoá lộ trình nghề nghiệp và bản đồ năng lực môn học.\n2. Xây dựng thuật toán khuyến nghị lai.\n3. Triển khai thử nghiệm cho 3 chuyên ngành.",
             "Hệ khuyến nghị lai (lọc cộng tác + dựa trên nội dung), đánh giá offline bằng NDCG và khảo sát người dùng.",
             "01 bài báo tạp chí trong nước; 01 hệ thống khuyến nghị tích hợp cổng đăng ký môn học.",
-            12, 190_000_000m,
+            12, 96_000_000m,
             new[] { "Xây dựng bản đồ năng lực môn học", "Phát triển thuật toán khuyến nghị lai", "Triển khai và khảo sát người dùng" },
             new[] { "01 bài báo tạp chí trong nước", "Hệ thống khuyến nghị môn học" }),
             ctx.Pi2, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
@@ -833,7 +833,7 @@ public class DemoScenarioSeeder
         proposal.ApprovedAt = now.AddDays(-530);
         proposal.ApprovedBy = ctx.Admin.Id;
 
-        var contract = await CreateContractAsync(ctx, project, "HĐ-2025-008", 190_000_000m,
+        var contract = await CreateContractAsync(ctx, project, "HĐ-2025-008", 96_000_000m,
             start, start.AddMonths(12), ContractStatus.Active, now.AddDays(-520), maxExtensionMonths: 6);
         var deliverables = await AttachDeliverablesToContractAsync(
             project.Id, contract, start.AddMonths(6), start.AddMonths(12));
@@ -881,7 +881,7 @@ public class DemoScenarioSeeder
                     ? "Hoàn thành bản đồ năng lực môn học cho 3 chuyên ngành và bản thử nghiệm thuật toán khuyến nghị."
                     : "Hoàn thành triển khai hệ thống, khảo sát 620 sinh viên, hoàn thiện bài báo tạp chí.",
                 OverallCompletionPct = round == 1 ? 50m : 100m,
-                ExpenditureToDate = round == 1 ? 95_000_000m : 190_000_000m,
+                ExpenditureToDate = round == 1 ? 48_000_000m : 96_000_000m,
                 SubmittedAt = now.AddDays(round == 1 ? -380 : -210),
                 Status = ProgressReportStatus.Evaluated,
                 EvaluatedBy = ctx.Staff.Id,
@@ -921,8 +921,8 @@ public class DemoScenarioSeeder
         _db.ContractSettlements.Add(new ContractSettlement
         {
             ContractId = contract.Id,
-            TotalContractedAmount = 190_000_000m,
-            TotalDisbursedAmount = 190_000_000m,
+            TotalContractedAmount = 96_000_000m,
+            TotalDisbursedAmount = 96_000_000m,
             TotalReturnedAmount = 0m,
             ProductsSubmittedSummary = "01 bài báo tạp chí trong nước (đã đăng); 01 hệ thống khuyến nghị môn học đã bàn giao.",
             AccountingClearedAt = DateOnly.FromDateTime(now).AddDays(-145),

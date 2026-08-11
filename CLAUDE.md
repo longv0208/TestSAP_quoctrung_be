@@ -205,6 +205,12 @@ Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
     - Tỷ lệ nằm ở master data `disbursement_templates` (Phòng QLKH sửa được), **không hardcode**.
     - ⚠️ **"Phương thức khoán chi" WHOLE/PARTIAL không có trong QĐ543** (chữ "khoán" chỉ có ở "thuê khoán chuyên môn"/"giao khoán") — nó đến từ mẫu thuyết minh cấp Bộ. Cột `Proposal.FundingMethod` giữ lại để đọc dữ liệu cũ nhưng **không còn quyết định số đợt**.
 25. **Đánh giá tiến độ giữa kỳ: Staff làm, KHÔNG lập hội đồng** (giữ rule #16). Căn cứ: QĐ543 nhắc "Hội đồng đánh giá tiến độ" đúng **1 lần ở Điều 10.1**, không có điều nào định nghĩa thành phần/số lượng/thể thức/biên bản; **BM06** đề *"Kính gửi: Phòng Quản lý khoa học"* và chỉ chủ nhiệm ký; **Điều 18.1** chỉ cấp thù lao cho **2 hội đồng** (xét duyệt + nghiệm thu). Staff = đầu mối tiếp nhận và xử lý.
+26. **Trần kinh phí (QĐ543 Điều 14): cơ bản ≤ 100tr · ứng dụng/triển khai ≤ 150tr/đề tài.**
+    - Chặn ở **cả 4 đường ghi kinh phí** + kiểm lại khi nộp (`BudgetPolicyService`).
+    - **Điều 14.3 cho phép vượt trần nếu Hiệu trưởng duyệt** ⇒ trần để ở master data `research_types.max_budget_cap`, Phòng QLKH nâng trần cho trường hợp đó. **Không** hardcode và **không** có cờ "bỏ qua trần" cho PI tự bấm.
+    - Đơn đặt hàng có trần riêng thì lấy trần **nghiêm ngặt hơn**; đơn nới rộng không phá được trần Điều 14.
+    - Wizard nộp đề cương: **bỏ ô "Phương thức cấp kinh phí"** (WHOLE/PARTIAL — xem #24), thay bằng **Tổng dự toán** có hiện trần ngay tại chỗ.
+    - ⚠️ **Điều 15 (trần % theo hạng mục: thù lao 100% · thiết bị 60% · thuê ngoài 60% · hội thảo 30% · VPP 20% · phát sinh/SHTT 10%) CHƯA thực thi** — 12 hạng mục đang seed lấy từ mẫu cấp Bộ, ánh xạ về 6 nhóm của Điều 15 là quyết định nghiệp vụ, **phải hỏi trước khi làm** (không tự đoán).
 
 ---
 *(Rule 1–6 — review round, giải ngân, COI, PARTIAL/WHOLE. ⚠️ #2/#3/#6 SUPERSEDED bởi #15/#16 — giữ lại để tra cứu lịch sử.)*

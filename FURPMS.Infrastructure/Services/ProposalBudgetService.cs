@@ -10,11 +10,16 @@ public class ProposalBudgetService : IProposalBudgetService
 {
     private readonly IProposalRepository _proposals;
     private readonly IMasterDataRepository _masterData;
+    private readonly IBudgetPolicyService _budgetPolicy;
 
-    public ProposalBudgetService(IProposalRepository proposals, IMasterDataRepository masterData)
+    public ProposalBudgetService(
+        IProposalRepository proposals,
+        IMasterDataRepository masterData,
+        IBudgetPolicyService budgetPolicy)
     {
         _proposals = proposals;
         _masterData = masterData;
+        _budgetPolicy = budgetPolicy;
     }
 
     public async Task<BudgetResponse> GetBudgetAsync(Guid proposalId)
@@ -42,6 +47,10 @@ public class ProposalBudgetService : IProposalBudgetService
         if (itemSum != request.TotalAmount)
             throw new ArgumentException(
                 $"Sum of item amounts ({itemSum:N2}) does not equal totalAmount ({request.TotalAmount:N2}).");
+
+        // QĐ543 Điều 14 — chặn NGAY khi lưu dự toán, đừng để PI điền xong cả đề cương rồi mới báo
+        // vượt trần ở bước nộp.
+        await _budgetPolicy.AssertWithinCapAsync(proposalId, request.TotalAmount);
 
         var budget = await _proposals.Budgets
             .FirstOrDefaultAsync(b => b.ProposalId == proposalId)

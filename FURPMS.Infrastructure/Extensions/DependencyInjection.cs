@@ -55,6 +55,7 @@ public static class DependencyInjection
         services.AddScoped<ISystemFinancialConfigService, SystemFinancialConfigService>();
         services.AddScoped<ISystemSettingService, SystemSettingService>();
         services.AddScoped<IProposalBudgetService, ProposalBudgetService>();
+        services.AddScoped<IBudgetPolicyService, BudgetPolicyService>();
         services.AddScoped<ITeamMemberService, TeamMemberService>();
         services.AddScoped<IChangeRequestService, ChangeRequestService>();
         services.AddScoped<IDocumentExportService, DocumentExportService>();

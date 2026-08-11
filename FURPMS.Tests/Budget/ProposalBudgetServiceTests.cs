@@ -89,7 +89,7 @@ public class ProposalBudgetServiceTests
         db.BudgetExpenseCategories.Add(cat);
         await db.SaveChangesAsync();
 
-        var service = new ProposalBudgetService(new ProposalRepository(db), new MasterDataRepository(db));
+        var service = new ProposalBudgetService(new ProposalRepository(db), new MasterDataRepository(db), new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)));
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(
             () => service.UpdateBudgetAsync(proposal.Id, new UpdateBudgetRequest
@@ -126,7 +126,7 @@ public class ProposalBudgetServiceTests
         db.BudgetExpenseCategories.AddRange(cat1, cat2);
         await db.SaveChangesAsync();
 
-        var service = new ProposalBudgetService(new ProposalRepository(db), new MasterDataRepository(db));
+        var service = new ProposalBudgetService(new ProposalRepository(db), new MasterDataRepository(db), new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)));
 
         var result = await service.UpdateBudgetAsync(proposal.Id, new UpdateBudgetRequest
         {
@@ -194,7 +194,7 @@ public class ProposalBudgetServiceTests
         db.ProposalBudgetLaborDetails.Add(detail);
         await db.SaveChangesAsync();
 
-        var service = new ProposalBudgetService(new ProposalRepository(db), new MasterDataRepository(db));
+        var service = new ProposalBudgetService(new ProposalRepository(db), new MasterDataRepository(db), new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)));
 
         // Act: workDays=10, coefficient=0.79 → dailyRate = 0.79 × 1,490,000 = 1,177,100
         var result = await service.UpdateLaborDetailAsync(proposal.Id, detail.Id, new UpdateLaborDetailRequest

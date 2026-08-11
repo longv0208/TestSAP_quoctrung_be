@@ -22,6 +22,7 @@ public class ProposalService : IProposalService
     private readonly IClock _clock;
     private readonly IReviewRoundService _reviewRounds;
     private readonly IReviewRepository _review;
+    private readonly IBudgetPolicyService _budgetPolicy;
 
     public ProposalService(
         IProposalRepository proposals,
@@ -30,8 +31,10 @@ public class ProposalService : IProposalService
         IUserRepository users,
         IClock clock,
         IReviewRoundService reviewRounds,
-        IReviewRepository review)
+        IReviewRepository review,
+        IBudgetPolicyService budgetPolicy)
     {
+        _budgetPolicy = budgetPolicy;
         _proposals = proposals;
         _cycles = cycles;
         _masterData = masterData;
@@ -216,7 +219,7 @@ public class ProposalService : IProposalService
             await _proposals.SaveChangesAsync();
 
         // Persist budget items + tổng kinh phí
-        await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems);
+        await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems, request.TotalBudget);
 
         return await LoadProposalDetailAsync(proposal.Id);
     }
@@ -289,7 +292,8 @@ public class ProposalService : IProposalService
 
     // Thay toàn bộ budget items: ánh xạ tên hạng mục (FE nhập) -> BudgetExpenseCategory,
     // fallback "OTHER" nếu không khớp; cập nhật lại tổng kinh phí trên ProposalBudget.
-    private async Task SyncBudgetItemsAsync(Guid proposalId, List<CreateBudgetItemRequest> items)
+    private async Task SyncBudgetItemsAsync(
+        Guid proposalId, List<CreateBudgetItemRequest> items, decimal? totalBudgetFallback = null)
     {
         var existing = await _proposals.BudgetItems.Where(i => i.ProposalId == proposalId).ToListAsync();
         if (existing.Count > 0)
@@ -321,11 +325,20 @@ public class ProposalService : IProposalService
             total += it.Amount;
         }
 
+        // Chưa tách hạng mục thì lấy tổng chủ nhiệm gõ ở wizard; có hạng mục thì tổng LUÔN là tổng
+        // hạng mục, để hai con số không bao giờ đá nhau.
+        if (items.Count == 0 && totalBudgetFallback is >= 0m)
+            total = totalBudgetFallback.Value;
+
         var budget = await _proposals.Budgets.FirstOrDefaultAsync(b => b.ProposalId == proposalId);
         if (budget != null)
             budget.TotalAmount = total;
 
         await _proposals.SaveChangesAsync();
+
+        // QĐ543 Điều 14 — kiểm SAU khi lưu vì trần tra theo loại đề tài của project, cần bản ghi đã
+        // gắn đủ quan hệ. Vượt trần thì ném 400, giao dịch của controller cuốn lại.
+        await _budgetPolicy.AssertWithinCapAsync(proposalId, total);
     }
 
     public async Task<ProposalDto> UpdateProposalAsync(Guid proposalId, CreateProposalRequest request, Guid userId)
@@ -407,8 +420,8 @@ public class ProposalService : IProposalService
             await ReplaceProjectMembersAsync(project.Id, request.Members);
 
         // Chỉ thay budget items khi request có gửi (≠ rỗng) — để không xoá cột nguồn vốn đã nhập riêng.
-        if (request.BudgetItems.Count > 0)
-            await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems);
+        if (request.BudgetItems.Count > 0 || request.TotalBudget.HasValue)
+            await SyncBudgetItemsAsync(proposal.Id, request.BudgetItems, request.TotalBudget);
 
         return await LoadProposalDetailAsync(proposalId);
     }
@@ -465,7 +478,7 @@ public class ProposalService : IProposalService
 
         if (request.Members.Count > 0)
             await ReplaceProjectMembersAsync(project.Id, request.Members);
-        await SyncBudgetItemsAsync(revision.Id, request.BudgetItems);
+        await SyncBudgetItemsAsync(revision.Id, request.BudgetItems, request.TotalBudget);
 
         return await LoadProposalDetailAsync(revision.Id);
     }
@@ -513,6 +526,14 @@ public class ProposalService : IProposalService
         if (proposal.VersionNo == 1 && cycle != null && today > cycle.SubmissionDeadline)
             throw new InvalidOperationException(
                 $"Đã quá hạn nộp của đợt (hạn {cycle.SubmissionDeadline:dd/MM/yyyy}). Không thể nộp.");
+
+        // QĐ543 Điều 14 — cửa chốt. Trần có thể bị siết SAU khi PI lưu nháp (Phòng QLKH sửa master
+        // data), nên không thể tin vào lần kiểm lúc nhập.
+        var draftTotal = await _proposals.Budgets
+            .Where(b => b.ProposalId == proposalId)
+            .Select(b => (decimal?)b.TotalAmount)
+            .FirstOrDefaultAsync() ?? 0m;
+        await _budgetPolicy.AssertWithinCapAsync(proposalId, draftTotal);
 
         // Nhắc cập nhật CV trước khi nộp (rule tuần 6): CV thiếu/cũ > 6 tháng → bắt PI xác nhận.
         if (!confirmCvUpToDate)

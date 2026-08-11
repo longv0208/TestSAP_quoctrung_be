@@ -150,6 +150,16 @@ từng chỗ dùng kiểu nào, để lúc đứng trước hội đồng còn b
 | | |
 |---|---|
 | **Bị chặn** | *"Lý lịch khoa học (CV) chưa được cập nhật gần đây. Vui lòng cập nhật CV hoặc xác nhận CV vẫn đúng trước khi nộp."* |
+
+### D-5. Dự toán vượt trần kinh phí (QĐ543 Điều 14)
+| | |
+|---|---|
+| **Làm gì** | Chủ nhiệm → *Nộp đề cương* → bước **Chi tiết đề cương** → ô **Tổng dự toán kinh phí** gõ số vượt trần (vd 190.000.000 cho đề tài ứng dụng, trần 150tr) |
+| **Thấy ngay tại chỗ** | dòng đỏ dưới ô: *"Vượt trần 150.000.000 ₫. Hãy giảm dự toán, hoặc liên hệ Phòng Quản lý khoa học nếu đề tài đã được duyệt cấp vượt trần."* |
+| **Bấm Lưu nháp / Nộp** | **400** — *"Tổng dự toán 190.000.000đ vượt trần kinh phí 150.000.000đ (QĐ543 Điều 14 — Nghiên cứu ứng dụng). Hãy giảm dự toán xuống tối đa 150.000.000đ. Trường hợp đề tài được Hiệu trưởng đồng ý cấp vượt trần (Điều 14.3), đề nghị Phòng Quản lý khoa học điều chỉnh trần của loại đề tài trước khi nộp."* |
+| **Làm sao đi tiếp** | hạ dự toán xuống ≤ trần → lưu/nộp bình thường. Hoặc Admin vào **Loại đề tài** nâng `maxBudgetCap` (dùng cho trường hợp Hiệu trưởng đã duyệt cấp vượt trần) |
+| **Chặn ở đâu** | cả 4 đường ghi kinh phí + kiểm lại lúc nộp — sửa dự toán riêng qua `PUT /proposals/{id}/budget` cũng chặn y hệt |
+| **Điểm khoe** | trần **không cắm trong code** mà nằm ở master data: quy định đổi thì Phòng QLKH tự sửa, không phải sửa phần mềm |
 | **Làm gì tiếp** | Cập nhật CV, hoặc tick xác nhận trong hộp thoại |
 
 ---

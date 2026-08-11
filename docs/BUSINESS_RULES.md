@@ -34,6 +34,10 @@
 | A6 | Chỉ **bản nháp** mới sửa/nộp được; muốn sửa bản đã nộp thì **rút lại trước** | QĐ543 Điều 6 | `ProposalService.UpdateAsync/SubmitAsync` | 409 |
 | A7 | Trước khi nộp phải **cập nhật CV** hoặc xác nhận CV vẫn đúng (cũ > 6 tháng ⇒ nhắc) | rule tuần 6 | `ProposalService.SubmitAsync` | 409 |
 | A8 | Upload + AI là **TÙY CHỌN** — nhập tay ngang hàng, không ép dùng AI | rule #10, #20 | 2 đường song song ở wizard | — |
+| A9 | **Trần kinh phí đề tài: cơ bản ≤ 100tr · ứng dụng/triển khai ≤ 150tr.** Chặn ở **cả 4 cửa**: tạo đề cương · sửa đề cương · tạo bản chỉnh sửa · sửa dự toán — và kiểm lại lần cuối khi **nộp** | QĐ543 **Điều 14.1** | `BudgetPolicyService.AssertWithinCapAsync`, gọi từ `ProposalService.SyncBudgetItemsAsync` + `SubmitProposalAsync` + `ProposalBudgetService.UpdateBudgetAsync` | 400 |
+| A10 | Trần **để ở master data** `research_types.max_budget_cap`, không cắm số vào code — vì Điều 14.3 cho phép Hiệu trưởng duyệt vượt trần; khi đó Phòng QLKH nâng trần (có dấu vết) chứ hệ thống không tự mở | QĐ543 **Điều 14.3** | `ResearchType.MaxBudgetCap`; `PUT /research-types/{id}` | — |
+| A11 | Đơn **đặt hàng** đặt trần riêng thì lấy trần **nghiêm ngặt hơn**; đơn nới rộng hơn **không** phá được trần Điều 14 | rule #8 + Điều 14 | `BudgetPolicyService.GetCapAsync` (lấy `Min`) | 400 |
+| A12 | Chủ nhiệm **KHÔNG chọn "phương thức khoán chi"** — lịch giải ngân do loại đề tài quyết định (xem D12). Ô này đã gỡ khỏi wizard | QĐ543 không có khái niệm này | `Step3Details.tsx` | — |
 
 ## B. Hội đồng
 

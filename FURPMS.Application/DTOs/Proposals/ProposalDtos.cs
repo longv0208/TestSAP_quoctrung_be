@@ -125,6 +125,13 @@ public class CreateProposalRequest
     public string? FundingMethod { get; set; }
     public List<CreateMemberRequest> Members { get; set; } = new();
     public List<CreateBudgetItemRequest> BudgetItems { get; set; } = new();
+
+    /// <summary>
+    /// Tổng dự toán kinh phí khi chủ nhiệm chưa tách theo hạng mục (wizard nộp đề cương).
+    /// Chỉ dùng nếu <see cref="BudgetItems"/> rỗng — có hạng mục thì tổng luôn lấy từ tổng hạng mục
+    /// để hai con số không bao giờ đá nhau. Vẫn bị soi trần QĐ543 Điều 14 như mọi đường ghi khác.
+    /// </summary>
+    public decimal? TotalBudget { get; set; }
 }
 
 public class ProposalQueryParams

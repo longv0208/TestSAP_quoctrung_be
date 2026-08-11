@@ -13,10 +13,25 @@ namespace FURPMS.API.Controllers;
 public class ProposalBudgetController : ControllerBase
 {
     private readonly IProposalBudgetService _budgetService;
+    private readonly IBudgetPolicyService _budgetPolicy;
 
-    public ProposalBudgetController(IProposalBudgetService budgetService)
+    public ProposalBudgetController(
+        IProposalBudgetService budgetService,
+        IBudgetPolicyService budgetPolicy)
     {
         _budgetService = budgetService;
+        _budgetPolicy = budgetPolicy;
+    }
+
+    /// <summary>
+    /// Trần kinh phí đang áp cho đề cương này (QĐ543 Điều 14) — để form hiện sẵn giới hạn thay vì
+    /// bắt chủ nhiệm điền hết rồi mới ăn lỗi.
+    /// </summary>
+    [HttpGet("cap")]
+    public async Task<ActionResult<ApiResponse<BudgetCapInfo>>> GetCap(Guid proposalId)
+    {
+        var result = await _budgetPolicy.GetCapAsync(proposalId);
+        return Ok(ApiResponse<BudgetCapInfo>.Ok(result));
     }
 
     [HttpGet]
