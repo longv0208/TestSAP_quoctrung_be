@@ -256,6 +256,61 @@ public class CouncilMinutesTests
     }
 
     /// <summary>
+    /// A3 — **Thư ký cũng là thành viên hội đồng và cũng phải chấm điểm.**
+    /// <para>
+    /// QĐ543 **Điều 8.3.b**: *"các thành viên tham dự họp **cần đánh giá thẩm định** đề cương
+    /// (theo Biểu mẫu 03)"* — không loại trừ ai. **Điều 8.3.c** gọi Thư ký là người *"ghi biên bản
+    /// … và **các thành viên của Hội đồng** thông qua"* ⇒ Thư ký nằm trong "các thành viên".
+    /// </para>
+    /// <para>
+    /// Test này **khoá hành vi lại**: hiện không có nhánh nào chặn Thư ký chấm, nhưng vai trò
+    /// Thư ký đã bị chặn ở chỗ khác (chỉ Thư ký soạn biên bản) nên rất dễ có người thấy
+    /// <c>IsSecretary</c> rồi "tiện tay" chặn nốt ở đây. Chặn nhầm là **thiếu một phiếu**, kéo theo
+    /// hụt quorum 2/3 và cả hội đồng không chốt được biên bản.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task SubmitScore_BySecretary_Succeeds()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, _, secId, _, proposal) = await SeedAsync(db);
+
+        // Bộ tiêu chí hợp lệ: 2 mục cộng đúng trần 100 (chốt chặn A11).
+        var template = new FURPMS.Domain.Entities.Financial.RubricTemplate
+        {
+            TemplateType = "REVIEW", Name = "BM03 test", MaxTotalScore = 100m, IsActive = true
+        };
+        db.RubricTemplates.Add(template);
+        await db.SaveChangesAsync();
+        var c1 = new FURPMS.Domain.Entities.Financial.RubricCriterion
+        { TemplateId = template.Id, CriterionName = "Muc dich", MaxScore = 40m, Sequence = 1, IsActive = true };
+        var c2 = new FURPMS.Domain.Entities.Financial.RubricCriterion
+        { TemplateId = template.Id, CriterionName = "Phuong phap", MaxScore = 60m, Sequence = 2, IsActive = true };
+        db.RubricCriteria.AddRange(c1, c2);
+        await db.SaveChangesAsync();
+
+        var projectId = db.Proposals.First(p => p.Id == proposal.Id).ProjectId;
+        var svc = MakeService(db);
+
+        var result = await svc.SubmitScoreAsync(council.Id, secId, new SubmitScoreRequest
+        {
+            TemplateId = template.Id,
+            ProjectId = projectId,
+            GeneralComments = "Thu ky cham binh thuong nhu moi thanh vien.",
+            ScoreDetails = new()
+            {
+                new ScoreDetailRequest { CriterionId = c1.Id, GivenScore = 32m },
+                new ScoreDetailRequest { CriterionId = c2.Id, GivenScore = 48m },
+            }
+        });
+
+        Assert.NotNull(result);
+        var saved = db.ProposalReviewScores.Where(x => x.CouncilId == council.Id && x.ProjectId == projectId).ToList();
+        var secMember = db.Set<CouncilMember>().First(m => m.CouncilId == council.Id && m.UserId == secId);
+        Assert.Contains(saved, x => x.EvaluatorMemberId == secMember.Id);
+    }
+
+    /// <summary>
     /// Vòng NGHIỆM THU không chấm điểm (BM11 chỉ Đạt/Không đạt) nên phiếu nằm ở
     /// <c>acceptance_evaluations</c>, không phải <c>review_scores</c>. Trước đây quorum chỉ đếm bảng
     /// điểm ⇒ hội đồng nghiệm thu dù đủ phiếu vẫn bị báo "mới có 0/3 phiếu" và không ai chốt được

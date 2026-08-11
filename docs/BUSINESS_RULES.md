@@ -58,7 +58,7 @@
 | C1 | Bộ tiêu chí phải **cộng đúng** tổng điểm tối đa mới dùng chấm được | QĐ543 **BM03** (10+20+40+20+10 = *"Cộng 100"*) | `RubricTemplatesController` (thêm/sửa) + `ReviewScoringService.SubmitScoreAsync` (nộp phiếu) | 400 / 409 |
 | C2 | Điểm từng tiêu chí trong `[0, điểm tối đa của tiêu chí]` | BM03 | `ReviewScoringService.SubmitScoreAsync` | 400 |
 | C3 | **Bước nhảy điểm do Admin đặt** (`SCORE_DECIMAL_PLACES`, mặc định 0 = số nguyên). **Không hồi tố** — chỉ soi phiếu mới | thầy chốt 08/08; QĐ543 không quy định | `ReviewScoringService` + FE lấy `step` từ setting | 400 |
-| C4 | **Mọi thành viên đều chấm**, kể cả Thư ký | QĐ543 **Điều 8.3.b** (*"các thành viên tham dự họp cần đánh giá thẩm định"*) | không có nhánh nào loại Thư ký | — |
+| C4 | **Mọi thành viên đều chấm**, kể cả Thư ký | QĐ543 **Điều 8.3.b** (*"các thành viên tham dự họp **cần đánh giá thẩm định** đề cương"*) + **Điều 8.3.c** (*"Thư ký ghi biên bản… và **các thành viên của Hội đồng** thông qua"* ⇒ Thư ký là thành viên) | không có nhánh nào loại Thư ký; test `SubmitScore_BySecretary_Succeeds` khoá lại | — |
 | C5 | **Quorum 2/3** (làm tròn LÊN: 5 người cần 4) mới **lưu nháp lẫn chốt** được biên bản | QĐ543 **Điều 8.3.b** | `ReviewScoringService.AssertQuorumAsync` | 409 |
 | C6 | Quorum đếm **cả** phiếu chấm điểm (`review_scores`) **và** phiếu Đạt/Không đạt (`acceptance_evaluations`) | vòng nghiệm thu không chấm điểm (BM11) | `AssertQuorumAsync` — *sửa 08/08, trước đó chỉ đếm bảng đầu nên hội đồng nghiệm thu không bao giờ chốt được biên bản* | 409 |
 | C7 | Nghiệm thu phải có **phản biện dự họp và cho ý kiến** | QĐ543 **Điều 12.3.b** | `AssertQuorumAsync` | 409 |
