@@ -62,19 +62,19 @@ public class ReviewScoringController : ControllerBase
 
     // GET /api/review-scoring/councils/{councilId}/scores/my
     [HttpGet("councils/{councilId:guid}/scores/my")]
-    public async Task<IActionResult> GetMyScore(Guid councilId)
+    public async Task<IActionResult> GetMyScore(Guid councilId, [FromQuery] Guid? projectId)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var result = await _scoring.GetMyScoreAsync(councilId, userId);
+        var result = await _scoring.GetMyScoreAsync(councilId, userId, projectId);
         return Ok(ApiResponse<ReviewScoreDto?>.Ok(result));
     }
 
     // GET /api/review-scoring/councils/{councilId}/scores
     [HttpGet("councils/{councilId:guid}/scores")]
-    public async Task<IActionResult> GetCouncilScores(Guid councilId)
+    public async Task<IActionResult> GetCouncilScores(Guid councilId, [FromQuery] Guid? projectId)
     {
         await EnsureAdminStaffOrMemberAsync(councilId);
-        var result = await _scoring.GetCouncilScoresAsync(councilId);
+        var result = await _scoring.GetCouncilScoresAsync(councilId, projectId);
         return Ok(ApiResponse<IEnumerable<ReviewScoreDto>>.Ok(result));
     }
 
@@ -107,18 +107,18 @@ public class ReviewScoringController : ControllerBase
 
     // POST /api/review-scoring/councils/{councilId}/minutes/approve — Chủ tịch duyệt = khóa
     [HttpPost("councils/{councilId:guid}/minutes/approve")]
-    public async Task<IActionResult> ApproveMinutes(Guid councilId)
+    public async Task<IActionResult> ApproveMinutes(Guid councilId, [FromQuery] Guid? projectId)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var result = await _scoring.ApproveMinutesAsync(councilId, userId);
+        var result = await _scoring.ApproveMinutesAsync(councilId, userId, projectId);
         return Ok(ApiResponse<CouncilDecisionDto>.Ok(result));
     }
 
     // GET /api/review-scoring/councils/{councilId}/decision
     [HttpGet("councils/{councilId:guid}/decision")]
-    public async Task<IActionResult> GetDecision(Guid councilId)
+    public async Task<IActionResult> GetDecision(Guid councilId, [FromQuery] Guid? projectId)
     {
-        var result = await _scoring.GetDecisionAsync(councilId);
+        var result = await _scoring.GetDecisionAsync(councilId, projectId);
         return Ok(ApiResponse<CouncilDecisionDto?>.Ok(result));
     }
 }

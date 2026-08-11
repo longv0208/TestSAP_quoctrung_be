@@ -198,31 +198,43 @@ public class ReviewScoringService : IReviewScoringService
 
     // ── Get scores ────────────────────────────────────────────────────────────
 
-    public async Task<ReviewScoreDto?> GetMyScoreAsync(Guid councilId, Guid userId)
+    /// <summary>
+    /// Phieu cua CHINH TOI cho MOT de tai. Thieu projectId thi hoi dong cham nhieu de tai se tra
+    /// nham phieu cua de tai khac -- nguoi cham mo de tai B lai thay diem da nhap cho de tai A.
+    /// </summary>
+    public async Task<ReviewScoreDto?> GetMyScoreAsync(Guid councilId, Guid userId, Guid? projectId = null)
     {
         var member = await _review.CouncilMembers
             .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId);
         if (member == null) return null;
 
+        var pid = await ResolveProjectIdAsync(councilId, projectId);
+
         var score = await _review.ReviewScores
             .Include(s => s.ScoreDetails).ThenInclude(d => d.Criterion)
             .Include(s => s.Template).ThenInclude(t => t.Criteria)
-            .FirstOrDefaultAsync(s => s.CouncilId == councilId && s.EvaluatorMemberId == member.Id);
+            .FirstOrDefaultAsync(s => s.CouncilId == councilId && s.ProjectId == pid && s.EvaluatorMemberId == member.Id);
 
         if (score == null) return null;
         return MapScore(score, userId);
     }
 
-    public async Task<IEnumerable<ReviewScoreDto>> GetCouncilScoresAsync(Guid councilId)
+    /// <summary>
+    /// Toan bo phieu cua MOT de tai trong hoi dong. Khong loc theo de tai thi hoi dong cham 3 de
+    /// tai tra ve 15 phieu tron lan, bien ban in ra sai hoan toan.
+    /// </summary>
+    public async Task<IEnumerable<ReviewScoreDto>> GetCouncilScoresAsync(Guid councilId, Guid? projectId = null)
     {
         _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
             ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        var pid = await ResolveProjectIdAsync(councilId, projectId);
 
         var scores = await _review.ReviewScores
             .Include(s => s.ScoreDetails).ThenInclude(d => d.Criterion)
             .Include(s => s.Template).ThenInclude(t => t.Criteria)
             .Include(s => s.EvaluatorMember).ThenInclude(m => m.User)
-            .Where(s => s.CouncilId == councilId)
+            .Where(s => s.CouncilId == councilId && s.ProjectId == pid)
             .ToListAsync();
 
         return scores.Select(s => MapScore(s, s.EvaluatorMember.UserId));
@@ -325,7 +337,7 @@ public class ReviewScoringService : IReviewScoringService
         return MapDecision(decision);
     }
 
-    public async Task<CouncilDecisionDto> ApproveMinutesAsync(Guid councilId, Guid chairUserId)
+    public async Task<CouncilDecisionDto> ApproveMinutesAsync(Guid councilId, Guid chairUserId, Guid? projectId = null)
     {
         var council = await _review.Query().Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == councilId)
@@ -341,11 +353,14 @@ public class ReviewScoringService : IReviewScoringService
             throw new ForbiddenException("Chỉ Chủ tịch hội đồng được duyệt biên bản.");
 
         // Bản nháp đang chờ duyệt (per project) — council 1 đề tài thì chỉ có 1 nháp.
-        var drafts = await _review.Decisions
+        var draftQuery = _review.Decisions
             .Include(d => d.QaEntries)
             .Include(d => d.MemberOpinions)
-            .Where(d => d.CouncilId == councilId && d.FinalizedAt == null)
-            .ToListAsync();
+            .Where(d => d.CouncilId == councilId && d.FinalizedAt == null);
+        // Chi ro de tai thi chot dung bien ban do -- hoi dong cham nhieu de tai truoc day bao
+        // "co nhieu bien ban nhap" va khong chot duoc cai nao.
+        if (projectId.HasValue) draftQuery = draftQuery.Where(d => d.ProjectId == projectId.Value);
+        var drafts = await draftQuery.ToListAsync();
         if (drafts.Count == 0)
             throw new InvalidOperationException("Chưa có biên bản nháp để duyệt.");
         if (drafts.Count > 1)
@@ -637,12 +652,18 @@ public class ReviewScoringService : IReviewScoringService
                 $"{member.Status ?? "chưa rõ"}), nên chưa thể chấm điểm hoặc soạn biên bản.");
     }
 
-    public async Task<CouncilDecisionDto?> GetDecisionAsync(Guid councilId)
+    /// <summary>
+    /// Bien ban cua MOT de tai. Thieu loc thi hoi dong nhieu de tai tra ve bien ban cua de tai
+    /// nao ghi truoc -- man hinh de tai dang cham do lai hien bien ban "da khoa" cua de tai khac,
+    /// va giao dien an luon nut soan cua Thu ky.
+    /// </summary>
+    public async Task<CouncilDecisionDto?> GetDecisionAsync(Guid councilId, Guid? projectId = null)
     {
+        var pid = await ResolveProjectIdAsync(councilId, projectId);
         var decision = await _review.Decisions
             .Include(d => d.QaEntries)
             .Include(d => d.MemberOpinions)
-            .FirstOrDefaultAsync(d => d.CouncilId == councilId);
+            .FirstOrDefaultAsync(d => d.CouncilId == councilId && d.ProjectId == pid);
         return decision == null ? null : MapDecision(decision);
     }
 
