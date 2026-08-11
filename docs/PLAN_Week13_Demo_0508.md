@@ -47,7 +47,13 @@ chốt phân vai kẻo người dùng thấy hai chỗ "xin thay đổi" mà kh�
 | E. UI/UX · i18n · dữ liệu demo | 8 | Full tiếng Việt; light mode mặc định; data demo chuẩn |
 | F. Business rule · validate · tài liệu | 8 | **Validate lại TOÀN BỘ**; tổng điểm bộ tiêu chí = 100 |
 
-**Tổng: 43 đầu việc** (sau khi gộp trùng giữa 2 bản; trước gộp là 24 + 19 + 5 mục business rule).
+**Tổng ban đầu: 43 đầu việc** (sau khi gộp trùng giữa 2 bản; trước gộp là 24 + 19 + 5 mục business rule).
+
+> **Cập nhật 09/08 — nay là 50 dòng.** Trong quá trình làm phát sinh thêm các lỗi tự phát hiện,
+> được thêm vào đúng nhóm để không lạc: **A12** (hội đồng nghiệm thu không chốt được biên bản) ·
+> **A13** (biên bản nghiệm thu hiện 0 phiếu hợp lệ) · **A14** (seeder hỏng làm sập API + bộ tiêu chí
+> 125 điểm trên deploy) · **A15** (lỗi nhắc hạn giết cả tiến trình), cộng vài dòng tách nhỏ ra cho rõ.
+> Con số chính xác luôn đếm được bằng cách đếm dòng có mã `A1`–`F6` trong file này.
 
 ---
 
