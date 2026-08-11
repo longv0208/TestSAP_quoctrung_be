@@ -25,21 +25,26 @@ dotnet run --project FURPMS.API     # chạy ở http://localhost:5068
 
 ## 2. Tài khoản mẫu (seed sẵn)
 
-| Vai trò | Họ tên hiển thị | Email | Mật khẩu |
-|---|---|---|---|
-| Admin | Quản trị hệ thống | `admin@furpms.edu.vn` | `Admin@123456` |
-| Staff (Phòng QLKH) | Trần Thị Mai Lan | `staff.demo@furpms.edu.vn` | `Staff@123456` |
-| Hội đồng — **Chủ tịch** | PGS.TS. Lê Quang Minh | `reviewer1.demo@furpms.edu.vn` | `Reviewer@123456` |
-| Hội đồng — **Thư ký** | TS. Phạm Thu Hương | `reviewer2.demo@furpms.edu.vn` | `Reviewer@123456` |
-| Hội đồng — **Phản biện** | TS. Vũ Đình Nam | `reviewer3.demo@furpms.edu.vn` | `Reviewer@123456` |
-| Hội đồng — Thành viên | TS. Đặng Hoài Anh | `reviewer4.demo@furpms.edu.vn` | `Reviewer@123456` |
-| Hội đồng — Thành viên | ThS. Bùi Thanh Hà | `reviewer5.demo@furpms.edu.vn` | `Reviewer@123456` |
-| Giảng viên (PI 1) | Nguyễn Văn An | `pi.demo@furpms.edu.vn` | `Faculty@123456` |
-| Giảng viên (PI 2) | Hoàng Văn Bình | `pi2.demo@furpms.edu.vn` | `Faculty@123456` |
+Mọi tài khoản dùng chung mật khẩu **`password`** (E8 — một chuỗi để khỏi gõ nhầm khi demo).
+
+| Vai trò | Họ tên hiển thị | Email |
+|---|---|---|
+| Admin | Quản trị hệ thống | `admin@furpms.edu.vn` |
+| Staff (Phòng QLKH) | Trần Thị Mai Lan | `staff.demo@furpms.edu.vn` |
+| Hội đồng — **Chủ tịch** | PGS.TS. Lê Quang Minh | `reviewer1.demo@furpms.edu.vn` |
+| Hội đồng — **Thư ký** | TS. Phạm Thu Hương | `reviewer2.demo@furpms.edu.vn` |
+| Hội đồng — **Phản biện** | TS. Vũ Đình Nam | `reviewer3.demo@furpms.edu.vn` |
+| Hội đồng — Thành viên | TS. Đặng Hoài Anh | `reviewer4.demo@furpms.edu.vn` |
+| Hội đồng — Thành viên | ThS. Bùi Thanh Hà | `reviewer5.demo@furpms.edu.vn` |
+| Giảng viên (PI 1) | Nguyễn Văn An | `pi.demo@furpms.edu.vn` |
+| Giảng viên (PI 2) | Hoàng Văn Bình | `pi2.demo@furpms.edu.vn` |
 
 > Vai trong hội đồng là **field khi gán**, không phải vai trò đăng nhập (rule #11) — nhưng bộ dữ liệu
 > demo luôn gán reviewer1 = Chủ tịch, reviewer2 = Thư ký, reviewer3 = Phản biện cho **mọi** hội đồng,
 > nên cứ nhớ đúng 3 người này là đủ diễn.
+
+⚠️ `password` là mật khẩu **demo**, cố tình dễ. Trên bản deploy công khai phải **đổi mật khẩu admin**
+hoặc tắt `DEMO_DATA_ENABLED` để seeder không đặt lại.
 
 ---
 
@@ -84,9 +89,9 @@ Tắt chỉ **ngăn seed thêm**, dữ liệu đã có vẫn nằm đó.
 
 | Thứ | Chuyện gì xảy ra |
 |---|---|
-| **Mật khẩu** tài khoản cũ | **Không đổi** — seeder không bao giờ ghi đè `PasswordHash` của user đã tồn tại |
+| **Mật khẩu** 9 tài khoản demo | **Đặt lại về `password`** mỗi lần khởi động, kể cả tài khoản đã có (E8). Chỉ chạm đúng 9 email demo, **không đụng** tài khoản người dùng thật. Tắt `DEMO_DATA_ENABLED` là seeder không sờ vào mật khẩu nữa |
 | **Tên hiển thị** | Chỉ đổi nếu đang đúng bằng tên placeholder cũ (`PGS.TS Lê Phản Biện`…) |
-| `reviewer4` / `reviewer5` | **Tạo mới**, mật khẩu `Reviewer@123456` — hội đồng cần 5 người |
+| `reviewer4` / `reviewer5` | **Tạo mới** — hội đồng cần 5 người |
 | Đề tài / hợp đồng / phiếu cũ | **Giữ nguyên**, seeder chỉ thêm chứ không xoá |
 | **Bộ tiêu chí 125 điểm** cũ | **Giữ nguyên, không sửa** — nhưng seeder **tự tạo thêm** bộ BM03 100 điểm và vòng chấm demo pin vào bộ đó, nên màn chấm điểm vẫn chạy |
 | Trùng số hợp đồng / mã đợt | Tự né sang hậu tố (`HĐ-2025-008-2`) |

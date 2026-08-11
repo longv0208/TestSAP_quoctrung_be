@@ -14,11 +14,16 @@ public class CycleService : ICycleService
     private readonly IMasterDataRepository _masterData;
     private readonly IProposalRepository _proposals;
 
-    public CycleService(ICycleRepository cycles, IMasterDataRepository masterData, IProposalRepository proposals)
+    // Chỉ dùng để kiểm "đợt đã có vòng chấm chưa" trước khi cho xoá.
+    private readonly IReviewRepository _review;
+
+    public CycleService(ICycleRepository cycles, IMasterDataRepository masterData,
+        IProposalRepository proposals, IReviewRepository review)
     {
         _cycles = cycles;
         _masterData = masterData;
         _proposals = proposals;
+        _review = review;
     }
 
     public async Task<IEnumerable<CycleDto>> GetCyclesAsync()
@@ -289,6 +294,59 @@ public class CycleService : ICycleService
         await _cycles.SaveChangesAsync();
         return await GetCycleByIdAsync(cycleId);
     }
+
+    /// <summary>
+    /// Xoá một đợt lỡ tạo nhầm. Chỉ xoá được khi **chưa có gì bám vào**: không đề tài, không vòng
+    /// chấm, không danh mục đặt hàng do người dùng tạo, chưa từng gia hạn.
+    /// <para>
+    /// Đợt là gốc của cả cây dữ liệu — lĩnh vực, đề tài, vòng chấm, hội đồng, hợp đồng đều treo
+    /// dưới nó. Xoá một đợt đang có đề tài là mất trắng, nên chặn thẳng thay vì xoá lan.
+    /// Đợt đã dùng thật thì <b>đóng</b> (`CloseCycleAsync`), không xoá.
+    /// </para>
+    /// </summary>
+    public async Task DeleteCycleAsync(int cycleId)
+    {
+        var cycle = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
+            ?? throw new KeyNotFoundException($"Không tìm thấy đợt {cycleId}.");
+
+        var trackIds = await _cycles.CycleTracks
+            .Where(ct => ct.CycleId == cycleId)
+            .Select(ct => ct.Id)
+            .ToListAsync();
+
+        var blockers = new List<string>();
+
+        if (trackIds.Count > 0)
+        {
+            if (await _proposals.Projects.IgnoreQueryFilters().AnyAsync(p => trackIds.Contains(p.CycleTrackId)))
+                blockers.Add("đề tài");
+            if (await _review.ReviewRounds.AnyAsync(r => trackIds.Contains(r.CycleTrackId)))
+                blockers.Add("vòng chấm");
+        }
+        // Danh mục mặc định do hệ thống tự sinh thì xoá theo được; danh mục Staff tạo tay thì không.
+        if (await _cycles.Orders.AnyAsync(o => o.CycleId == cycleId && !o.IsDefault))
+            blockers.Add("danh mục đặt hàng");
+        var cycleKey = cycleId.ToString();
+        if (await _cycles.DeadlineExtensions.AnyAsync(e => e.TargetType == "CYCLE" && e.TargetId == cycleKey))
+            blockers.Add("lịch sử gia hạn");
+
+        if (blockers.Count > 0)
+            throw new InvalidOperationException(
+                $"Đợt \"{CycleLabel(cycle)}\" đã có {string.Join(", ", blockers)} — không xoá được. " +
+                "Đợt đã dùng thật thì ĐÓNG lại, không xoá khỏi lịch sử.");
+
+        // Dọn phần hệ thống tự sinh: liên kết lĩnh vực và danh mục mặc định.
+        var defaults = await _cycles.Orders.Where(o => o.CycleId == cycleId && o.IsDefault).ToListAsync();
+        foreach (var o in defaults) _cycles.RemoveOrder(o);
+        var links = await _cycles.CycleTracks.Where(ct => ct.CycleId == cycleId).ToListAsync();
+        foreach (var l in links) _cycles.RemoveCycleTrack(l);
+
+        _cycles.Remove(cycle);
+        await _cycles.SaveChangesAsync();
+    }
+
+    private static string CycleLabel(Domain.Entities.Cycles.ResearchCycle c)
+        => string.IsNullOrWhiteSpace(c.SemesterCode) ? c.CycleYear.ToString() : $"{c.SemesterCode} ({c.CycleYear})";
 
     public async Task<CycleDto> OpenCycleAsync(int cycleId)
     {

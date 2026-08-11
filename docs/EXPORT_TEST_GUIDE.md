@@ -7,7 +7,7 @@
 ## Prerequisites
 
 The demo proposal `DEMO-2026-001` is seeded automatically on first startup. It includes:
-- PI user: `pi.demo@furpms.edu.vn` / `Faculty@123456`
+- PI user: `pi.demo@furpms.edu.vn` / `password`
 - 3 team members (PI + secretary + 1 member) with role codes and salary coefficients
 - 3 research contents with 5 activities (Gantt spans months 1–18)
 - 3 expected products
@@ -34,13 +34,13 @@ Swagger UI: `https://localhost:<port>/swagger`
 ```json
 {
   "email": "pi.demo@furpms.edu.vn",
-  "password": "Faculty@123456"
+  "password": "password"
 }
 ```
 
 Copy the `token` from the response. In Swagger, click **Authorize** and enter `Bearer <token>`.
 
-*Alternatively use Admin credentials:* `admin@furpms.edu.vn` / `Admin@123456`
+*Alternatively use Admin credentials:* `admin@furpms.edu.vn` / `password`
 
 ---
 

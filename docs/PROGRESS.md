@@ -65,18 +65,21 @@ và **backlog 4 nguồn** (xem `PLAN_Week13` §BACKLOG HỢP NHẤT, ~26 việc)
 
 ## Đối chiếu góp ý thầy (demo 05/08) — kế hoạch: `PLAN_Week13_Demo_0508.md`
 
-**43/50 dòng việc = 86%** (đếm ngày 09/08; note gốc 43 dòng, phát sinh thêm 7 dòng lỗi tự phát hiện).
+**46/50 dòng việc = 92%** (đếm ngày 09/08; note gốc 43 dòng, phát sinh thêm 7 dòng lỗi tự phát hiện).
 
 | Nhóm | Xong | Còn |
 |---|---|---|
-| **A** Hội đồng · chấm điểm · biên bản | 14/15 | A3 *(chỉ cần thầy xác nhận Thư ký được chấm — code đã cho phép theo Điều 8.3.b)* |
-| **B** AI | 5/6 | B6 *(AI chạy local — chờ thầy quyết)* |
+| **A** Hội đồng · chấm điểm · biên bản | 14/15 | A3 |
+| **B** AI | 5/6 | B6 |
 | **C** Hợp đồng · nghiệm thu · giải ngân | **9/9** | — |
-| **D** Báo cáo tiến độ · tổng kết · gia hạn | 5/6 | D3 *(kiểm lại màn báo cáo tổng kết còn chỗ nào chỉ nhận link)* |
-| **E** UI/UX · i18n · dữ liệu demo | 5/8 | E1 đa chọn lĩnh vực · E5 *(cần hỏi thầy màn nào)* · E8 đổi mật khẩu |
-| **F** Business rule · validate · tài liệu | 5/6 | F6 *(cần biết thầy muốn loại doc nào)* |
+| **D** Báo cáo tiến độ · tổng kết · gia hạn | **6/6** | — |
+| **E** UI/UX · i18n · dữ liệu demo | 7/8 | E5 |
+| **F** Business rule · validate · tài liệu | 5/6 | F6 |
 
-**4 trong 7 việc còn lại phải chờ thầy trả lời**, không tự làm được: A3 · B6 · E5 · F6.
+**Cả 4 việc còn lại đều phải chờ thầy trả lời**, không tự làm được:
+A3 *(xác nhận Thư ký được chấm — code đã cho phép theo Điều 8.3.b)* ·
+B6 *(AI chạy local thay Gemini)* · E5 *("UI/UX sửa nhiều" — cần biết màn nào)* ·
+F6 *(SRS / báo cáo đồ án / doc kỹ thuật?)*.
 
 ## Đối chiếu góp ý thầy (demo 29/07) — kế hoạch: `PLAN_Week12.md`
 **≈17/18 ý (94%).** Xong: P0 lỗi nghiệm thu · P1 upload PDF + Staff xem file mới chấm · P2 số đợt/tên đợt linh hoạt · P3 nhắc hạn T-3 & quá hạn · P4 Bộ tiêu chí theo group · **P5 giải ngân gắn sản phẩm minh chứng** · P6 dashboard PI hiện đợt đang mở · P7 chuẩn hoá ngôn ngữ (vi=en=1341 key).

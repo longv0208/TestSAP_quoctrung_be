@@ -17,8 +17,7 @@ npm run dev                      # FE, http://localhost:5173
 
 ⚠️ Chỉ chạy **một** instance BE. Nếu lỗi lạ, kiểm cổng: `netstat -ano | findstr :5068`.
 
-**Tài khoản** (mật khẩu theo vai): `Admin@123456` · `Staff@123456` · `Reviewer@123456` · `Faculty@123456`
-— bảng đầy đủ ở `DEMO_GUIDE.md` §2.
+**Tài khoản**: mọi tài khoản demo dùng chung mật khẩu **`password`** — bảng đầy đủ ở `DEMO_GUIDE.md` §2.
 
 **Dữ liệu**: 8 đề tài `NCKH-2026-001…008`, mỗi cái đứng ở một bước khác nhau (`DEMO_GUIDE.md` §3).
 

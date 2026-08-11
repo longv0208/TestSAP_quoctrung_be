@@ -12,7 +12,7 @@ namespace FURPMS.Tests.Cycles;
 public class CycleDeadlineExtensionTests
 {
     private static CycleService MakeSvc(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
-        new(new CycleRepository(db), new MasterDataRepository(db), new ProposalRepository(db));
+        new(new CycleRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new ReviewRepository(db));
 
     private static ResearchCycle MakeCycle() => new()
     {

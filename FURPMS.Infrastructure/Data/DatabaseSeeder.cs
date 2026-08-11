@@ -12,6 +12,17 @@ namespace FURPMS.Infrastructure.Data;
 
 public class DatabaseSeeder
 {
+    /// <summary>
+    /// E8 — MỘT mật khẩu cho mọi tài khoản demo. Trước đây mỗi vai một chuỗi khác nhau
+    /// (<c>Staff@123456</c>, <c>Reviewer@123456</c>…), đứng trước hội đồng mà gõ nhầm là mất nhịp.
+    /// <para>
+    /// ⚠️ Đây là mật khẩu DEMO, cố tình dễ. Việc đặt lại mật khẩu chỉ chạy khi
+    /// <c>DEMO_DATA_ENABLED</c> đang bật — tắt setting đó trước khi bàn giao bản chạy thật thì
+    /// seeder không đụng tới mật khẩu nữa. **Đổi mật khẩu admin trên bản deploy công khai.**
+    /// </para>
+    /// </summary>
+    public const string DemoPassword = "password";
+
     private readonly FURPMSDbContext _db;
 
     public DatabaseSeeder(FURPMSDbContext db)
@@ -34,6 +45,50 @@ public class DatabaseSeeder
         await SeedDemoAccountsAsync();
         await SeedRubricCriteriaAsync();
         await SeedApprovedScenarioAsync();
+        await ResetDemoPasswordsAsync();
+    }
+
+    /// <summary>
+    /// Đặt lại mật khẩu các tài khoản DEMO về <see cref="DemoPassword"/>.
+    /// <para>
+    /// Cần bước riêng vì <c>SeedDemoAccountsAsync</c> chỉ đặt mật khẩu lúc TẠO — cơ sở dữ liệu đã
+    /// chạy từ trước thì đổi hằng số cũng không có tác dụng gì, đứng trước hội đồng mới phát hiện
+    /// mật khẩu vẫn là chuỗi cũ.
+    /// </para>
+    /// <para>
+    /// Chỉ chạy khi <c>DEMO_DATA_ENABLED</c> bật, và **chỉ chạm 9 tài khoản demo** — không đụng tài
+    /// khoản người dùng thật. Tắt setting đó trước khi bàn giao là seeder không sờ vào mật khẩu nữa.
+    /// </para>
+    /// </summary>
+    private async Task ResetDemoPasswordsAsync()
+    {
+        var enabled = await _db.SystemSettings
+            .Where(x => x.Key == SystemSettingKeys.DemoDataEnabled)
+            .Select(x => x.Value)
+            .FirstOrDefaultAsync();
+        if (string.Equals(enabled?.Trim(), "false", StringComparison.OrdinalIgnoreCase)) return;
+
+        var demoEmails = new[]
+        {
+            "admin@furpms.edu.vn", "staff.demo@furpms.edu.vn", "pi.demo@furpms.edu.vn",
+            "pi2.demo@furpms.edu.vn", "reviewer1.demo@furpms.edu.vn", "reviewer2.demo@furpms.edu.vn",
+            "reviewer3.demo@furpms.edu.vn", "reviewer4.demo@furpms.edu.vn", "reviewer5.demo@furpms.edu.vn"
+        };
+
+        var users = await _db.Users.IgnoreQueryFilters()
+            .Where(u => demoEmails.Contains(u.Email))
+            .ToListAsync();
+
+        var changed = false;
+        foreach (var u in users)
+        {
+            // Đã đúng mật khẩu rồi thì bỏ qua — băm lại mỗi lần khởi động vừa tốn vừa vô ích.
+            if (BCrypt.Net.BCrypt.Verify(DemoPassword, u.PasswordHash)) continue;
+            u.PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 12);
+            u.UpdatedAt = DateTime.UtcNow;
+            changed = true;
+        }
+        if (changed) await _db.SaveChangesAsync();
     }
 
     // Đảm bảo chu kỳ demo ở trạng thái OPEN để PI có thể tạo/nộp đề xuất khi test.
@@ -75,13 +130,13 @@ public class DatabaseSeeder
         // (QĐ543 Điều 8.2 / 12.2) và phải LẺ để có chênh lệch phiếu.
         var accounts = new[]
         {
-            (Email: "staff.demo@furpms.edu.vn",     Name: "Trần Thị Mai Lan",   Role: "Staff",           Pwd: "Staff@123456"),
-            (Email: "reviewer1.demo@furpms.edu.vn", Name: "PGS.TS. Lê Quang Minh", Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
-            (Email: "reviewer2.demo@furpms.edu.vn", Name: "TS. Phạm Thu Hương",    Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
-            (Email: "reviewer3.demo@furpms.edu.vn", Name: "TS. Vũ Đình Nam",       Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
-            (Email: "reviewer4.demo@furpms.edu.vn", Name: "TS. Đặng Hoài Anh",     Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
-            (Email: "reviewer5.demo@furpms.edu.vn", Name: "ThS. Bùi Thanh Hà",     Role: "ReviewCommittee", Pwd: "Reviewer@123456"),
-            (Email: "pi2.demo@furpms.edu.vn",       Name: "Hoàng Văn Bình",      Role: "Faculty",         Pwd: "Faculty@123456"),
+            (Email: "staff.demo@furpms.edu.vn",     Name: "Trần Thị Mai Lan",      Role: "Staff"),
+            (Email: "reviewer1.demo@furpms.edu.vn", Name: "PGS.TS. Lê Quang Minh", Role: "ReviewCommittee"),
+            (Email: "reviewer2.demo@furpms.edu.vn", Name: "TS. Phạm Thu Hương",    Role: "ReviewCommittee"),
+            (Email: "reviewer3.demo@furpms.edu.vn", Name: "TS. Vũ Đình Nam",       Role: "ReviewCommittee"),
+            (Email: "reviewer4.demo@furpms.edu.vn", Name: "TS. Đặng Hoài Anh",     Role: "ReviewCommittee"),
+            (Email: "reviewer5.demo@furpms.edu.vn", Name: "ThS. Bùi Thanh Hà",     Role: "ReviewCommittee"),
+            (Email: "pi2.demo@furpms.edu.vn",       Name: "Hoàng Văn Bình",        Role: "Faculty"),
         };
 
         // DB cũ đã có tài khoản với tên placeholder → đổi tên, không tạo trùng.
@@ -113,7 +168,7 @@ public class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Email = a.Email,
                 FullName = a.Name,
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(a.Pwd, workFactor: 12),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 12),
                 Status = UserStatus.Active,
                 UnitId = unit.Id,
                 IsExternal = false,
@@ -305,7 +360,7 @@ public class DatabaseSeeder
             Id = Guid.NewGuid(),
             Email = adminEmail,
             FullName = "System Administrator",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123456", workFactor: 12),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 12),
             Status = UserStatus.Active,
             IsExternal = false,
             CreatedAt = DateTime.UtcNow,
@@ -666,7 +721,7 @@ public class DatabaseSeeder
                 Id = Guid.NewGuid(),
                 Email = piEmail,
                 FullName = "Nguyễn Văn An",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("Faculty@123456", workFactor: 12),
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 12),
                 Status = UserStatus.Active,
                 UnitId = unit.Id,
                 IsExternal = false,

@@ -187,6 +187,14 @@ public class CyclesController : ControllerBase
         return Ok(ApiResponse<TrackDto>.Ok(result));
     }
 
+    [HttpDelete("{id:int}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> DeleteCycle(int id)
+    {
+        await _cycles.DeleteCycleAsync(id);
+        return Ok(ApiResponse.Ok("Đã xoá đợt nghiên cứu."));
+    }
+
     [HttpPatch("tracks/{id:int}/owner")]
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> AssignTrackOwner(int id, [FromBody] AssignTrackOwnerRequest request)

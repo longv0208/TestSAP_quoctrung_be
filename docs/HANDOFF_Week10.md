@@ -59,7 +59,7 @@ Rồi `dotnet run --project FURPMS.API` (hoặc F5 trong Visual Studio). Windows
 ```bash
 cd core/FURPMS-Web && cp .env.example .env && npm install && npm run dev  # :5173, trỏ BE :5068
 ```
-**Tài khoản seed:** admin@furpms.edu.vn/`Admin@123456` · staff.demo@…/`Staff@123456` · pi.demo@…/`Faculty@123456` · reviewer{1,2,3}.demo@…/`Reviewer@123456` (reviewer1=Chủ tịch, reviewer2=Thư ký của hội đồng đề tài "abc").
+**Tài khoản seed:** admin@furpms.edu.vn/`password` · staff.demo@…/`password` · pi.demo@…/`password` · reviewer{1,2,3}.demo@…/`password` (reviewer1=Chủ tịch, reviewer2=Thư ký của hội đồng đề tài "abc").
 **Verify:** BE `dotnet build && dotnet test` (84 test) · FE `npx tsc --noEmit && npm run build` + parity vi/en (932=932).
 
 ## 2. Migrations mới (tuần 10) — tự áp khi `dotnet run`

@@ -92,7 +92,7 @@ One migration per phase. Hiện hành (Project-centric): `PhaseA_ProjectCentric`
 ## DatabaseSeeder
 
 `DatabaseSeeder.SeedAsync()` is idempotent — always check existence before inserting.
-Admin credentials: `admin@furpms.edu.vn` / `Admin@123456`
+Admin credentials: `admin@furpms.edu.vn` / `password`
 
 ## Folder Structure
 

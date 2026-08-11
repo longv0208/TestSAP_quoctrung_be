@@ -103,7 +103,7 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 
 **Login request**
 ```json
-{ "email": "admin@furpms.edu.vn", "password": "Admin@123456" }
+{ "email": "admin@furpms.edu.vn", "password": "password" }
 ```
 **Login response (`data`)**
 ```json

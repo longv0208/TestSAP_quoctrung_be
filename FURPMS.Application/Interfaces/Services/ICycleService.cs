@@ -16,6 +16,7 @@ public interface ICycleService
     Task<CycleDto> UpdateCycleAsync(int cycleId, CreateCycleRequest request);
     Task<DeadlineExtensionDto> ExtendCycleDeadlineAsync(int cycleId, ExtendDeadlineRequest request, Guid createdBy);
     Task<IEnumerable<DeadlineExtensionDto>> GetCycleDeadlineExtensionsAsync(int cycleId);
+    Task DeleteCycleAsync(int cycleId);
     Task<CycleDto> OpenCycleAsync(int cycleId);
     Task<CycleDto> CloseCycleAsync(int cycleId);
     Task<IEnumerable<TrackDto>> GetTracksAsync();

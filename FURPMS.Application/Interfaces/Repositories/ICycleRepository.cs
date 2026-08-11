@@ -11,6 +11,7 @@ public interface ICycleRepository : IRepository<ResearchCycle>
     IQueryable<DeadlineExtension> DeadlineExtensions { get; }
     Task AddCycleTrackAsync(CycleTrack cycleTrack);
     void RemoveCycleTrack(CycleTrack cycleTrack);
+    void RemoveOrder(ResearchOrder order);
     Task AddOrderAsync(ResearchOrder order);
     Task AddDeadlineExtensionAsync(DeadlineExtension extension);
 }
