@@ -105,7 +105,7 @@ public class ReviewScoringController : ControllerBase
         return Ok(ApiResponse<CouncilDecisionDto>.Ok(result));
     }
 
-    // POST /api/review-scoring/councils/{councilId}/minutes/approve — Chủ tịch duyệt = khóa
+    // POST /api/review-scoring/councils/{councilId}/minutes/approve — Chủ tịch duyệt = khoá
     [HttpPost("councils/{councilId:guid}/minutes/approve")]
     public async Task<IActionResult> ApproveMinutes(Guid councilId, [FromQuery] Guid? projectId)
     {

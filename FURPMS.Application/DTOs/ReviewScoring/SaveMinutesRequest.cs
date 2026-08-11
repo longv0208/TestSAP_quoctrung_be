@@ -1,7 +1,7 @@
 namespace FURPMS.Application.DTOs.ReviewScoring;
 
 // Thư ký soạn/sửa biên bản (nháp). Kết quả đề xuất + nhận xét — CHƯA chốt status đề tài.
-// Chỉ khi Chủ tịch duyệt (minutes/approve) mới khóa + cập nhật status proposal.
+// Chỉ khi Chủ tịch duyệt (minutes/approve) mới khoá + cập nhật status proposal.
 public class SaveMinutesRequest
 {
     public Guid? ProjectId { get; set; }         // Phase B: council nhiều đề tài → chỉ rõ (1 đề tài thì tự suy)

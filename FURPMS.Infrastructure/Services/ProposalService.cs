@@ -347,7 +347,7 @@ public class ProposalService : IProposalService
         if (proposal.Status != ProposalStatus.Draft)
             throw new InvalidOperationException($"Đề cương đang ở trạng thái {proposal.Status} — chỉ sửa được bản nháp. Hãy rút lại trước khi sửa.");
 
-        // Hết hạn đợt → khóa, không cho sửa nháp nữa (đồng bộ với chặn nộp quá hạn).
+        // Hết hạn đợt → khoá, không cho sửa nháp nữa (đồng bộ với chặn nộp quá hạn).
         var todayEdit = DateOnly.FromDateTime(_clock.UtcNow);
         var cycle = project.CycleTrack.Cycle;
         if (cycle != null && todayEdit > cycle.SubmissionDeadline)

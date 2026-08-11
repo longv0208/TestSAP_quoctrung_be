@@ -35,7 +35,7 @@ public interface IReviewRepository : IRepository<ReviewCouncil>
     Task AddAcceptanceEvaluationAsync(AcceptanceEvaluation eval);
     Task AddReviewerFeedbackAsync(ReviewerFeedback feedback);
     void RemoveMember(CouncilMember member);
-    // Xóa hội đồng chưa chấm: con đều NoAction nên phải gỡ tay trước khi xóa council.
+    // Xoá hội đồng chưa chấm: con đều NoAction nên phải gỡ tay trước khi xoá council.
     void RemoveMembersRange(IEnumerable<CouncilMember> members);
     void RemoveMeetingsRange(IEnumerable<CouncilMeeting> meetings);
     void RemoveAttendancesRange(IEnumerable<MeetingAttendance> attendances);

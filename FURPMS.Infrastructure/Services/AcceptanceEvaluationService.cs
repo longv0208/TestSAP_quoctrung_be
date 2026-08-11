@@ -61,7 +61,7 @@ public class AcceptanceEvaluationService : IAcceptanceEvaluationService
             .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId)
             ?? throw new KeyNotFoundException("You are not a member of this council.");
 
-        // Biên bản đã được Chủ tịch chốt (rule #12) → khóa, không sửa phiếu nữa.
+        // Biên bản đã được Chủ tịch chốt (rule #12) → khoá, không sửa phiếu nữa.
         var finalized = await _review.Decisions
             .AnyAsync(d => d.CouncilId == councilId && d.FinalizedAt != null);
         if (finalized)

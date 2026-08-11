@@ -63,7 +63,7 @@ public class CyclesController : ControllerBase
     public async Task<IActionResult> DeleteResearchType(int id)
     {
         await _cycles.DeleteResearchTypeAsync(id);
-        return Ok(ApiResponse.Ok("Đã xóa vĩnh viễn loại đề tài."));
+        return Ok(ApiResponse.Ok("Đã xoá vĩnh viễn loại đề tài."));
     }
 
     [HttpGet]

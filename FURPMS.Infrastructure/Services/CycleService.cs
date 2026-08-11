@@ -206,12 +206,12 @@ public class CycleService : ICycleService
         var type = await _masterData.ResearchTypes.FirstOrDefaultAsync(t => t.Id == id)
             ?? throw new KeyNotFoundException($"Loại đề tài {id} không tồn tại.");
 
-        // Chỉ xóa vĩnh viễn khi KHÔNG có đợt/đề tài nào tham chiếu (tránh vỡ FK).
+        // Chỉ xoá vĩnh viễn khi KHÔNG có đợt/đề tài nào tham chiếu (tránh vỡ FK).
         var usedByCycle = await _cycles.Query().AnyAsync(c => c.ResearchTypeId == id);
         var usedByProposal = await _proposals.Projects.IgnoreQueryFilters().AnyAsync(p => p.ResearchTypeId == id);
         if (usedByCycle || usedByProposal)
             throw new InvalidOperationException(
-                "Loại đề tài đang được đợt/đề tài sử dụng — chỉ có thể vô hiệu hóa, không thể xóa vĩnh viễn.");
+                "Loại đề tài đang được đợt/đề tài sử dụng — chỉ có thể vô hiệu hóa, không thể xoá vĩnh viễn.");
 
         _masterData.Remove(type);
         await _masterData.SaveChangesAsync();

@@ -36,6 +36,17 @@ public class SystemSettingsController : ControllerBase
         return Ok(ApiResponse<UploadPolicyResponse>.Ok(result));
     }
 
+    /// <summary>
+    /// Bước nhảy điểm — mọi user đăng nhập đọc được. Hội đồng cần nó để dựng ô nhập điểm;
+    /// bắt qua endpoint chỉ-Admin thì reviewer ăn 403 và cấu hình của Admin thành vô nghĩa.
+    /// </summary>
+    [HttpGet("scoring-policy")]
+    public async Task<ActionResult<ApiResponse<ScoringPolicyResponse>>> GetScoringPolicy()
+    {
+        var result = await _service.GetScoringPolicyAsync();
+        return Ok(ApiResponse<ScoringPolicyResponse>.Ok(result));
+    }
+
     [HttpPut("{key}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApiResponse<SystemSettingResponse>>> Update(

@@ -482,7 +482,7 @@ public class FURPMSDbContext : DbContext
                 .OnDelete(DeleteBehavior.NoAction);
         });
 
-        // ── CouncilQaEntry: hỏi–đáp thuộc biên bản, xóa theo biên bản ──
+        // ── CouncilQaEntry: hỏi–đáp thuộc biên bản, xoá theo biên bản ──
         modelBuilder.Entity<CouncilQaEntry>(b =>
         {
             b.HasOne(q => q.Decision)
@@ -491,7 +491,7 @@ public class FURPMSDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // ── CouncilMemberOpinion: ý kiến TV thuộc biên bản, xóa theo biên bản ──
+        // ── CouncilMemberOpinion: ý kiến TV thuộc biên bản, xoá theo biên bản ──
         modelBuilder.Entity<CouncilMemberOpinion>(b =>
         {
             b.HasOne(o => o.Decision)
@@ -683,7 +683,7 @@ public class FURPMSDbContext : DbContext
                 .HasDatabaseName("IX_documents_entity");
 
             // Nối navigation với đúng cột UploadedBy. Thiếu dòng này EF tự sinh thêm cột
-            // shadow `uploaded_by_user_id` — insert luôn vi phạm khóa ngoại (SQL 547),
+            // shadow `uploaded_by_user_id` — insert luôn vi phạm khoá ngoại (SQL 547),
             // khiến upload tài liệu không bao giờ chạy được trên SQL Server thật.
             b.HasOne(d => d.UploadedByUser)
                 .WithMany()

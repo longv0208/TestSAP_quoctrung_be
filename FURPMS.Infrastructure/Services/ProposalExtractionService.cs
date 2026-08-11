@@ -19,11 +19,11 @@ public class ProposalExtractionService : IProposalExtractionService
 
     private const string Prompt =
         "Bạn là trợ lý trích xuất đề cương nghiên cứu khoa học (tiếng Việt). " +
-        "Đọc nội dung tài liệu và trả về DUY NHẤT một JSON (không giải thích, không markdown) với các khóa: " +
+        "Đọc nội dung tài liệu và trả về DUY NHẤT một JSON (không giải thích, không markdown) với các khoá: " +
         "titleVi (tên đề tài tiếng Việt), titleEn (tên tiếng Anh), abstractVi (tóm tắt), " +
         "researchObjectives (mục tiêu nghiên cứu), methodology (phương pháp), expectedOutput (sản phẩm dự kiến), " +
         "durationMonths (số nguyên, số tháng thực hiện), totalBudget (số, tổng kinh phí VND). " +
-        "Khóa nào không tìm thấy thì để giá trị null.";
+        "Khoá nào không tìm thấy thì để giá trị null.";
 
     public async Task<ExtractedProposalDto> ExtractAsync(Stream content, string fileName, string contentType, CancellationToken ct = default)
     {

@@ -14,7 +14,7 @@ public interface ICouncilService
     Task<CouncilMemberResponse> ConfirmMemberOnBehalfAsync(Guid memberId);
     Task<IEnumerable<CouncilMemberResponse>> GetMembersAsync(Guid councilId);
     Task RemoveMemberAsync(Guid memberId);
-    // Xóa cả hội đồng (chỉ khi chưa có phiếu chấm / biên bản / nghiệm thu).
+    // Xoá cả hội đồng (chỉ khi chưa có phiếu chấm / biên bản / nghiệm thu).
     Task DeleteCouncilAsync(Guid councilId);
 
     // Gán / gỡ 1 đề tài vào hội đồng có sẵn (dropdown ở màn Hội đồng & Chấm).

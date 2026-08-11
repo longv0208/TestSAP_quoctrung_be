@@ -521,7 +521,7 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, "BÊN GIAO THỰC HIỆN ĐỀ TÀI (BÊN A): TRƯỜNG ĐẠI HỌC FPT", bold: true);
             AppendParagraph(body, $"Đại diện là: {c.SideARepresentative ?? Blank}");
             AppendParagraph(body, "Chức vụ: Trưởng ban Nghiên cứu và Phát triển                Mã số thuế: 0102100740");
-            AppendParagraph(body, "Địa chỉ: Khu Giáo dục và Đào tạo, Khu Công nghệ cao Hòa Lạc, Km29 Đại lộ Thăng Long, huyện Thạch Thất, Hà Nội.");
+            AppendParagraph(body, "Địa chỉ: Khu Giáo dục và Đào tạo, Khu Công nghệ cao Hoà Lạc, Km29 Đại lộ Thăng Long, huyện Thạch Thất, Hà Nội.");
             AppendParagraph(body, "");
             AppendParagraph(body, "BÊN NHẬN TỔ CHỨC CHỦ TRÌ THỰC HIỆN ĐỀ TÀI (BÊN B):", bold: true);
             AppendParagraph(body, $"CHỦ NHIỆM ĐỀ TÀI: {pi?.FullName ?? Blank}");
@@ -617,7 +617,7 @@ public class DocumentExportService : IDocumentExportService
             AppendHeading(body, "ĐIỀU 6. ĐIỀU KHOẢN CHUNG", 13);
             AppendParagraph(body, "6.1. Trong quá trình thực hiện Hợp đồng, nếu một trong hai bên có yêu cầu sửa đổi, bổ sung nội dung hoặc có căn cứ để chấm dứt thực hiện Hợp đồng phải thông báo cho bên kia ít nhất 15 ngày trước.");
             AppendParagraph(body, "6.2. Hai bên cam kết thực hiện đúng các quy định của Hợp đồng và hợp tác giải quyết các vướng mắc phát sinh.");
-            AppendParagraph(body, "6.3. Mọi tranh chấp được các bên thương lượng hòa giải; không hòa giải được thì đưa ra cơ quan có thẩm quyền giải quyết.");
+            AppendParagraph(body, "6.3. Mọi tranh chấp được các bên thương lượng hoà giải; không hoà giải được thì đưa ra cơ quan có thẩm quyền giải quyết.");
             AppendParagraph(body, "");
 
             AppendHeading(body, "ĐIỀU 7. HIỆU LỰC CỦA HỢP ĐỒNG", 13);

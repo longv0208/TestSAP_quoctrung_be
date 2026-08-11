@@ -207,10 +207,10 @@ public class ReviewBoardService : IReviewBoardService
 
         var hasCouncil = await _review.Query().AnyAsync(c => c.RoundId == roundId);
         if (hasCouncil)
-            throw new InvalidOperationException("Vòng đã có hội đồng — không thể xóa.");
+            throw new InvalidOperationException("Vòng đã có hội đồng — không thể xoá.");
 
         if (round.ProjectRounds.Any(pr => pr.Status != ReviewRoundStatus.Pending || pr.FinalizedAt != null))
-            throw new InvalidOperationException("Vòng đã có đề tài được chấm/chốt kết quả — không thể xóa.");
+            throw new InvalidOperationException("Vòng đã có đề tài được chấm/chốt kết quả — không thể xoá.");
 
         _review.RemoveProjectRoundsRange(round.ProjectRounds);
         _review.RemoveRound(round);

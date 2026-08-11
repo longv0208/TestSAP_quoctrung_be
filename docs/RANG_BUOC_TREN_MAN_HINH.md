@@ -34,8 +34,8 @@ từng chỗ dùng kiểu nào, để lúc đứng trước hội đồng còn b
 | **Làm gì tiếp** | Nhập lại trong khoảng 0–10 |
 | **Vì sao** | QĐ543 **BM03** — mỗi tiêu chí có trần riêng (10/20/40/20/10), tổng đúng 100 |
 
-> ⚠️ Ô nhập có `max=10` nhưng trình duyệt **vẫn cho gõ** 99 — chỉ khi bấm nộp mới báo. Không sai
-> nghiệp vụ, nhưng nếu muốn mượt hơn thì chặn ngay lúc gõ.
+> **Sửa 09/08:** ô nhập nay **cắt ngay lúc gõ** — gõ 99 vào tiêu chí trần 10 thì ô tự về 10, gõ số
+> âm thì về rỗng. Thông báo trên vẫn giữ làm lưới chắn cuối nếu ai gọi thẳng API.
 
 ### A-2. Nhập điểm thập phân khi hệ thống đặt số nguyên
 | | |
@@ -43,7 +43,7 @@ từng chỗ dùng kiểu nào, để lúc đứng trước hội đồng còn b
 | **Định làm** | Nhập `7.5` |
 | **Bị chặn** | Báo lỗi khi nộp |
 | **Hệ thống nói** | *"Điểm phải là SỐ NGUYÊN (đang nhập 7.5). Phòng QLKH đổi được ở Cấu hình hệ thống."* |
-| **Làm gì tiếp** | Nhập số nguyên — **hoặc** Admin vào *Cấu hình hệ thống* đổi `SCORE_DECIMAL_PLACES` thành 1 |
+| **Làm gì tiếp** | Nhập số nguyên — **hoặc** Admin vào *Cấu hình hệ thống* đổi `SCORE_DECIMAL_PLACES` thành 1, hội đồng nhập được `7.5` ngay (đã chạy thật 09/08) |
 | **Vì sao** | QĐ543 **không quy định**; BM03 để điểm tối đa toàn số nguyên. Thầy chốt: Admin đặt từ đầu, **không hồi tố** — phiếu đã chấm giữ nguyên |
 
 ### A-3. Sửa điểm sau khi Chủ tịch đã chốt biên bản
@@ -275,11 +275,31 @@ Ba cái này đều **dẫn chiếu văn bản** trong chính thông báo lỗi 
 
 ---
 
-## Chỗ còn chưa gọn (ghi để biết, không phải lỗi chặn)
+## Đã dọn 09/08 (đợt sau khi test trình duyệt)
 
-| Chỗ | Vấn đề |
-|---|---|
-| Ô nhập điểm | `max=10` nhưng vẫn gõ được `99`, bấm nộp mới báo. Chặn ngay lúc gõ sẽ mượt hơn |
-| Chính tả | Giao diện dùng lẫn **"Xóa"** và **"Xoá"** — nên thống nhất một cách |
-| Breadcrumb màn chấm | Hiện GUID thô `E01a2af6 D7e5 4467…` thay vì tên đề tài |
-| 4/5 màn master data | Xoá đã có API nhưng **chưa có màn**: loại sản phẩm · vai trò nhân sự chưa có trang; hạng mục chi · cấu hình tài chính có trang nhưng **ẩn khỏi menu** theo rule #15 (hệ thống không quản tiền) |
+| Chỗ | Trước | Nay |
+|---|---|---|
+| Ô nhập điểm | `max=10` nhưng gõ được `99`, bấm nộp mới báo | **Cắt ngay lúc gõ**: 99 → 10 · 7.5 → 8 (khi cấu hình số nguyên) · −3 → rỗng |
+| Chính tả | Lẫn *"Xóa"* và *"Xoá"*, *"khóa"* và *"khoá"* | Thống nhất **"xoá / khoá / hoà"** — sửa 36 chỗ FE + 48 chỗ BE |
+| Breadcrumb màn chấm | Hiện GUID thô `E01a2af6 D7e5 4467…` | **Bỏ mảnh ID** khỏi breadcrumb; tên đề tài đã có ở tiêu đề trang |
+| Bước nhảy điểm của Admin | **Không có tác dụng** — xem bên dưới | Chạy thật: Admin đổi → hội đồng nhập được thập phân |
+
+### Lỗi nghiêm trọng phát hiện lúc dọn: cấu hình bước nhảy điểm chưa từng chạy
+
+Rà cái **403** cứ lặp trong log trình duyệt thì lộ ra chuỗi đứt ở **hai chỗ**:
+
+1. Màn chấm điểm đọc bước nhảy qua `GET /system-settings` — endpoint **chỉ cho Admin**. Hội đồng
+   luôn ăn **403**, lỗi bị nuốt, rơi về mặc định số nguyên.
+2. `SCORE_DECIMAL_PLACES` **chưa từng được seed thành dòng** trong `system_settings`, nên Admin
+   sửa cũng **404** — không có gì để sửa.
+
+Nghĩa là tính năng A10 (*"Admin đặt bước nhảy điểm từ đầu"* — thầy chốt 08/08) **chưa bao giờ hoạt
+động**, dù code chặn phía máy chủ vẫn đúng. Nay: thêm `GET /system-settings/scoring-policy` cho mọi
+người dùng đã đăng nhập, và seed dòng cấu hình. Kiểm bằng API: Admin đổi sang `1` → hội đồng đọc
+được `1`; hội đồng vẫn **403** với danh sách cấu hình đầy đủ (đúng, đó là việc của Admin).
+
+## Chỗ còn chưa gọn
+
+| Chỗ | Vấn đề | Vì sao chưa làm |
+|---|---|---|
+| 4/5 màn master data | Xoá đã có API nhưng **chưa có màn**: loại sản phẩm · vai trò nhân sự chưa có trang; hạng mục chi · cấu hình tài chính có trang nhưng **ẩn khỏi menu** theo rule #15 | Thêm nút xoá vào màn không ai vào được là thêm code chết. Endpoint để đó không hại gì, dựng 2 màn mới sát ngày bảo vệ thì rủi ro hơn giá trị |

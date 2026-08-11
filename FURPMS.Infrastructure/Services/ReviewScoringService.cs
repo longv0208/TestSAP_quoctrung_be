@@ -243,13 +243,13 @@ public class ReviewScoringService : IReviewScoringService
     // ── Finalize decision (NGỪNG DÙNG) ────────────────────────────────────────
 
     // Đường chốt trực tiếp này BỎ QUA biên bản Thư ký→Chủ tịch (vi phạm rule #12) và trước đây
-    // KHÔNG đồng bộ project_round → gây lệch dữ liệu round/proposal. Đã khóa lại: hãy chốt qua
+    // KHÔNG đồng bộ project_round → gây lệch dữ liệu round/proposal. Đã khoá lại: hãy chốt qua
     // luồng biên bản — POST .../minutes (Thư ký soạn) rồi POST .../minutes/approve (Chủ tịch duyệt).
     public Task<CouncilDecisionDto> FinalizeDecisionAsync(Guid councilId, FinalizeDecisionRequest request)
         => throw new InvalidOperationException(
             "Đã ngừng dùng: hãy chốt kết quả qua biên bản (POST .../minutes rồi POST .../minutes/approve).");
 
-    // ── Biên bản: Thư ký soạn (nháp) → Chủ tịch duyệt = khóa ───────────────────
+    // ── Biên bản: Thư ký soạn (nháp) → Chủ tịch duyệt = khoá ───────────────────
 
     public async Task<CouncilDecisionDto> SaveMinutesAsync(Guid councilId, Guid secretaryUserId, SaveMinutesRequest request)
     {
@@ -262,7 +262,7 @@ public class ReviewScoringService : IReviewScoringService
             ?? throw new KeyNotFoundException($"Council {councilId} not found.");
 
         if (council.Status == CouncilStatus.Decided)
-            throw new InvalidOperationException("Biên bản đã được Chủ tịch khóa, không thể sửa.");
+            throw new InvalidOperationException("Biên bản đã được Chủ tịch khoá, không thể sửa.");
 
         var me = council.Members.FirstOrDefault(m => m.UserId == secretaryUserId)
             ?? throw new ForbiddenException("Bạn không thuộc hội đồng này.");
@@ -279,7 +279,7 @@ public class ReviewScoringService : IReviewScoringService
             .Include(d => d.MemberOpinions)
             .FirstOrDefaultAsync(d => d.CouncilId == councilId && d.ProjectId == projectIdM);
         if (decision != null && decision.FinalizedAt != null)
-            throw new InvalidOperationException("Biên bản đã được khóa.");
+            throw new InvalidOperationException("Biên bản đã được khoá.");
 
         if (decision == null)
         {
@@ -296,9 +296,9 @@ public class ReviewScoringService : IReviewScoringService
         decision.CouncilComments = request.CouncilComments;
         decision.Recommendations = request.Recommendations;
         decision.SecretaryUserId = secretaryUserId;
-        decision.FinalizedAt = null;                 // vẫn là nháp, CHƯA khóa
+        decision.FinalizedAt = null;                 // vẫn là nháp, CHƯA khoá
 
-        // Cách 1 (Q&A): thay TOÀN BỘ danh sách hỏi–đáp mỗi lần lưu nháp (xóa cũ tường minh
+        // Cách 1 (Q&A): thay TOÀN BỘ danh sách hỏi–đáp mỗi lần lưu nháp (xoá cũ tường minh
         // để EF không báo "severed" khi FK bắt buộc, rồi thêm mới).
         if (decision.QaEntries.Count > 0)
             _review.RemoveQaEntriesRange(decision.QaEntries.ToList());
@@ -344,7 +344,7 @@ public class ReviewScoringService : IReviewScoringService
             ?? throw new KeyNotFoundException($"Council {councilId} not found.");
 
         if (council.Status == CouncilStatus.Decided)
-            throw new InvalidOperationException("Biên bản đã được khóa.");
+            throw new InvalidOperationException("Biên bản đã được khoá.");
 
         var me = council.Members.FirstOrDefault(m => m.UserId == chairUserId)
             ?? throw new ForbiddenException("Bạn không thuộc hội đồng này.");
@@ -371,7 +371,7 @@ public class ReviewScoringService : IReviewScoringService
         await AssertQuorumAsync(council, decision.ProjectId, "chốt biên bản");
 
         decision.ChairUserId = chairUserId;
-        decision.FinalizedAt = _clock.UtcNow;      // duyệt = khóa
+        decision.FinalizedAt = _clock.UtcNow;      // duyệt = khoá
 
         // Chủ tịch chốt biên bản = buổi họp đã diễn ra xong. Trước đây buổi họp kẹt ở SCHEDULED
         // vĩnh viễn (không ai bấm Bắt đầu/Kết thúc), nên lịch vẫn hiện như sắp họp dù đề tài đã
@@ -446,7 +446,7 @@ public class ReviewScoringService : IReviewScoringService
         return MapDecision(decision);
     }
 
-    // Council chỉ chuyển DECIDED khi MỌI đề tài được gán đều đã có biên bản khóa.
+    // Council chỉ chuyển DECIDED khi MỌI đề tài được gán đều đã có biên bản khoá.
     private async Task MarkDecidedIfAllProjectsFinalizedAsync(ReviewCouncil council, Guid justFinalizedProjectId)
     {
         var assigned = await _review.ProjectAssignments

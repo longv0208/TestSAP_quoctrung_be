@@ -50,6 +50,6 @@ public class ProposalDocumentsController : ControllerBase
     public async Task<IActionResult> Delete(Guid proposalId, Guid documentId)
     {
         await _docs.DeleteAsync(proposalId, documentId);
-        return Ok(ApiResponse.Ok("Đã xóa tài liệu."));
+        return Ok(ApiResponse.Ok("Đã xoá tài liệu."));
     }
 }

@@ -8,6 +8,7 @@ public interface ISystemSettingService
     Task<SystemSettingResponse> UpdateAsync(string key, string value, Guid updatedBy);
     /// <summary>Giới hạn upload hiện hành (đã clamp trong khoảng cho phép).</summary>
     Task<UploadPolicyResponse> GetUploadPolicyAsync();
+    Task<ScoringPolicyResponse> GetScoringPolicyAsync();
 
     // ── Đọc có kiểu ───────────────────────────────────────────────────────────
     // Giá trị thiếu/hỏng trong DB đều rơi về `fallback` — cấu hình sai không được

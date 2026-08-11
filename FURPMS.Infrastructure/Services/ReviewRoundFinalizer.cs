@@ -9,8 +9,8 @@ namespace FURPMS.Infrastructure.Services;
 internal static class ReviewRoundFinalizer
 {
     // Áp kết quả cho 1 project_round.
-    // - APPROVED / REJECTED → khóa (FinalizedAt) + PASSED / FAILED (terminal).
-    // - REVISION_REQUIRED → KHÔNG terminal: giữ vòng OPEN, KHÔNG khóa, để PI sửa & nộp lại (rule #1);
+    // - APPROVED / REJECTED → khoá (FinalizedAt) + PASSED / FAILED (terminal).
+    // - REVISION_REQUIRED → KHÔNG terminal: giữ vòng OPEN, KHÔNG khoá, để PI sửa & nộp lại (rule #1);
     //   board hiển thị "đang mở / cần chỉnh sửa" thay vì "Từ chối".
     public static void ApplyProjectResult(ReviewRound round, ProjectRound projectRound, string result, DateTime now)
     {

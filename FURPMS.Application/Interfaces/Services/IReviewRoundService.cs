@@ -14,6 +14,6 @@ public interface IReviewRoundService
     Task RemoveRoundMemberAsync(Guid roundId, Guid memberId);
 
     // Rule #1: PI nộp lại bản REVISION → mở lại hội đồng đã chốt "yêu cầu chỉnh sửa" để chấm lại,
-    // GIỮ điểm cũ. No-op nếu đề tài không có biên bản REVISION nào đã khóa.
+    // GIỮ điểm cũ. No-op nếu đề tài không có biên bản REVISION nào đã khoá.
     Task ReopenAfterResubmitAsync(Guid projectId);
 }

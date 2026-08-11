@@ -73,7 +73,7 @@ public static class CouncilMemberStatus
 // Chức danh trong hội đồng (CouncilMember.MemberRole) — chỉ là field, không tách actor (rule #11).
 public static class CouncilMemberRole
 {
-    public const string Chair = "Chair";        // Chủ tịch — chốt kết quả + duyệt/khóa biên bản
+    public const string Chair = "Chair";        // Chủ tịch — chốt kết quả + duyệt/khoá biên bản
     public const string Secretary = "Secretary"; // Thư ký — soạn biên bản
     public const string Opponent = "Opponent";  // Phản biện
     public const string Member = "Member";      // Thành viên

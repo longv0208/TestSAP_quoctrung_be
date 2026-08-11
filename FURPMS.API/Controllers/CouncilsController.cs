@@ -48,13 +48,13 @@ public class CouncilsController : ControllerBase
         return Ok(ApiResponse<IEnumerable<CouncilMemberResponse>>.Ok(result));
     }
 
-    // DELETE /api/councils/{councilId} — xóa hội đồng (chỉ khi chưa có phiếu chấm / biên bản / nghiệm thu)
+    // DELETE /api/councils/{councilId} — xoá hội đồng (chỉ khi chưa có phiếu chấm / biên bản / nghiệm thu)
     [HttpDelete("{councilId:guid}")]
     [Authorize(Roles = "Staff,Admin")]
     public async Task<ActionResult<ApiResponse>> DeleteCouncil(Guid councilId)
     {
         await _service.DeleteCouncilAsync(councilId);
-        return Ok(ApiResponse.Ok("Đã xóa hội đồng."));
+        return Ok(ApiResponse.Ok("Đã xoá hội đồng."));
     }
 
     // GET /api/councils/{councilId}/schedule-conflicts — cảnh báo TV trùng lịch hội đồng khác

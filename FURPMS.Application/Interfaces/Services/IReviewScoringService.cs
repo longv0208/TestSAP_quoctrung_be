@@ -10,7 +10,7 @@ public interface IReviewScoringService
     Task<ReviewScoreDto?> GetMyScoreAsync(Guid councilId, Guid userId, Guid? projectId = null);
     Task<IEnumerable<ReviewScoreDto>> GetCouncilScoresAsync(Guid councilId, Guid? projectId = null);
     Task<CouncilDecisionDto> FinalizeDecisionAsync(Guid councilId, FinalizeDecisionRequest request);
-    // Workflow biên bản: Thư ký soạn nháp → Chủ tịch duyệt = khóa + cập nhật status đề tài.
+    // Workflow biên bản: Thư ký soạn nháp → Chủ tịch duyệt = khoá + cập nhật status đề tài.
     Task<CouncilDecisionDto> SaveMinutesAsync(Guid councilId, Guid secretaryUserId, SaveMinutesRequest request);
     Task<CouncilDecisionDto> ApproveMinutesAsync(Guid councilId, Guid chairUserId, Guid? projectId = null);
     Task<CouncilDecisionDto?> GetDecisionAsync(Guid councilId, Guid? projectId = null);

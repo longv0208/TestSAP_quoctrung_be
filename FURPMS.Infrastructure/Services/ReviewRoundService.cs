@@ -341,7 +341,7 @@ public class ReviewRoundService : IReviewRoundService
 
         foreach (var decision in revisionDecisions)
         {
-            // Mở khóa biên bản → về NHÁP (Thư ký/Chủ tịch chấm & chốt lại). KHÔNG đụng ProposalReviewScore
+            // Mở khoá biên bản → về NHÁP (Thư ký/Chủ tịch chấm & chốt lại). KHÔNG đụng ProposalReviewScore
             // ⇒ điểm cũ được giữ; reviewer chỉ chỉnh nếu muốn.
             decision.FinalizedAt = null;
 

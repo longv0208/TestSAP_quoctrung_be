@@ -22,7 +22,7 @@ public class EmailSettings
     /// <para>
     /// Lý do: tài khoản seed dùng email không có thật (<c>pi.demo@furpms.edu.vn</c>…),
     /// test luồng sẽ không thấy mail nào. Đổi email seed thì hỏng — seeder dùng email
-    /// làm khóa định danh. Chuyển hướng ở tầng gửi là chỗ đúng.
+    /// làm khoá định danh. Chuyển hướng ở tầng gửi là chỗ đúng.
     /// </para>
     /// <para>PRODUCTION phải để TRỐNG, nếu không mọi người dùng thật đều mất thư.</para>
     /// </summary>

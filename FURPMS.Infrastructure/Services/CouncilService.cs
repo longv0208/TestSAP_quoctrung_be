@@ -352,18 +352,18 @@ public class CouncilService : ICouncilService
         return members.Select(MapMember);
     }
 
-    // Xóa hội đồng — chỉ khi CHƯA có việc chấm (không phiếu/biên bản/nghiệm thu); con NoAction nên gỡ tay.
+    // Xoá hội đồng — chỉ khi CHƯA có việc chấm (không phiếu/biên bản/nghiệm thu); con NoAction nên gỡ tay.
     public async Task DeleteCouncilAsync(Guid councilId)
     {
         var council = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
             ?? throw new KeyNotFoundException($"Council {councilId} not found.");
 
         if (await _review.ReviewScores.AnyAsync(s => s.CouncilId == councilId))
-            throw new InvalidOperationException("Hội đồng đã có phiếu chấm — không thể xóa.");
+            throw new InvalidOperationException("Hội đồng đã có phiếu chấm — không thể xoá.");
         if (await _review.Decisions.AnyAsync(d => d.CouncilId == councilId))
-            throw new InvalidOperationException("Hội đồng đã có biên bản — không thể xóa.");
+            throw new InvalidOperationException("Hội đồng đã có biên bản — không thể xoá.");
         if (await _review.AcceptanceEvaluations.AnyAsync(a => a.CouncilId == councilId))
-            throw new InvalidOperationException("Hội đồng đã có đánh giá nghiệm thu — không thể xóa.");
+            throw new InvalidOperationException("Hội đồng đã có đánh giá nghiệm thu — không thể xoá.");
 
         var meetings = await _review.Meetings.Where(m => m.CouncilId == councilId).ToListAsync();
         var meetingIds = meetings.Select(m => m.Id).ToList();

@@ -739,6 +739,20 @@ cho loại đề tài: **xoá vĩnh viễn chỉ khi KHÔNG ai tham chiếu**; c
 Thông báo nêu **tên** bản ghi và **liệt kê chỗ đang dùng**, để Admin biết phải gỡ ở đâu thay vì
 đoán mò.
 
+### Cấu hình bước nhảy điểm — sửa 09/08
+
+`GET /api/system-settings/scoring-policy` → `{ scoreDecimalPlaces }`. **Mọi user đã đăng nhập**
+đọc được (như `upload-policy`).
+
+Vì sao phải tách: màn chấm điểm của hội đồng cần biết bước nhảy để dựng ô nhập, nhưng trước đó nó
+gọi `GET /system-settings` — endpoint **chỉ cho Admin**. Reviewer luôn ăn **403**, lỗi bị nuốt, rơi
+về mặc định số nguyên. Cộng thêm `SCORE_DECIMAL_PLACES` **chưa từng được seed thành dòng** nên Admin
+sửa cũng **404**. Kết quả: tính năng A10 *"Admin đặt bước nhảy điểm"* **chưa bao giờ chạy** dù chốt
+chặn phía máy chủ vẫn đúng.
+
+Nay: thêm endpoint công khai + seed dòng cấu hình. `GET /system-settings` (danh sách đầy đủ) **vẫn
+chỉ Admin** — reviewer không cần và không nên thấy toàn bộ cấu hình vận hành.
+
 ### Bổ sung SỬA/XOÁ còn thiếu — mới 09/08
 
 Rà CRUD 05/08 phát hiện ba chỗ **có thêm mà không có sửa/xoá**. Nay bổ sung, kèm cửa khoá:

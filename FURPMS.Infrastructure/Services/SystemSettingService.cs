@@ -38,6 +38,12 @@ public class SystemSettingService : ISystemSettingService
         return Map(entity);
     }
 
+    public async Task<ScoringPolicyResponse> GetScoringPolicyAsync() => new()
+    {
+        ScoreDecimalPlaces = await GetIntAsync(
+            SystemSettingKeys.ScoreDecimalPlaces, SystemSettingKeys.DefaultScoreDecimalPlaces)
+    };
+
     public async Task<UploadPolicyResponse> GetUploadPolicyAsync()
     {
         var settings = await _masterData.SystemSettings

@@ -487,6 +487,15 @@ public class DatabaseSeeder
             },
             new SystemSetting
             {
+                Key = SystemSettingKeys.ScoreDecimalPlaces,
+                Value = SystemSettingKeys.DefaultScoreDecimalPlaces.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultScoreDecimalPlaces.ToString(),
+                Description = "Số chữ số thập phân khi chấm điểm (0 = chỉ số nguyên, 1 = cho 0.5/7.5…). " +
+                              "QĐ543 không quy định; BM03 để điểm tối đa toàn số nguyên nên mặc định 0. " +
+                              "Đổi KHÔNG hồi tố — chỉ áp cho phiếu chấm mới."
+            },
+            new SystemSetting
+            {
                 Key = SystemSettingKeys.DeadlineReminderDays,
                 Value = SystemSettingKeys.DefaultDeadlineReminderDays,
                 RecommendedValue = SystemSettingKeys.DefaultDeadlineReminderDays,
@@ -741,7 +750,7 @@ public class DatabaseSeeder
                 DateOfBirth = new DateOnly(1980, 5, 15),
                 Gender = "Nam",
                 Institution = "Trường Đại học FPT",
-                InstitutionAddress = "Hòa Lạc, Hà Nội",
+                InstitutionAddress = "Hoà Lạc, Hà Nội",
                 Nationality = "Việt Nam",
                 IsEligiblePi = true,
                 CreatedAt = DateTime.UtcNow,

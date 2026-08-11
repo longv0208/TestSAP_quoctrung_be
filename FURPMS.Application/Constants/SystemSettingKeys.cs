@@ -1,6 +1,6 @@
 namespace FURPMS.Application.Constants;
 
-/// <summary>Khóa cấu hình vận hành trong bảng <c>system_settings</c>.</summary>
+/// <summary>Khoá cấu hình vận hành trong bảng <c>system_settings</c>.</summary>
 public static class SystemSettingKeys
 {
     public const string UploadMaxFileSizeMb = "UPLOAD_MAX_FILE_SIZE_MB";

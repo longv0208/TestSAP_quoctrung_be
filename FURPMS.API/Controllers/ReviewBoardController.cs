@@ -45,7 +45,7 @@ public class ReviewBoardController : ControllerBase
     public async Task<IActionResult> DeleteRound(Guid roundId)
     {
         await _board.DeleteRoundAsync(roundId);
-        return Ok(ApiResponse.Ok("Đã xóa vòng."));
+        return Ok(ApiResponse.Ok("Đã xoá vòng."));
     }
 
     [HttpPost("api/rounds/{roundId:guid}/projects")]

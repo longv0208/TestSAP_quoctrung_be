@@ -120,7 +120,7 @@ public class UserService : IUserService
         return await GetUserByIdAsync(userId);
     }
 
-    // Khóa/mở tài khoản (Admin) — FE UserManagement gọi PATCH /api/users/{id}/toggle-active.
+    // Khoá/mở tài khoản (Admin) — FE UserManagement gọi PATCH /api/users/{id}/toggle-active.
     public async Task<UserDto> ToggleActiveAsync(Guid userId)
     {
         var user = await _users.Query()
