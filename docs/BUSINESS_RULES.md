@@ -86,6 +86,10 @@
 | D9 | Yêu cầu gia hạn phải ghi **SỐ THÁNG**; gõ "3 tháng" ⇒ báo lỗi rõ, không im lặng bỏ qua | tự phát hiện | `AmendmentService.ApplyExtensionIfNeededAsync` | 400 |
 | D10 | Số tài khoản / CCCD của Bên B: **chính chủ tự khai**, đọc ra **luôn che**, **tuỳ chọn** không chặn lập hợp đồng | QĐ543 **BM05 Điều 7.2** (chứng thư số) + user chốt 08/08 | `ContractIdentityController` (chỉ đường `/me`) | 400 |
 | D11 | Tự sinh Word hợp đồng đủ mẫu BM05 → ký ngoài → **upload bản ký làm minh chứng** | rule #21 (tuần 10) | `ExportContractDocAsync` + `Document` polymorphic | — |
+| D12 | **Lịch giải ngân do LOẠI ĐỀ TÀI quyết định, PI không được chọn.** Ứng dụng **4 đợt 30–30–30–10**; Cơ bản **1 đợt 100% sau nghiệm thu "Đạt"** | QĐ543 **Điều 16** | `DisbursementService.GenerateFromTemplateAsync` đọc `disbursement_templates` theo `ResearchTypeId`; seed ở `DatabaseSeeder.SeedDisbursementTemplatesAsync` | — |
+| D13 | Tỷ lệ từng đợt **để trong master data**, không cắm số vào code; **đợt cuối lấy phần còn lại** để tổng luôn khớp giá trị hợp đồng | tránh lệch tiền do làm tròn | `GenerateFromTemplateAsync` | — |
+
+> ⚠️ **"Phương thức khoán chi" (WHOLE/PARTIAL) KHÔNG có trong QĐ543** — rà toàn văn, chữ "khoán" chỉ xuất hiện ở *"thuê khoán chuyên môn"* và *"giao khoán"*. Khái niệm này đến từ mẫu thuyết minh cấp Bộ (`Mau-1_Thuyet-minh`). Cột `Proposal.FundingMethod` **vẫn còn trong DB** để đọc dữ liệu cũ nhưng **không còn quyết định số đợt giải ngân** (D12).
 
 ## E. Thực hiện & nghiệm thu
 

@@ -537,7 +537,7 @@ Key hiện có:
 | GET/POST | `/api/contracts/{id}/documents` | Admin, Staff | **Hồ sơ hợp đồng đã ký**: list / upload (multipart `file`) bản ký — Document polymorphic EntityType="Contract" |
 | GET | `/api/contracts/{id}/documents/{documentId}/download` | Admin, Staff | Tải/mở bản hợp đồng đã ký (Bearer) |
 | GET | `/api/contracts/{contractId}/disbursements` | * | Đợt giải ngân |
-| POST | `/api/contracts/{contractId}/disbursements/generate` | Admin, Staff | Sinh lịch giải ngân |
+| POST | `/api/contracts/{contractId}/disbursements/generate` | Admin, Staff | **Sinh lịch giải ngân theo LOẠI ĐỀ TÀI** (QĐ543 Điều 16 — đổi 11/08). Đọc `disbursement_templates` của `researchTypeId`: **Ứng dụng 4 đợt 30–30–30–10**, **Cơ bản 1 đợt 100% sau nghiệm thu**. Chưa cấu hình mốc ⇒ lùi về 1 đợt 100%. Đợt cuối lấy phần còn lại nên tổng luôn khớp giá trị hợp đồng. **409** nếu hợp đồng đã có đợt. <br>⚠️ Trước đây chia theo `Proposal.FundingMethod` (WHOLE ⇒ 3 đợt / PARTIAL ⇒ 1 đợt mỗi sản phẩm) — **bỏ**, vì "phương thức khoán chi" không có trong QĐ543. |
 | GET | `/api/contracts/{contractId}/deliverables` | * | Sản phẩm phải nộp |
 | POST | `/api/contracts/{contractId}/deliverables` | Admin, Staff | **Staff thêm 1 sản phẩm** cho hợp đồng `{ productName, categoryId?, dueDate?, description? }` (đề cương không có trường sản phẩm cấu trúc → nhập tay; PI sau đó nộp file). |
 | GET | `/api/contracts/{contractId}/amendments` | * | Điều chỉnh hợp đồng |

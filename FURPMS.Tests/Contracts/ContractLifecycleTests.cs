@@ -80,7 +80,7 @@ public class ContractLifecycleTests
     // ── Test 1: WHOLE → 3 tranches, equal split when no template ────────────
 
     [Fact]
-    public async Task GenerateWhole_NoTemplate_Creates3EqualTranches()
+    public async Task Generate_Applied_Creates4Tranches_30_30_30_10()
     {
         var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
 
@@ -90,27 +90,33 @@ public class ContractLifecycleTests
         db.ResearchTypes.Add(rt);
         await db.SaveChangesAsync();
 
+        // QĐ543 Điều 16.1: đề tài ỨNG DỤNG giải ngân 04 đợt theo tỉ lệ 30–30–30–10.
+        db.DisbursementTemplates.AddRange(
+            new DisbursementTemplate { ResearchTypeId = rt.Id, RoundNumber = 1, Percentage = 30m, ConditionDescription = "Sau khi ky hop dong", IsActive = true },
+            new DisbursementTemplate { ResearchTypeId = rt.Id, RoundNumber = 2, Percentage = 30m, ConditionDescription = "Sau danh gia tien do giai doan 1", IsActive = true },
+            new DisbursementTemplate { ResearchTypeId = rt.Id, RoundNumber = 3, Percentage = 30m, ConditionDescription = "Sau danh gia tien do giai doan 2", IsActive = true },
+            new DisbursementTemplate { ResearchTypeId = rt.Id, RoundNumber = 4, Percentage = 10m, ConditionDescription = "Sau nghiem thu Dat", IsActive = true });
+        await db.SaveChangesAsync();
+
         var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
-        proposal.FundingMethod = "WHOLE";
         db.Projects.Add(project);
         db.Proposals.Add(proposal);
         await db.SaveChangesAsync();
 
-        var contract = MakeContract(project.Id, 1_200_000m);
+        var contract = MakeContract(project.Id, 1_000_000m);
         contract.Project = project;
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
         var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)));
-        var result = (await svc.GenerateAsync(contract.Id)).ToList();
+        var result = (await svc.GenerateAsync(contract.Id)).OrderBy(x => x.RoundNumber).ToList();
 
-        Assert.Equal(3, result.Count);
+        Assert.Equal(4, result.Count);
+        Assert.Equal(new[] { 30m, 30m, 30m, 10m }, result.Select(r => r.Percentage).ToArray());
         Assert.All(result, t => Assert.Equal("PENDING", t.Status));
-        // Equal split: floor(100/3)=33, 33, 34
-        Assert.Equal(33m, result[0].Percentage);
-        Assert.Equal(33m, result[1].Percentage);
-        Assert.Equal(34m, result[2].Percentage);
-        Assert.Equal(100m, result.Sum(r => r.Percentage));
+        // Tổng tiền phải khớp đúng giá trị hợp đồng, không lệch do làm tròn từng đợt.
+        Assert.Equal(contract.TotalAmount, result.Sum(r => r.PlannedAmount));
+        Assert.Contains("nghiem thu", result[3].ConditionDescription, StringComparison.OrdinalIgnoreCase);
     }
 
     // ── Test 2: WHOLE with templates → uses template percentages ─────────────
@@ -156,20 +162,25 @@ public class ContractLifecycleTests
     // ── Test 3: PARTIAL → one tranche per deliverable ────────────────────────
 
     [Fact]
-    public async Task GeneratePartial_CreatesOneTranchePerDeliverable()
+    public async Task Generate_Basic_CreatesSingleTrancheAfterAcceptance()
     {
         var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
 
         var pi = MakeUser();
         var rt = MakeResearchType();
-        var productCat = new ProductCategory { Code = "SOFTWARE", Name = "Software", IsActive = true };
         db.Users.Add(pi);
         db.ResearchTypes.Add(rt);
-        db.ProductCategories.Add(productCat);
+        await db.SaveChangesAsync();
+
+        // QĐ543 Điều 16.2: đề tài CƠ BẢN giải ngân 01 lần sau khi nghiệm thu "Đạt".
+        db.DisbursementTemplates.Add(new DisbursementTemplate
+        {
+            ResearchTypeId = rt.Id, RoundNumber = 1, Percentage = 100m,
+            ConditionDescription = "Sau khi Hoi dong nghiem thu danh gia Dat", IsActive = true
+        });
         await db.SaveChangesAsync();
 
         var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
-        proposal.FundingMethod = "PARTIAL";
         db.Projects.Add(project);
         db.Proposals.Add(proposal);
         await db.SaveChangesAsync();
@@ -179,19 +190,45 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        // 2 deliverables
-        db.ProjectDeliverables.AddRange(
-            new FURPMS.Domain.Entities.Projects.ProjectDeliverable { ProjectId = project.Id, ContractId = contract.Id, CategoryId = productCat.Id, ProductName = "Deliverable A", AcceptanceStatus = "PENDING", IsCompleted = false },
-            new FURPMS.Domain.Entities.Projects.ProjectDeliverable { ProjectId = project.Id, ContractId = contract.Id, CategoryId = productCat.Id, ProductName = "Deliverable B", AcceptanceStatus = "PENDING", IsCompleted = false }
-        );
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)));
+        var result = (await svc.GenerateAsync(contract.Id)).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(100m, result[0].Percentage);
+        Assert.Equal(900_000m, result[0].PlannedAmount);
+    }
+
+    /// <summary>
+    /// Chưa cấu hình mốc cho loại đề tài thì lùi về MỘT đợt 100% sau nghiệm thu — thà ít đợt còn
+    /// hơn bịa ra lịch giải ngân không có căn cứ trong quy định.
+    /// </summary>
+    [Fact]
+    public async Task Generate_NoTemplate_FallsBackToSingleTranche()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+
+        var pi = MakeUser();
+        var rt = MakeResearchType();
+        db.Users.Add(pi);
+        db.ResearchTypes.Add(rt);
+        await db.SaveChangesAsync();
+
+        var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+
+        var contract = MakeContract(project.Id, 1_200_000m);
+        contract.Project = project;
+        db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
         var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)));
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
-        Assert.Equal(2, result.Count);
-        Assert.All(result, t => Assert.NotNull(t.DeliverableId));
-        Assert.Equal(100m, result.Sum(r => r.Percentage));
+        Assert.Single(result);
+        Assert.Equal(100m, result[0].Percentage);
+        Assert.Equal(1_200_000m, result[0].PlannedAmount);
     }
 
     // ── Test 4: Deliverable PASSED + PARTIAL → condition_met_at set, tranche NOT DISBURSED ──

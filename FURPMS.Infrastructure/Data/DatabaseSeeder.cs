@@ -39,6 +39,7 @@ public class DatabaseSeeder
         await SeedAmendmentCategoriesAsync();
         await SeedSystemFinancialConfigsAsync();
         await SeedSystemSettingsAsync();
+        await SeedDisbursementTemplatesAsync();
         await FixAppliedOrderingUnitFlagAsync();
         await SeedDemoProposalAsync();
         await EnsureDemoCycleOpenAsync();
@@ -328,10 +329,13 @@ public class DatabaseSeeder
         _db.ProjectDeliverables.AddRange(deliv1, deliv2);
         await _db.SaveChangesAsync();
 
+        // QĐ543 Điều 16.1 — đề tài ỨNG DỤNG giải ngân 04 đợt 30–30–30–10 (khớp bảng
+        // disbursement_templates ở SeedDisbursementTemplatesAsync).
         _db.ContractDisbursements.AddRange(
-            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 1, PhaseId = phase1.Id, Percentage = 40m, PlannedAmount = 180_000_000m, ActualAmount = 180_000_000m, ConditionDescription = "Tạm ứng sau khi ký hợp đồng", Status = DisbursementStatus.Disbursed, DisbursedAt = now.AddDays(-24), BankReference = "FT2026030100123" },
-            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 2, PhaseId = phase1.Id, Percentage = 40m, PlannedAmount = 180_000_000m, ConditionDescription = "Sau khi nghiệm thu sản phẩm giữa kỳ", Status = DisbursementStatus.Pending, DeliverableId = deliv1.Id },
-            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 3, PhaseId = phase2.Id, Percentage = 20m, PlannedAmount = 90_000_000m,  ConditionDescription = "Sau khi nghiệm thu cuối kỳ", Status = DisbursementStatus.Pending, DeliverableId = deliv2.Id }
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 1, PhaseId = phase1.Id, Percentage = 30m, PlannedAmount = 135_000_000m, ActualAmount = 135_000_000m, ConditionDescription = "Sau khi ký kết Hợp đồng NCKH với Chủ nhiệm đề tài", Status = DisbursementStatus.Disbursed, DisbursedAt = now.AddDays(-24), BankReference = "FT2026030100123" },
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 2, PhaseId = phase1.Id, Percentage = 30m, PlannedAmount = 135_000_000m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 1 đạt yêu cầu", Status = DisbursementStatus.Pending, DeliverableId = deliv1.Id },
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 3, PhaseId = phase2.Id, Percentage = 30m, PlannedAmount = 135_000_000m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 2 đạt yêu cầu", Status = DisbursementStatus.Pending, DeliverableId = deliv2.Id },
+            new ContractDisbursement { ContractId = contract.Id, RoundNumber = 4, PhaseId = phase2.Id, Percentage = 10m, PlannedAmount = 45_000_000m,  ConditionDescription = "Sau khi Hội đồng nghiệm thu đánh giá \"Đạt\"", Status = DisbursementStatus.Pending, DeliverableId = deliv2.Id }
         );
         await _db.SaveChangesAsync();
     }
@@ -456,6 +460,47 @@ public class DatabaseSeeder
             });
             await _db.SaveChangesAsync();
         }
+    }
+
+    /// <summary>
+    /// Mốc giải ngân theo QĐ543 **Điều 16** — lịch phụ thuộc **LOẠI ĐỀ TÀI**, không phải lựa chọn
+    /// của chủ nhiệm:
+    /// <list type="bullet">
+    /// <item><b>Ứng dụng</b>: 04 đợt <b>30–30–30–10</b>. Đợt 1 sau khi ký hợp đồng; đợt 2 và 3 sau
+    /// khi đánh giá tiến độ giai đoạn 1, giai đoạn 2 "Đạt"; đợt 4 sau khi nghiệm thu "Đạt".</item>
+    /// <item><b>Cơ bản</b>: toàn bộ kinh phí giải ngân <b>01 lần</b> sau khi nghiệm thu "Đạt".</item>
+    /// </list>
+    /// <para>
+    /// Để trong bảng master data (không cắm số vào code) để Phòng QLKH đổi được khi quy định đổi —
+    /// cẩm nang capstone gọi việc cắm tỷ lệ 30/30/30/10 vào mã nguồn là hardcode tham số nghiệp vụ.
+    /// </para>
+    /// </summary>
+    private async Task SeedDisbursementTemplatesAsync()
+    {
+        if (await _db.DisbursementTemplates.AnyAsync()) return;
+
+        var applied = await _db.ResearchTypes.FirstOrDefaultAsync(t => t.Code == "APPLIED");
+        var basic = await _db.ResearchTypes.FirstOrDefaultAsync(t => t.Code == "BASIC");
+
+        var rows = new List<DisbursementTemplate>();
+        if (applied != null)
+        {
+            rows.AddRange(new[]
+            {
+                new DisbursementTemplate { ResearchTypeId = applied.Id, RoundNumber = 1, Percentage = 30m, ConditionDescription = "Sau khi ký kết Hợp đồng NCKH với Chủ nhiệm đề tài", IsActive = true },
+                new DisbursementTemplate { ResearchTypeId = applied.Id, RoundNumber = 2, Percentage = 30m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 1 đạt yêu cầu", IsActive = true },
+                new DisbursementTemplate { ResearchTypeId = applied.Id, RoundNumber = 3, Percentage = 30m, ConditionDescription = "Sau khi đánh giá tiến độ giai đoạn 2 đạt yêu cầu", IsActive = true },
+                new DisbursementTemplate { ResearchTypeId = applied.Id, RoundNumber = 4, Percentage = 10m, ConditionDescription = "Sau khi Hội đồng nghiệm thu đánh giá \"Đạt\"", IsActive = true },
+            });
+        }
+        if (basic != null)
+        {
+            rows.Add(new DisbursementTemplate { ResearchTypeId = basic.Id, RoundNumber = 1, Percentage = 100m, ConditionDescription = "Sau khi Hội đồng nghiệm thu đánh giá \"Đạt\"", IsActive = true });
+        }
+        if (rows.Count == 0) return;
+
+        _db.DisbursementTemplates.AddRange(rows);
+        await _db.SaveChangesAsync();
     }
 
     private async Task SeedSystemSettingsAsync()

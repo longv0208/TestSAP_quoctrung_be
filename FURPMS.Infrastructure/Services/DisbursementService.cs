@@ -88,14 +88,14 @@ public class DisbursementService : IDisbursementService
         if (contract.Disbursements.Any())
             throw new InvalidOperationException("Hợp đồng này đã sinh các đợt giải ngân rồi.");
 
-        var fundingMethod = contract.Project?.Proposals.FirstOrDefault()?.FundingMethod ?? FundingMethod.Whole;
-
-        List<ContractDisbursement> tranches;
-
-        if (fundingMethod == FundingMethod.Partial)
-            tranches = await GeneratePartialAsync(contract);
-        else
-            tranches = await GenerateWholeAsync(contract);
+        // QĐ543 **Điều 16**: lịch giải ngân do **LOẠI ĐỀ TÀI** quyết định, KHÔNG phải lựa chọn của
+        // chủ nhiệm. Ứng dụng 4 đợt 30–30–30–10; Cơ bản 1 lần sau nghiệm thu "Đạt".
+        //
+        // Trước đây code chia theo `Proposal.FundingMethod` (WHOLE/PARTIAL) — khái niệm "phương
+        // thức khoán chi" lấy từ mẫu thuyết minh cấp Bộ, **không có trong QĐ543** (rà toàn văn:
+        // chữ "khoán" chỉ xuất hiện ở "thuê khoán chuyên môn" và "giao khoán", không có mục nào
+        // cho chủ nhiệm chọn kiểu giải ngân). Chia sai gốc thì số đợt và điều kiện mở đều lệch.
+        var tranches = await GenerateFromTemplateAsync(contract);
 
         _contracts.AddDisbursementsRange(tranches);
         await _contracts.SaveChangesAsync();
@@ -166,6 +166,60 @@ public class DisbursementService : IDisbursementService
             $"Đợt {d.RoundNumber} là đợt giải ngân CUỐI — theo QĐ543 (BM05 Điều 4.2) chỉ được chi " +
             "kinh phí còn lại sau khi đề tài được hội đồng nghiệm thu công nhận kết quả Đạt. " +
             $"Đề tài đang ở trạng thái \"{project.Status}\", chưa có kết luận nghiệm thu Đạt.");
+    }
+
+    /// <summary>
+    /// Sinh đợt giải ngân từ bảng mốc chuẩn của **loại đề tài** (QĐ543 Điều 16).
+    /// Chưa cấu hình mốc cho loại đó thì lùi về một đợt 100% sau nghiệm thu — thà ít đợt còn hơn
+    /// bịa ra lịch không có căn cứ.
+    /// </summary>
+    private async Task<List<ContractDisbursement>> GenerateFromTemplateAsync(
+        Domain.Entities.Contracts.Contract contract)
+    {
+        var templates = await _masterData.DisbursementTemplates
+            .Where(t => t.ResearchTypeId == contract.Project.ResearchTypeId && t.IsActive)
+            .OrderBy(t => t.RoundNumber)
+            .ToListAsync();
+
+        if (templates.Count == 0)
+        {
+            return new List<ContractDisbursement>
+            {
+                new()
+                {
+                    ContractId = contract.Id,
+                    RoundNumber = 1,
+                    Percentage = 100m,
+                    PlannedAmount = contract.TotalAmount,
+                    ConditionDescription = "Sau khi Hội đồng nghiệm thu đánh giá \"Đạt\"",
+                    Status = DisbursementStatus.Pending
+                }
+            };
+        }
+
+        var list = new List<ContractDisbursement>();
+        decimal allocated = 0;
+        for (int i = 0; i < templates.Count; i++)
+        {
+            var t = templates[i];
+            // Đợt cuối lấy phần CÒN LẠI để tổng luôn khớp giá trị hợp đồng, tránh lệch vài đồng
+            // do làm tròn từng đợt.
+            var amount = i == templates.Count - 1
+                ? contract.TotalAmount - allocated
+                : Math.Round(contract.TotalAmount * t.Percentage / 100m, 0);
+            allocated += amount;
+
+            list.Add(new ContractDisbursement
+            {
+                ContractId = contract.Id,
+                RoundNumber = t.RoundNumber,
+                Percentage = t.Percentage,
+                PlannedAmount = amount,
+                ConditionDescription = t.ConditionDescription,
+                Status = DisbursementStatus.Pending
+            });
+        }
+        return list;
     }
 
     private async Task<List<ContractDisbursement>> GenerateWholeAsync(Domain.Entities.Contracts.Contract contract)

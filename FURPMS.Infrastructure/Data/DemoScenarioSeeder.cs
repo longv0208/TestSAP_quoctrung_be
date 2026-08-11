@@ -851,11 +851,20 @@ public class DemoScenarioSeeder
         // Giải ngân đủ đợt, tất cả đã có minh chứng (rule #15: chỉ theo dõi mốc, không quản tiền).
         var disbursements = await _db.ContractDisbursements
             .Where(d => d.ContractId == contract.Id).OrderBy(d => d.RoundNumber).ToListAsync();
+        // Ngày chi phải NẰM SAU ngày điều kiện được thoả: đợt cuối gắn với nghiệm thu nên đặt ở cuối
+        // hợp đồng. Trước đây rải theo công thức cố định nên đề tài cơ bản (1 đợt "sau nghiệm thu")
+        // lại hiện ngày chi giữa kỳ — mở timeline ra là thấy sai thứ tự ngay.
+        var acceptedAt = new DateTime(contract.EndDate.Year, contract.EndDate.Month, contract.EndDate.Day,
+            0, 0, 0, DateTimeKind.Utc).AddDays(-20);
+        var signedAt = contract.SignedAt ?? acceptedAt.AddMonths(-12);
+        var span = (acceptedAt - signedAt).TotalDays;
         foreach (var d in disbursements)
         {
             d.Status = DisbursementStatus.Disbursed;
             d.ActualAmount = d.PlannedAmount;
-            d.DisbursedAt = now.AddDays(-500 + d.RoundNumber * 100);
+            d.DisbursedAt = disbursements.Count == 1
+                ? acceptedAt
+                : signedAt.AddDays(span * (d.RoundNumber - 1) / (disbursements.Count - 1));
             d.BankReference = $"FT2025{d.RoundNumber:00}00{d.RoundNumber}";
         }
 
@@ -1231,33 +1240,50 @@ public class DemoScenarioSeeder
         }
         await _db.SaveChangesAsync();
 
-        _db.ContractDisbursements.AddRange(
-            new ContractDisbursement
+        // Mốc giải ngân lấy từ bảng mốc chuẩn của LOẠI ĐỀ TÀI (QĐ543 Điều 16) — trước đây demo cắm
+        // cứng 40–40–20 nên hội đồng mở màn hình ra là thấy lệch quy định ngay.
+        var project = await _db.Projects.FirstAsync(p => p.Id == projectId);
+        var templates = await _db.DisbursementTemplates
+            .Where(t => t.ResearchTypeId == project.ResearchTypeId && t.IsActive)
+            .OrderBy(t => t.RoundNumber)
+            .ToListAsync();
+        if (templates.Count == 0)
+            templates = new List<DisbursementTemplate>
             {
-                ContractId = contract.Id, RoundNumber = 1, PhaseId = phase1.Id, Percentage = 40m,
-                PlannedAmount = Math.Round(contract.TotalAmount * 0.4m, 0),
-                ActualAmount = Math.Round(contract.TotalAmount * 0.4m, 0),
-                ConditionDescription = "Tạm ứng sau khi hai bên ký hợp đồng",
-                Status = DisbursementStatus.Disbursed,
-                DisbursedAt = contract.SignedAt?.AddDays(5),
-                BankReference = "FT" + contract.ContractNumber.Replace("HĐ-", "").Replace("-", "")
-            },
-            new ContractDisbursement
+                new() { RoundNumber = 1, Percentage = 100m, ConditionDescription = "Sau khi Hội đồng nghiệm thu đánh giá \"Đạt\"" }
+            };
+
+        decimal allocated = 0;
+        for (var i = 0; i < templates.Count; i++)
+        {
+            var t = templates[i];
+            var isLast = i == templates.Count - 1;
+            var amount = isLast
+                ? contract.TotalAmount - allocated
+                : Math.Round(contract.TotalAmount * t.Percentage / 100m, 0);
+            allocated += amount;
+
+            // Đợt đầu (tạm ứng sau ký) đã chi thật; các đợt sau còn chờ điều kiện — riêng đề tài cơ
+            // bản chỉ có 1 đợt và nó nằm SAU nghiệm thu nên không được đánh dấu đã chi trước.
+            var advancePaid = i == 0 && templates.Count > 1;
+
+            _db.ContractDisbursements.Add(new ContractDisbursement
             {
-                ContractId = contract.Id, RoundNumber = 2, PhaseId = phase1.Id, Percentage = 40m,
-                PlannedAmount = Math.Round(contract.TotalAmount * 0.4m, 0),
-                ConditionDescription = "Sau khi báo cáo tiến độ giữa kỳ được duyệt",
-                Status = DisbursementStatus.Pending,
-                DeliverableId = deliverables.FirstOrDefault()?.Id
-            },
-            new ContractDisbursement
-            {
-                ContractId = contract.Id, RoundNumber = 3, PhaseId = phase2.Id, Percentage = 20m,
-                PlannedAmount = contract.TotalAmount - 2 * Math.Round(contract.TotalAmount * 0.4m, 0),
-                ConditionDescription = "Sau khi hội đồng nghiệm thu kết luận Đạt",
-                Status = DisbursementStatus.Pending,
-                DeliverableId = deliverables.LastOrDefault()?.Id
+                ContractId = contract.Id,
+                RoundNumber = t.RoundNumber,
+                PhaseId = isLast ? phase2.Id : phase1.Id,
+                Percentage = t.Percentage,
+                PlannedAmount = amount,
+                ActualAmount = advancePaid ? amount : null,
+                ConditionDescription = t.ConditionDescription,
+                Status = advancePaid ? DisbursementStatus.Disbursed : DisbursementStatus.Pending,
+                DisbursedAt = advancePaid ? contract.SignedAt?.AddDays(5) : null,
+                BankReference = advancePaid
+                    ? "FT" + contract.ContractNumber.Replace("HĐ-", "").Replace("-", "")
+                    : null,
+                DeliverableId = isLast ? deliverables.LastOrDefault()?.Id : deliverables.FirstOrDefault()?.Id
             });
+        }
         await _db.SaveChangesAsync();
 
         return deliverables;

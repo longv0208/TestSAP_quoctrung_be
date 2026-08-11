@@ -198,6 +198,14 @@ Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
 22. **Trực quan hóa vòng đời đề tài:** timeline mốc + ngày (ký HĐ, giải ngân từng đợt) + click mở minh chứng. (Đã làm: tab "Tiến trình" ở chi tiết hợp đồng.)
 23. **Đa vai (multi-role):** login email+mật khẩu; đổi vai ở **dropdown header** (chỉ hiện vai user thực có). (Đã làm.)
 
+### Chốt từ đối chiếu QĐ543 (nguồn: đọc lại toàn văn quy định, 11/08)
+24. **Lịch giải ngân bám QĐ543 Điều 16 — do LOẠI ĐỀ TÀI quyết định, KHÔNG phải PI chọn.**
+    - Ứng dụng: **4 đợt 30–30–30–10** (ký HĐ → tiến độ GĐ1 → tiến độ GĐ2 → nghiệm thu Đạt).
+    - Cơ bản: **1 đợt 100%** sau khi nghiệm thu "Đạt".
+    - Tỷ lệ nằm ở master data `disbursement_templates` (Phòng QLKH sửa được), **không hardcode**.
+    - ⚠️ **"Phương thức khoán chi" WHOLE/PARTIAL không có trong QĐ543** (chữ "khoán" chỉ có ở "thuê khoán chuyên môn"/"giao khoán") — nó đến từ mẫu thuyết minh cấp Bộ. Cột `Proposal.FundingMethod` giữ lại để đọc dữ liệu cũ nhưng **không còn quyết định số đợt**.
+25. **Đánh giá tiến độ giữa kỳ: Staff làm, KHÔNG lập hội đồng** (giữ rule #16). Căn cứ: QĐ543 nhắc "Hội đồng đánh giá tiến độ" đúng **1 lần ở Điều 10.1**, không có điều nào định nghĩa thành phần/số lượng/thể thức/biên bản; **BM06** đề *"Kính gửi: Phòng Quản lý khoa học"* và chỉ chủ nhiệm ký; **Điều 18.1** chỉ cấp thù lao cho **2 hội đồng** (xét duyệt + nghiệm thu). Staff = đầu mối tiếp nhận và xử lý.
+
 ---
 *(Rule 1–6 — review round, giải ngân, COI, PARTIAL/WHOLE. ⚠️ #2/#3/#6 SUPERSEDED bởi #15/#16 — giữ lại để tra cứu lịch sử.)*
 
