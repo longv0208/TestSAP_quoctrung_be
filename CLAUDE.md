@@ -210,7 +210,19 @@ Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
     - **Điều 14.3 cho phép vượt trần nếu Hiệu trưởng duyệt** ⇒ trần để ở master data `research_types.max_budget_cap`, Phòng QLKH nâng trần cho trường hợp đó. **Không** hardcode và **không** có cờ "bỏ qua trần" cho PI tự bấm.
     - Đơn đặt hàng có trần riêng thì lấy trần **nghiêm ngặt hơn**; đơn nới rộng không phá được trần Điều 14.
     - Wizard nộp đề cương: **bỏ ô "Phương thức cấp kinh phí"** (WHOLE/PARTIAL — xem #24), thay bằng **Tổng dự toán** có hiện trần ngay tại chỗ.
-    - ⚠️ **Điều 15 (trần % theo hạng mục: thù lao 100% · thiết bị 60% · thuê ngoài 60% · hội thảo 30% · VPP 20% · phát sinh/SHTT 10%) CHƯA thực thi** — 12 hạng mục đang seed lấy từ mẫu cấp Bộ, ánh xạ về 6 nhóm của Điều 15 là quyết định nghiệp vụ, **phải hỏi trước khi làm** (không tự đoán).
+27. **Dự toán = đúng 06 hạng mục của QĐ543 Điều 15.1**, kèm trần % trên tổng (user chốt 12/08, chọn phương án "chuẩn quy định nhất"):
+    | Hạng mục | Mã | Trần |
+    |---|---|---|
+    | Thù lao nghiên cứu | `LABOR` | 100% |
+    | Thiết bị, vật tư, nguyên liệu | `EQUIPMENT` | 60% |
+    | Thuê ngoài | `OUTSOURCED` | 60% |
+    | Hội nghị/hội thảo/seminar | `CONFERENCE` | 30% |
+    | Văn phòng phẩm, chi khác | `OFFICE_OTHER` | 20% |
+    | Chi phí phát sinh, sở hữu trí tuệ | `INCIDENTAL_IP` | 10% |
+    - **Bỏ bộ 12 hạng mục cũ** (lấy từ mẫu thuyết minh cấp Bộ: "Chi đoàn ra", "Quản lý phí"… — không có trong quy định của trường). Hạng mục cũ chuyển `IsActive = false`, **KHÔNG xoá**: dự toán đã lưu vẫn trỏ FK vào chúng.
+    - Trần % **để ở master data** `budget_expense_categories.max_percentage`, cùng lý do với rule #26.
+    - **Tổng dự toán = tổng các hạng mục**, không nhập tay riêng (hai con số ở hai chỗ là hai lần sai).
+    - 6 cột tổng hợp của `proposal_budgets` (`labor_amount`, `equipment_amount`, …) map 1-1 với 6 hạng mục và **nay đã được ghi** — trước đây tồn tại nhưng luôn bằng 0.
 
 ---
 *(Rule 1–6 — review round, giải ngân, COI, PARTIAL/WHOLE. ⚠️ #2/#3/#6 SUPERSEDED bởi #15/#16 — giữ lại để tra cứu lịch sử.)*

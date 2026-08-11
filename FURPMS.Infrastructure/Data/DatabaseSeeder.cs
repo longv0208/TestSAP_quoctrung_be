@@ -289,7 +289,13 @@ public class DatabaseSeeder
         _db.Proposals.Add(proposal);
         await _db.SaveChangesAsync();
 
-        _db.ProposalBudgets.Add(new ProposalBudget { ProposalId = proposal.Id, TotalAmount = 145_000_000m });
+        _db.ProposalBudgets.Add(new ProposalBudget
+        {
+            ProposalId = proposal.Id, TotalAmount = 145_000_000m,
+            LaborAmount = 90_000_000m, EquipmentAmount = 26_000_000m,
+            ConferenceAmount = 15_000_000m, OfficeSuppliesAmount = 10_000_000m,
+            IncidentalIpAmount = 4_000_000m
+        });
         _db.ProjectMembers.AddRange(
             new ProjectMember { ProjectId = project.Id, FullName = pi.FullName, Email = pi.Email, UnitName = "Khoa CNTT", WorkContent = "Chủ nhiệm", WorkMonths = 8, IsPi = true, Sequence = 1 },
             new ProjectMember { ProjectId = project.Id, FullName = "Đỗ Thị Em", Email = "em.dt@fpt.edu.vn", UnitName = "SE", WorkContent = "Thành viên chính", WorkMonths = 5, Sequence = 2 }
@@ -402,29 +408,56 @@ public class DatabaseSeeder
         await _db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Hạng mục dự toán — đúng <b>06 hạng mục của QĐ543 Điều 15.1</b> kèm tỷ lệ tối đa tính trên
+    /// tổng kinh phí đề tài: thù lao 100% · thiết bị/vật tư 60% · thuê ngoài 60% · hội thảo 30% ·
+    /// văn phòng phẩm &amp; chi khác 20% · phát sinh/SHTT 10%.
+    /// <para>
+    /// Trước đây seed <b>12</b> hạng mục lấy từ mẫu thuyết minh cấp Bộ (có "Chi đoàn ra", "Quản lý
+    /// phí"…) — những hạng mục đó <b>không nằm trong quy định của trường</b> nên không soi được tỷ
+    /// lệ nào, và chủ nhiệm phải điền một mớ ô không dùng tới.
+    /// </para>
+    /// <para>
+    /// Hạng mục cũ <b>không xoá</b> mà chỉ <c>IsActive = false</c>: dự toán đã lưu vẫn trỏ FK vào
+    /// chúng, xoá là gãy dữ liệu cũ. Ngừng hiện ở form là đủ.
+    /// </para>
+    /// </summary>
     private async Task SeedBudgetExpenseCategoriesAsync()
     {
+        // (code, tên theo Điều 15, tỷ lệ tối đa %, thứ tự)
         var categories = new[]
         {
-            new BudgetExpenseCategory { Code = "LABOR",            Name = "Công lao động trực tiếp",                      Sequence = 1,  IsActive = true },
-            new BudgetExpenseCategory { Code = "MATERIALS",        Name = "Nguyên, nhiên liệu, vật tư, phụ tùng",         Sequence = 2,  IsActive = true },
-            new BudgetExpenseCategory { Code = "DOMESTIC_TRAVEL",  Name = "Công tác trong nước",                          Sequence = 3,  IsActive = true },
-            new BudgetExpenseCategory { Code = "SURVEY",           Name = "Chi điều tra, khảo sát",                       Sequence = 4,  IsActive = true },
-            new BudgetExpenseCategory { Code = "OFFICE_PRINTING",  Name = "Chi văn phòng phẩm, in ấn",                    Sequence = 5,  IsActive = true },
-            new BudgetExpenseCategory { Code = "CONFERENCE",       Name = "Chi hội thảo khoa học",                        Sequence = 6,  IsActive = true },
-            new BudgetExpenseCategory { Code = "ADVISORY_COUNCIL", Name = "Chi Hội đồng tư vấn",                          Sequence = 7,  IsActive = true },
-            new BudgetExpenseCategory { Code = "OUTSOURCED",       Name = "Dịch vụ thuê ngoài phục vụ nghiên cứu",        Sequence = 8,  IsActive = true },
-            new BudgetExpenseCategory { Code = "FIXED_ASSETS",     Name = "Sửa chữa, mua sắm tài sản cố định",            Sequence = 9,  IsActive = true },
-            new BudgetExpenseCategory { Code = "OVERSEAS_TRAVEL",  Name = "Chi đoàn ra",                                  Sequence = 10, IsActive = true },
-            new BudgetExpenseCategory { Code = "OTHER",            Name = "Chi khác",                                     Sequence = 11, IsActive = true },
-            new BudgetExpenseCategory { Code = "MANAGEMENT_FEE",   Name = "Chi quản lý phí cơ quan chủ trì",              Sequence = 12, IsActive = true },
+            new BudgetExpenseCategory { Code = "LABOR",         Name = "Thù lao nghiên cứu",                  MaxPercentage = 100m, Sequence = 1, IsActive = true },
+            new BudgetExpenseCategory { Code = "EQUIPMENT",     Name = "Thiết bị, vật tư, nguyên liệu",       MaxPercentage = 60m,  Sequence = 2, IsActive = true },
+            new BudgetExpenseCategory { Code = "OUTSOURCED",    Name = "Thuê ngoài",                          MaxPercentage = 60m,  Sequence = 3, IsActive = true },
+            new BudgetExpenseCategory { Code = "CONFERENCE",    Name = "Hội nghị/hội thảo/seminar",           MaxPercentage = 30m,  Sequence = 4, IsActive = true },
+            new BudgetExpenseCategory { Code = "OFFICE_OTHER",  Name = "Văn phòng phẩm, chi khác",            MaxPercentage = 20m,  Sequence = 5, IsActive = true },
+            new BudgetExpenseCategory { Code = "INCIDENTAL_IP", Name = "Chi phí phát sinh, sở hữu trí tuệ",   MaxPercentage = 10m,  Sequence = 6, IsActive = true },
         };
 
         foreach (var c in categories)
         {
-            if (!await _db.BudgetExpenseCategories.AnyAsync(x => x.Code == c.Code))
+            var existing = await _db.BudgetExpenseCategories.FirstOrDefaultAsync(x => x.Code == c.Code);
+            if (existing == null)
+            {
                 _db.BudgetExpenseCategories.Add(c);
+                continue;
+            }
+            // LABOR / OUTSOURCED / CONFERENCE đã tồn tại từ bộ 12 cũ với tên khác và không có tỷ lệ
+            // → cập nhật tại chỗ, giữ nguyên Id để dự toán cũ không mất liên kết.
+            existing.Name = c.Name;
+            existing.MaxPercentage = c.MaxPercentage;
+            existing.Sequence = c.Sequence;
+            existing.IsActive = true;
         }
+
+        var keepCodes = categories.Select(c => c.Code).ToArray();
+        var legacy = await _db.BudgetExpenseCategories
+            .Where(x => !keepCodes.Contains(x.Code) && x.IsActive)
+            .ToListAsync();
+        foreach (var l in legacy)
+            l.IsActive = false;
+
         await _db.SaveChangesAsync();
     }
 
@@ -950,11 +983,13 @@ public class DatabaseSeeder
             // QĐ543 Điều 14.1.b — đề tài ứng dụng tối đa 150tr. Dự toán mẫu trước đây lấy từ mẫu
             // thuyết minh cấp Bộ (900tr) nên vượt trần gấp 6 lần ngay trên màn demo.
             TotalAmount = 145_000_000m,
-            LaborAmount = 0,
-            EquipmentAmount = 0,
+            // Khớp đúng 4 dòng dự toán bên dưới — 6 cột tổng hợp này trước đây luôn để 0 nên phần
+            // tổng hợp kinh phí hiện trống dù dự toán đã có.
+            LaborAmount = 95_000_000m,
+            EquipmentAmount = 25_000_000m,
             ExternalServiceAmount = 0,
-            ConferenceAmount = 0,
-            OfficeSuppliesAmount = 0,
+            ConferenceAmount = 15_000_000m,
+            OfficeSuppliesAmount = 10_000_000m,
             IncidentalIpAmount = 0
         };
         _db.ProposalBudgets.Add(budget);
@@ -962,14 +997,16 @@ public class DatabaseSeeder
 
         // Budget items
         var laborCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "LABOR");
-        var officeCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "OFFICE_PRINTING");
-        var advisoryCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "ADVISORY_COUNCIL");
-        var mgmtCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "MANAGEMENT_FEE");
+        var equipmentCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "EQUIPMENT");
+        var conferenceCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "CONFERENCE");
+        var officeCat = await _db.BudgetExpenseCategories.FirstAsync(c => c.Code == "OFFICE_OTHER");
         _db.ProposalBudgetItems.AddRange(
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = laborCat.Id, Amount = 118_000_000m, SourceKhoan = 118_000_000m, Sequence = 1 },
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = officeCat.Id, Amount = 3_000_000m, SourceNsnn = 3_000_000m, Sequence = 5 },
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = advisoryCat.Id, Amount = 7_000_000m, SourceNsnn = 7_000_000m, Sequence = 7 },
-            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = mgmtCat.Id, Amount = 17_000_000m, SourceNsnn = 17_000_000m, Sequence = 12 }
+            // Tổng 145tr; mọi hạng mục nằm dưới trần % của Điều 15 (thù lao 66% ≤100 · thiết bị
+            // 17% ≤60 · hội thảo 10% ≤30 · VPP 7% ≤20).
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = laborCat.Id,      Amount = 95_000_000m, SourceKhoan = 95_000_000m, Sequence = 1 },
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = equipmentCat.Id,  Amount = 25_000_000m, SourceNsnn = 25_000_000m,  Sequence = 2 },
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = conferenceCat.Id, Amount = 15_000_000m, SourceNsnn = 15_000_000m,  Sequence = 4 },
+            new ProposalBudgetItem { ProposalId = proposal.Id, CategoryId = officeCat.Id,     Amount = 10_000_000m, SourceNsnn = 10_000_000m,  Sequence = 5 }
         );
         await _db.SaveChangesAsync();
 

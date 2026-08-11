@@ -27,4 +27,13 @@ public interface IBudgetPolicyService
 
     /// <summary>Ném <see cref="ArgumentException"/> (400) nếu tổng dự toán vượt trần.</summary>
     Task AssertWithinCapAsync(Guid proposalId, decimal totalAmount);
+
+    /// <summary>
+    /// Soi tỷ lệ từng hạng mục trên tổng dự toán — QĐ543 <b>Điều 15.1</b>.
+    /// Ném <see cref="ArgumentException"/> (400) và liệt kê <b>tất cả</b> hạng mục vi phạm trong
+    /// một lần, để chủ nhiệm sửa một lượt thay vì bị báo lỗi từng dòng.
+    /// </summary>
+    /// <param name="amountsByCategoryId">Số tiền đã gộp theo hạng mục.</param>
+    /// <param name="totalAmount">Tổng dự toán để tính tỷ lệ.</param>
+    Task AssertCategoryLimitsAsync(IReadOnlyDictionary<int, decimal> amountsByCategoryId, decimal totalAmount);
 }

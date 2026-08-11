@@ -190,7 +190,7 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | Resource | Base path | Đọc | Ghi |
 |---|---|---|---|
 | Personnel role types | `/api/personnel-role-types` | * | Admin |
-| Budget expense categories | `/api/budget-expense-categories` | * | Admin |
+| Budget expense categories | `/api/budget-expense-categories` | * | Admin |  <!-- 06 hạng mục QĐ543 Điều 15, có `maxPercentage` -->
 | System financial configs | `/api/financial-configs` | * | Admin |
 | Product categories | `/api/product-categories` (`?activeOnly=`) | * | Admin |
 | Organizational units | `/api/organizational-units` | * | Admin |
@@ -256,7 +256,9 @@ Key hiện có:
   ]
 }
 ```
-- `budgetItems[].category` = **tên hạng mục** lấy từ `GET /api/budget-expense-categories` (khớp theo tên; không khớp → "Chi khác").
+- `budgetItems[].category` = **tên hoặc mã hạng mục** lấy từ `GET /api/budget-expense-categories` (khớp tên trước, rồi tới mã; không khớp → "Văn phòng phẩm, chi khác"). **Từ 12/08 chỉ còn 06 hạng mục** theo QĐ543 Điều 15: `LABOR` 100% · `EQUIPMENT` 60% · `OUTSOURCED` 60% · `CONFERENCE` 30% · `OFFICE_OTHER` 20% · `INCIDENTAL_IP` 10%. Bộ 12 hạng mục cũ (mẫu cấp Bộ) chuyển `isActive=false`, **không xoá** — dự toán cũ vẫn đọc được.
+- ⚠️ **400 nếu hạng mục vượt tỷ lệ tối đa** (Điều 15). Lỗi liệt kê **tất cả** hạng mục vi phạm trong một lần, kèm số tiền, tỷ lệ hiện tại và mức tối đa quy ra tiền.
+- Response `budgetItems[]` có thêm **`categoryCode`** (mới 12/08) — FE nạp lại form đối chiếu bằng **mã**, vì tên hạng mục đổi theo quy định còn mã thì giữ.
 - Backend lưu đầy đủ members (kèm email/đơn vị) + budget items (kèm ghi chú) và **tự tính lại tổng kinh phí**.
 - **`totalBudget`** (mới 12/08): tổng dự toán khi chủ nhiệm chưa tách hạng mục — wizard FE gửi trường này. Có `budgetItems` thì tổng **luôn** lấy từ tổng hạng mục, `totalBudget` bị bỏ qua.
 - ⚠️ **400 nếu vượt trần kinh phí** (QĐ543 **Điều 14**: cơ bản ≤ 100tr · ứng dụng ≤ 150tr). Áp cho `POST /proposals`, `PUT /proposals/{id}`, tạo bản chỉnh sửa, `PUT /proposals/{id}/budget`, và kiểm lại ở `POST /proposals/{id}/submit`. Thông báo lỗi nêu rõ trần + cách xử lý khi được duyệt cấp vượt trần (Điều 14.3).

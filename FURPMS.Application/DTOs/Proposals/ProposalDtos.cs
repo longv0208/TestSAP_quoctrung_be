@@ -16,7 +16,16 @@ public class ProposalMemberDto
 public class ProposalBudgetItemDto
 {
     public int Id { get; set; }
+
+    /// <summary>Tên hạng mục để hiển thị.</summary>
     public string Category { get; set; } = null!;
+
+    /// <summary>
+    /// Mã hạng mục — FE nạp lại form thì đối chiếu bằng mã, không bằng tên: tên đổi theo quy định
+    /// (bộ 12 hạng mục cũ đã đổi sang 06 hạng mục Điều 15) mà mã thì giữ nguyên.
+    /// </summary>
+    public string? CategoryCode { get; set; }
+
     public decimal Amount { get; set; }
     public string? Note { get; set; }
 }

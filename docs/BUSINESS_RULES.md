@@ -38,6 +38,9 @@
 | A10 | Trần **để ở master data** `research_types.max_budget_cap`, không cắm số vào code — vì Điều 14.3 cho phép Hiệu trưởng duyệt vượt trần; khi đó Phòng QLKH nâng trần (có dấu vết) chứ hệ thống không tự mở | QĐ543 **Điều 14.3** | `ResearchType.MaxBudgetCap`; `PUT /research-types/{id}` | — |
 | A11 | Đơn **đặt hàng** đặt trần riêng thì lấy trần **nghiêm ngặt hơn**; đơn nới rộng hơn **không** phá được trần Điều 14 | rule #8 + Điều 14 | `BudgetPolicyService.GetCapAsync` (lấy `Min`) | 400 |
 | A12 | Chủ nhiệm **KHÔNG chọn "phương thức khoán chi"** — lịch giải ngân do loại đề tài quyết định (xem D12). Ô này đã gỡ khỏi wizard | QĐ543 không có khái niệm này | `Step3Details.tsx` | — |
+| A13 | **Dự toán chỉ gồm 06 hạng mục của Điều 15**: thù lao · thiết bị/vật tư · thuê ngoài · hội nghị/hội thảo · VPP & chi khác · phát sinh/SHTT | QĐ543 **Điều 15.1** | `DatabaseSeeder.SeedBudgetExpenseCategoriesAsync`; 12 hạng mục cũ (mẫu cấp Bộ) chuyển `IsActive = false`, **không xoá** để dự toán cũ không gãy FK | — |
+| A14 | **Tỷ lệ tối đa từng hạng mục trên TỔNG dự toán**: 100 · 60 · 60 · 30 · 20 · 10 (%) | QĐ543 **Điều 15.1** | `BudgetPolicyService.AssertCategoryLimitsAsync` — gọi từ `SyncBudgetItemsAsync` + `ProposalBudgetService.UpdateBudgetAsync`; lỗi liệt kê **tất cả** hạng mục vi phạm một lần | 400 |
+| A15 | Tổng dự toán = **tổng các hạng mục**, không nhập tay | tránh hai con số đá nhau | `SyncBudgetItemsAsync`; FE `BudgetBreakdownTable` tự cộng | — |
 
 ## B. Hội đồng
 

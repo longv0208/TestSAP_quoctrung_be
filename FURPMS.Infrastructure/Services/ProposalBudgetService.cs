@@ -52,6 +52,12 @@ public class ProposalBudgetService : IProposalBudgetService
         // vượt trần ở bước nộp.
         await _budgetPolicy.AssertWithinCapAsync(proposalId, request.TotalAmount);
 
+        // QĐ543 Điều 15 — tỷ lệ từng hạng mục. Gộp trước vì một hạng mục có thể có nhiều dòng.
+        var byCategory = request.Items
+            .GroupBy(i => i.CategoryId)
+            .ToDictionary(g => g.Key, g => g.Sum(i => i.Amount));
+        await _budgetPolicy.AssertCategoryLimitsAsync(byCategory, request.TotalAmount);
+
         var budget = await _proposals.Budgets
             .FirstOrDefaultAsync(b => b.ProposalId == proposalId)
             ?? throw new KeyNotFoundException($"Budget for proposal {proposalId} not found.");

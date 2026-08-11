@@ -361,8 +361,7 @@ public class DemoScenarioSeeder
                 SalaryCoefficient = 0.49m, Sequence = 3
             });
 
-        _db.ProposalBudgets.Add(new ProposalBudget { ProposalId = proposal.Id, TotalAmount = spec.Budget });
-        await _db.SaveChangesAsync();
+        await SeedBudgetAsync(proposal.Id, spec.Budget);
 
         var activities = new List<ProposalActivity>();
         var monthsPerContent = Math.Max(1, spec.DurationMonths / spec.Contents.Length);
@@ -1206,6 +1205,59 @@ public class DemoScenarioSeeder
         _db.Contracts.Add(contract);
         await _db.SaveChangesAsync();
         return contract;
+    }
+
+    /// <summary>
+    /// Dự toán mẫu tách theo <b>06 hạng mục QĐ543 Điều 15</b>, tỷ lệ chọn sẵn nằm dưới trần:
+    /// thù lao 62% (≤100) · thiết bị 18% (≤60) · hội thảo 10% (≤30) · VPP 7% (≤20) · SHTT 3% (≤10).
+    /// <para>
+    /// Trước đây demo chỉ ghi một con số tổng, nên mở bản xem lại ra là bảng dự toán trống trơn —
+    /// đúng phần hội đồng soi kỹ nhất khi thẩm định kinh phí.
+    /// </para>
+    /// </summary>
+    private async Task SeedBudgetAsync(Guid proposalId, decimal total)
+    {
+        // Làm tròn tới NGHÌN cho số đẹp. .NET không nhận decimals âm như một số ngôn ngữ khác
+        // (Math.Round(x, -3) ném ArgumentOutOfRange) nên phải chia–làm tròn–nhân lại.
+        decimal Part(decimal pct) => Math.Round(total * pct / 100m / 1000m, 0) * 1000m;
+
+        var labor = Part(62m);
+        var equipment = Part(18m);
+        var conference = Part(10m);
+        var office = Part(7m);
+        var ip = total - labor - equipment - conference - office;   // phần dư dồn vào SHTT (~3%)
+
+        _db.ProposalBudgets.Add(new ProposalBudget
+        {
+            ProposalId = proposalId,
+            TotalAmount = total,
+            LaborAmount = labor,
+            EquipmentAmount = equipment,
+            ConferenceAmount = conference,
+            OfficeSuppliesAmount = office,
+            IncidentalIpAmount = ip
+        });
+        await _db.SaveChangesAsync();
+
+        var byCode = await _db.BudgetExpenseCategories
+            .Where(c => c.IsActive)
+            .ToDictionaryAsync(c => c.Code, c => c.Id);
+
+        void AddItem(string code, decimal amount, int seq)
+        {
+            if (amount <= 0 || !byCode.TryGetValue(code, out var id)) return;
+            _db.ProposalBudgetItems.Add(new ProposalBudgetItem
+            {
+                ProposalId = proposalId, CategoryId = id, Amount = amount, Sequence = seq
+            });
+        }
+
+        AddItem("LABOR", labor, 1);
+        AddItem("EQUIPMENT", equipment, 2);
+        AddItem("CONFERENCE", conference, 4);
+        AddItem("OFFICE_OTHER", office, 5);
+        AddItem("INCIDENTAL_IP", ip, 6);
+        await _db.SaveChangesAsync();
     }
 
     /// <summary>

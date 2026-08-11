@@ -300,10 +300,15 @@ public class ProposalService : IProposalService
             _proposals.RemoveBudgetItemsRange(existing);
 
         var categories = await _masterData.BudgetExpenseCategories.ToListAsync();
-        var fallback = categories.FirstOrDefault(c => c.Code == "OTHER") ?? categories.FirstOrDefault();
+        // Hạng mục "Văn phòng phẩm, chi khác" của Điều 15 là nơi đổ mọi khoản không khớp tên; bộ 12
+        // hạng mục cũ dùng mã "OTHER" nên vẫn nhận để đọc dữ liệu cũ.
+        var fallback = categories.FirstOrDefault(c => c.Code == "OFFICE_OTHER")
+                    ?? categories.FirstOrDefault(c => c.Code == "OTHER")
+                    ?? categories.FirstOrDefault();
 
         int seq = 1;
         decimal total = 0m;
+        var byCategory = new Dictionary<int, decimal>();
         foreach (var it in items)
         {
             if (it.Amount <= 0 && string.IsNullOrWhiteSpace(it.Category))
@@ -323,6 +328,7 @@ public class ProposalService : IProposalService
                 Sequence = seq++
             });
             total += it.Amount;
+            byCategory[cat.Id] = byCategory.GetValueOrDefault(cat.Id) + it.Amount;
         }
 
         // Chưa tách hạng mục thì lấy tổng chủ nhiệm gõ ở wizard; có hạng mục thì tổng LUÔN là tổng
@@ -332,13 +338,42 @@ public class ProposalService : IProposalService
 
         var budget = await _proposals.Budgets.FirstOrDefaultAsync(b => b.ProposalId == proposalId);
         if (budget != null)
+        {
             budget.TotalAmount = total;
+            ApplyDieu15Columns(budget, byCategory, categories);
+        }
 
         await _proposals.SaveChangesAsync();
 
         // QĐ543 Điều 14 — kiểm SAU khi lưu vì trần tra theo loại đề tài của project, cần bản ghi đã
         // gắn đủ quan hệ. Vượt trần thì ném 400, giao dịch của controller cuốn lại.
         await _budgetPolicy.AssertWithinCapAsync(proposalId, total);
+        // QĐ543 Điều 15 — tỷ lệ từng hạng mục trên tổng.
+        await _budgetPolicy.AssertCategoryLimitsAsync(byCategory, total);
+    }
+
+    /// <summary>
+    /// Đổ tiền từng hạng mục vào 6 cột tổng hợp của <c>proposal_budgets</c> — đúng 6 hạng mục của
+    /// QĐ543 Điều 15. Trước đây 6 cột này tồn tại nhưng <b>không đường code nào ghi vào</b>, nên
+    /// mọi bản dự toán đều hiện 0 ở phần tổng hợp.
+    /// </summary>
+    private static void ApplyDieu15Columns(
+        ProposalBudget budget,
+        IReadOnlyDictionary<int, decimal> byCategory,
+        IReadOnlyCollection<Domain.Entities.MasterData.BudgetExpenseCategory> categories)
+    {
+        decimal Sum(string code)
+        {
+            var cat = categories.FirstOrDefault(c => c.Code == code);
+            return cat != null ? byCategory.GetValueOrDefault(cat.Id) : 0m;
+        }
+
+        budget.LaborAmount = Sum("LABOR");
+        budget.EquipmentAmount = Sum("EQUIPMENT");
+        budget.ExternalServiceAmount = Sum("OUTSOURCED");
+        budget.ConferenceAmount = Sum("CONFERENCE");
+        budget.OfficeSuppliesAmount = Sum("OFFICE_OTHER");
+        budget.IncidentalIpAmount = Sum("INCIDENTAL_IP");
     }
 
     public async Task<ProposalDto> UpdateProposalAsync(Guid proposalId, CreateProposalRequest request, Guid userId)
@@ -647,6 +682,7 @@ public class ProposalService : IProposalService
         {
             Id = i.Id,
             Category = i.Category?.Name ?? "—",
+            CategoryCode = i.Category?.Code,
             Amount = i.Amount,
             Note = i.Note
         }).ToList(),

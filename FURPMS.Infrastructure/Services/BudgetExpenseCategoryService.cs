@@ -48,6 +48,7 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
             Code = request.Code.ToUpperInvariant(),
             Name = request.Name,
             Sequence = request.Sequence,
+            MaxPercentage = request.MaxPercentage,
             IsActive = request.IsActive
         };
         _masterData.Add(entity);
@@ -71,6 +72,7 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
         entity.Code = request.Code.ToUpperInvariant();
         entity.Name = request.Name;
         entity.Sequence = request.Sequence;
+        entity.MaxPercentage = request.MaxPercentage;
         entity.IsActive = request.IsActive;
         await _masterData.SaveChangesAsync();
         return Map(entity);
@@ -82,6 +84,7 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
         Code = e.Code,
         Name = e.Name,
         Sequence = e.Sequence,
+        MaxPercentage = e.MaxPercentage,
         IsActive = e.IsActive
     };
 

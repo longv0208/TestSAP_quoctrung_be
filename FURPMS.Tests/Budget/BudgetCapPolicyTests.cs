@@ -138,4 +138,70 @@ public class BudgetCapPolicyTests
         Assert.Null(cap.EffectiveCap);
         await svc.AssertWithinCapAsync(id, 999_000_000m);
     }
+
+    // ── 6: Điều 15 — vượt tỷ lệ hạng mục thì chặn, lỗi phải chỉ đích danh hạng mục ────
+    [Fact]
+    public async Task OverCategoryPercentage_Throws_400_NamingTheCategory()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var conference = new BudgetExpenseCategory
+        {
+            Code = "CONFERENCE", Name = "Hội nghị/hội thảo/seminar", MaxPercentage = 30m, Sequence = 4, IsActive = true
+        };
+        var labor = new BudgetExpenseCategory
+        {
+            Code = "LABOR", Name = "Thù lao nghiên cứu", MaxPercentage = 100m, Sequence = 1, IsActive = true
+        };
+        db.BudgetExpenseCategories.AddRange(conference, labor);
+        await db.SaveChangesAsync();
+
+        var svc = new BudgetPolicyService(
+            new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db));
+
+        // Tổng 100tr: hội thảo 40tr = 40% > trần 30%; thù lao 60tr = 60% ≤ 100% (hợp lệ).
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => svc.AssertCategoryLimitsAsync(
+            new Dictionary<int, decimal> { [conference.Id] = 40_000_000m, [labor.Id] = 60_000_000m },
+            100_000_000m));
+
+        Assert.Contains("Điều 15", ex.Message);
+        Assert.Contains("Hội nghị", ex.Message);
+        // Hạng mục hợp lệ KHÔNG được lôi vào danh sách vi phạm.
+        Assert.DoesNotContain("Thù lao", ex.Message);
+    }
+
+    // ── 7: đúng trần % thì qua; hạng mục ngoài Điều 15 (MaxPercentage null) bỏ qua ───
+    [Fact]
+    public async Task WithinCategoryPercentage_AndLegacyCategories_Pass()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var conference = new BudgetExpenseCategory
+        {
+            Code = "CONFERENCE", Name = "Hội nghị/hội thảo/seminar", MaxPercentage = 30m, Sequence = 4, IsActive = true
+        };
+        // Hạng mục cũ ngoài quy định (vd "Chi đoàn ra") — không có tỷ lệ nên không soi.
+        var legacy = new BudgetExpenseCategory
+        {
+            Code = "OVERSEAS_TRAVEL", Name = "Chi đoàn ra", MaxPercentage = null, Sequence = 10, IsActive = false
+        };
+        db.BudgetExpenseCategories.AddRange(conference, legacy);
+        await db.SaveChangesAsync();
+
+        var svc = new BudgetPolicyService(
+            new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db));
+
+        await svc.AssertCategoryLimitsAsync(
+            new Dictionary<int, decimal> { [conference.Id] = 30_000_000m, [legacy.Id] = 70_000_000m },
+            100_000_000m);
+    }
+
+    // ── 8: tổng = 0 thì không có tỷ lệ nào để tính, đừng chia cho 0 ──────────────────
+    [Fact]
+    public async Task ZeroTotal_DoesNotThrow()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var svc = new BudgetPolicyService(
+            new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db));
+
+        await svc.AssertCategoryLimitsAsync(new Dictionary<int, decimal> { [1] = 0m }, 0m);
+    }
 }

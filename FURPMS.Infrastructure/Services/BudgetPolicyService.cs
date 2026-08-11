@@ -87,4 +87,39 @@ public class BudgetPolicyService : IBudgetPolicyService
             "Trường hợp đề tài được Hiệu trưởng đồng ý cấp vượt trần (Điều 14.3), " +
             "đề nghị Phòng Quản lý khoa học điều chỉnh trần của loại đề tài trước khi nộp.");
     }
+
+    public async Task AssertCategoryLimitsAsync(
+        IReadOnlyDictionary<int, decimal> amountsByCategoryId, decimal totalAmount)
+    {
+        // Tỷ lệ tính TRÊN TỔNG dự toán — tổng bằng 0 thì không có gì để chia.
+        if (totalAmount <= 0m || amountsByCategoryId.Count == 0) return;
+
+        var ids = amountsByCategoryId.Keys.ToList();
+        var categories = await _masterData.BudgetExpenseCategories
+            .Where(c => ids.Contains(c.Id) && c.MaxPercentage != null)
+            .Select(c => new { c.Id, c.Name, Pct = c.MaxPercentage!.Value })
+            .ToListAsync();
+
+        var vi = new CultureInfo("vi-VN");
+        var violations = new List<string>();
+        foreach (var c in categories.OrderBy(c => c.Pct))
+        {
+            var amount = amountsByCategoryId[c.Id];
+            var limit = Math.Round(totalAmount * c.Pct / 100m, 0);
+            if (amount <= limit) continue;
+
+            var actualPct = Math.Round(amount / totalAmount * 100m, 1);
+            violations.Add(
+                $"\"{c.Name}\" đang chiếm {actualPct.ToString("0.#", vi)}% " +
+                $"({amount.ToString("N0", vi)}đ) — tối đa {c.Pct.ToString("0.#", vi)}% " +
+                $"tức {limit.ToString("N0", vi)}đ");
+        }
+
+        if (violations.Count == 0) return;
+
+        throw new ArgumentException(
+            "Dự toán vượt tỷ lệ tối đa theo QĐ543 Điều 15: " + string.Join("; ", violations) +
+            $". Tổng dự toán đang là {totalAmount.ToString("N0", vi)}đ — hãy giảm các hạng mục trên " +
+            "hoặc phân bổ lại cho cân đối.");
+    }
 }

@@ -86,10 +86,11 @@ Table system_settings {
 
 Table budget_expense_category {
   id int [pk, increment]
-  code varchar [unique]
+  code varchar [unique, note: '06 hạng mục QĐ543 Điều 15: LABOR, EQUIPMENT, OUTSOURCED, CONFERENCE, OFFICE_OTHER, INCIDENTAL_IP']
   name varchar
   sequence int
-  is_active bool
+  max_percentage decimal [note: 'trần % trên TỔNG dự toán (Điều 15.1): 100/60/60/30/20/10. null = hạng mục cũ, không soi']
+  is_active bool [note: 'bộ 12 hạng mục cũ (mẫu cấp Bộ) để false, không xoá — dự toán cũ còn trỏ FK']
 }
 
 Table llm_config {
@@ -303,10 +304,14 @@ Table proposal {
 Table proposal_budget {
   id int [pk, increment]
   proposal_id guid [unique, note: 'theo proposal-VERSION (Q2): dự toán là nội dung đề cương']
-  total_amount decimal
+  total_amount decimal [note: 'TỔNG = tổng các proposal_budget_item; trần theo loại đề tài (Điều 14)']
+  // 6 cột dưới map 1-1 với 06 hạng mục Điều 15, ghi bởi ProposalService.ApplyDieu15Columns
   labor_amount decimal
   equipment_amount decimal
+  external_service_amount decimal
   conference_amount decimal
+  office_supplies_amount decimal
+  incidental_ip_amount decimal
 }
 
 Table proposal_budget_labor_detail {

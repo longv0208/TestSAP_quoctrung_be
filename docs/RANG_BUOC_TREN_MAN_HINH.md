@@ -160,6 +160,15 @@ từng chỗ dùng kiểu nào, để lúc đứng trước hội đồng còn b
 | **Làm sao đi tiếp** | hạ dự toán xuống ≤ trần → lưu/nộp bình thường. Hoặc Admin vào **Loại đề tài** nâng `maxBudgetCap` (dùng cho trường hợp Hiệu trưởng đã duyệt cấp vượt trần) |
 | **Chặn ở đâu** | cả 4 đường ghi kinh phí + kiểm lại lúc nộp — sửa dự toán riêng qua `PUT /proposals/{id}/budget` cũng chặn y hệt |
 | **Điểm khoe** | trần **không cắm trong code** mà nằm ở master data: quy định đổi thì Phòng QLKH tự sửa, không phải sửa phần mềm |
+
+### D-6. Một hạng mục dự toán vượt tỷ lệ tối đa (QĐ543 Điều 15)
+| | |
+|---|---|
+| **Làm gì** | Cùng màn trên, **bảng dự toán 06 hạng mục**. Đẩy "Hội nghị/hội thảo/seminar" lên 60.000.000 trong khi tổng là 146.000.000 (= 41,1%, trần 30%) |
+| **Thấy ngay tại chỗ** | ô số tiền viền đỏ, cột **Tỷ lệ** đổi đỏ hiện `41.1%` ngay cạnh cột **Tối đa** `30%` |
+| **Bấm Lưu nháp / Nộp** | **400** — *"Dự toán vượt tỷ lệ tối đa theo QĐ543 Điều 15: "Hội nghị/hội thảo/seminar" đang chiếm 41,1% (60.000.000đ) — tối đa 30% tức 43.800.000đ. Tổng dự toán đang là 146.000.000đ — hãy giảm các hạng mục trên hoặc phân bổ lại cho cân đối."* |
+| **Làm sao đi tiếp** | giảm hạng mục đó xuống ≤ 30% tổng, hoặc tăng các hạng mục khác cho cân đối |
+| **Điểm khoe** | lỗi nêu **đủ 4 con số**: tỷ lệ hiện tại · số tiền · trần % · trần quy ra tiền — chủ nhiệm biết ngay phải cắt bao nhiêu. Vi phạm nhiều hạng mục thì liệt kê **hết trong một lần**, không bắt sửa từng dòng |
 | **Làm gì tiếp** | Cập nhật CV, hoặc tick xác nhận trong hộp thoại |
 
 ---
