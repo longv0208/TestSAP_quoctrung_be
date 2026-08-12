@@ -256,11 +256,17 @@ public class ProgressReportService : IProgressReportService
                     : $"{name} đã nộp nhưng phòng QLKH chưa đánh giá — chờ có kết quả kỳ trước rồi mới nộp kỳ này.");
         }
 
-        // Chưa tới kỳ thì cũng chưa có gì để báo cáo.
-        var today = DateOnly.FromDateTime(_clock.UtcNow);
-        if (report.ReportingPeriodStart > today)
-            throw new InvalidOperationException(
-                $"Kỳ báo cáo này bắt đầu từ {report.ReportingPeriodStart:dd/MM/yyyy} — chưa tới kỳ, chưa nộp được.");
+        /*
+         * KHÔNG chặn "chưa tới ngày bắt đầu kỳ".
+         *
+         * QĐ543 Điều 10.1 chỉ định *khi nào Trường tổ chức đánh giá tiến độ* (cuối giai đoạn 1 và 2
+         * với đề tài ứng dụng, giữa kỳ với đề tài cơ bản) — **không có câu nào cấm chủ nhiệm nộp
+         * sớm**. Chủ nhiệm làm xong trước hạn mà bị chặn lại thì chốt chặn đó chỉ gây phiền, không
+         * bảo vệ điều gì.
+         *
+         * Cái thật sự cần giữ là **thứ tự kỳ** (đã chặn ở trên): kỳ trước phải có kết quả rồi mới
+         * tới kỳ sau — đó mới là ý "định kỳ" của Điều 10.1.
+         */
 
         report.Status = ProgressReportStatus.Submitted;
         report.SubmittedAt = DateTime.UtcNow;

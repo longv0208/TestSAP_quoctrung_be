@@ -1,0 +1,113 @@
+# Backlog theo mức ưu tiên — từ buổi tự test 12/08
+
+> Gom toàn bộ phản hồi khi anh tự bấm tay qua 4 vai, **đối chiếu lại với QĐ543** ở những chỗ anh
+> hỏi "so lại với doc xem". Xếp theo *rủi ro khi demo* chứ không theo thứ tự phát hiện.
+>
+> Cột **Doc?** = đã tra QĐ543 chưa: ✅ có căn cứ · ⚠️ quy định không nói · ❓ cần hỏi thầy.
+
+---
+
+## Đã sửa xong trong lượt này (12/08)
+
+| # | Việc | Vì sao gấp |
+|---|---|---|
+| ✅ | **Đổi vai xong bị chặn oan "không có quyền"** | Hồi quy do chính thay đổi `RoleGuard` sáng nay. Vai đang xem lưu chung một khoá localStorage nên người sau đăng nhập thừa hưởng vai của người trước. **Chặn cả luồng chính.** |
+| ✅ | Trang "không có quyền" nay nói rõ đang ở vai nào + nút đổi vai | Lối thoát cũ nằm trong menu avatar mà màn đó không hiện menu |
+| ✅ | **Chuông tự cập nhật** (60 giây/lần + khi quay lại tab) | Trước phải tải lại trang mới thấy |
+| ✅ | **Đơn vị + Học vị của người dùng không hề được lưu** | `UpdateUserAsync` nhận rồi bỏ đi — sửa xong mở lại là trắng |
+| ✅ | Danh sách người dùng **lọc theo vai** + đếm + sắp theo vai | Trước sắp theo tên nên các vai xen kẽ |
+| ✅ | Tên tài khoản demo kèm mã vai — `… pi1`, `… rv3`, `… staff` | Nhìn danh sách biết ngay ai đóng ai. Seeder đặt lại đúng bộ tên mỗi lần khởi động ⇒ xoá sạch DB vẫn ra đúng |
+| ✅ | **Bỏ chốt chặn "chưa tới kỳ báo cáo thì chưa nộp được"** | Tôi tự thêm, **không có căn cứ QĐ543**. Điều 10.1 chỉ định *khi nào Trường tổ chức đánh giá*, không cấm chủ nhiệm nộp sớm. Giữ lại đúng ràng buộc thật: **kỳ trước phải có kết quả rồi mới tới kỳ sau** |
+
+---
+
+## 🔴 P0 — chạm luồng chính, phải xong trước khi demo
+
+| # | Việc | Doc? | Ghi chú |
+|---|---|---|---|
+| P0-1 | **Tóm tắt AI phải sinh SẴN lúc PI nộp, không bắt người chấm ngồi chờ** | ❓ | Thầy đã góp ý. Hiện phản biện mở ra mới bấm "Tạo" rồi chờ — đúng lúc đang có hội đồng ngồi nhìn. Cần: nộp xong chạy nền, lưu lại, người chấm chỉ việc đọc. |
+| P0-2 | **Tóm tắt AI không đọc file đính kèm, chỉ tóm tắt phần gõ tay** | ❓ | Trong khi "AI gợi ý điểm" thì lại có đọc file ⇒ hai đường AI hành xử khác nhau, khó giải thích trước hội đồng. Phải thống nhất một đường. |
+| P0-3 | **Bấm "Duyệt & khoá" biên bản không có xác nhận** | ⚠️ | Khoá là **không sửa lại được** (rule #12). Bấm nhầm là hỏng cả vòng. Cần hộp thoại xác nhận nêu rõ hậu quả. |
+| P0-4 | **Tạo vòng NGHIỆM THU khi chưa có vòng xét duyệt nào vẫn được** | ✅ | QĐ543 Điều 11.2.c: hội đồng nghiệm thu lập **dựa trên hồ sơ nghiệm thu**, mà hồ sơ đó chỉ có sau khi đề tài được duyệt và ký hợp đồng. Cần chặn: chưa có vòng REVIEW đạt thì không mở được ACCEPTANCE. |
+| P0-5 | **Lịch họp bấm "Bắt đầu" là kẹt vĩnh viễn, không xoá/không lùi được** | ⚠️ | Anh đã dính. Cần: xoá được buổi họp chưa diễn ra · hoàn tác "Bắt đầu" · hoặc ít nhất xác nhận trước khi bấm. |
+| P0-6 | **Phần "Sửa đề cương" không thấy nội dung đã nộp** (bước 2 trống, mất file đính kèm) | — | Màn Xem thì có, màn Sửa thì không ⇒ PI tưởng mất bài. Nghi nạp lại form thiếu dữ liệu. **Phải dựng lại được lỗi trước khi sửa.** |
+| P0-7 | **Nút "Đối chiếu với file đề cương" không chạy** | — | Anh thử thấy không hoạt động. Hỏng hoặc chưa nối BE. |
+
+---
+
+## 🟠 P1 — hội đồng dễ soi trúng
+
+| # | Việc | Doc? | Căn cứ / ghi chú |
+|---|---|---|---|
+| P1-1 | **Chủ tịch có được sửa biên bản không?** | ✅ | **QĐ543 Điều 8.3.c / 12.3.c:** *"Thư ký ghi biên bản cùng dự thảo kết luận của Hội đồng và **các thành viên của Hội đồng thông qua** biên bản họp."* ⇒ Thư ký **soạn**, hội đồng **thông qua**, Chủ tịch **chốt** — quy định **không** cho Chủ tịch tự sửa. Hiện code đúng. **Nhưng thiếu đường "Chủ tịch yêu cầu Thư ký sửa"** — hiện hai người phải tự liên lạc ngoài hệ thống. Nên thêm: Chủ tịch trả lại kèm ghi chú → Thư ký nhận thông báo. |
+| P1-2 | **Hợp đồng: form tạo quá ít trường so với BM05** | ⚠️ | Bản `..._clean.docx` **chỉ có phần điều khoản, không kèm biểu mẫu** ⇒ chưa đối chiếu được đủ trường. Nhưng file Word xuất ra đã có Bên A/Bên B, số tài khoản, kinh phí… ⇒ **hệ thống đang tự bốc từ hồ sơ PI**, Staff không phải nhập lại. Việc cần làm: mở đúng file biểu mẫu BM05 gốc, đối chiếu từng trường, liệt kê cái nào còn thiếu. |
+| P1-3 | **Ký hợp đồng: bấm một nút là xong, không cần bản ký** | ⚠️ | Rule #21 định nghĩa: xuất Word → ký ngoài → **upload bản ký làm minh chứng**. Hiện `POST /contracts/{id}/sign` không đòi gì. Đề xuất: chặn ký khi chưa có bản ký đính kèm, **hoặc** tách hai trạng thái "đã ký" (có minh chứng) vs "ghi nhận ký". Cần anh chốt. |
+| P1-4 | **CRUD hợp đồng** | — | Có sửa + xoá (chỉ khi chưa ký). Cần rà lại: sửa được những trường nào sau khi ký? Rule #21 nói sau khi ký phải đi đường **phụ lục**, không sửa đè. |
+| P1-5 | **Quyết toán: bấm một phát xong hết, không xác nhận, không sửa lại** | ✅ | QĐ543 **Điều 13.1.e** đòi *"Xác nhận của Ban kế toán về việc đề tài đã quyết toán kinh phí và đã xử lý tài sản"* và **Điều 13.2** đòi ký **Biên bản thanh lý hợp đồng (BM13)**. Hiện chỉ có 2 nút đánh dấu, **chưa có biên bản thanh lý**. Cần: xác nhận trước khi đánh dấu · bỏ đánh dấu được · thêm BM13. |
+| P1-6 | **Thông báo còn thiếu** | — | Xác nhận giải ngân · duyệt báo cáo tiến độ. Chi tiết ở `THONG_BAO_VA_EMAIL.md`. |
+| P1-7 | **Quên mật khẩu qua email** | — | Chưa có endpoint lẫn liên kết trên màn đăng nhập. Người ngoài dễ hỏi nhất. |
+
+---
+
+## 🟡 P2 — làm giao diện đúng nghiệp vụ hơn
+
+| # | Việc | Doc? | Ghi chú |
+|---|---|---|---|
+| P2-1 | **Màn "Sửa đề cương" có phần "Sản phẩm dự kiến" và "Tài liệu đính kèm" phân loại (thuyết minh / lý lịch khoa học)** — trong khi lúc **tạo** thì không có | ✅ | QĐ543 **Điều 6.4** yêu cầu hồ sơ có **lý lịch khoa học (BM02)**; **Điều 11.1** liệt sản phẩm cam kết. ⇒ Hai phần này **đúng nghiệp vụ**, cái sai là **lúc tạo lại không có** ⇒ PI nộp lần đầu thiếu. Cần đưa lên bước tạo. |
+| P2-2 | **Staff: đổi "Xét duyệt" thành "Xem chi tiết đề tài"** + thêm tab tiến độ như bên PI | — | Anh đề xuất. Hợp lý: màn đó thực chất là màn xem tổng hợp. |
+| P2-3 | **Tiêu đề lịch họp: không gợi ý, không chặn trùng tên** | ⚠️ | Đề xuất: gợi ý sẵn `"Họp HĐ <loại vòng> — <tên đề tài>"`. Trùng tên thì **cảnh báo chứ không chặn** (hai đợt khác nhau trùng tên là bình thường). |
+| P2-4 | **Gán hội đồng khi chưa gửi thư mời** | ✅ | **Đúng như hiện tại.** Rule #13: gán hết rồi mới gửi một lượt. Không cần sửa. |
+| P2-5 | **Nhập số tháng gia hạn quá lớn** | — | Hiện chặn báo lỗi. Đề xuất tự kẹp về tối đa — **anh nghiêng về "thôi"**, tôi đồng ý: báo lỗi rõ ràng hơn là âm thầm đổi số người ta gõ. |
+| P2-6 | **Ô "nhận xét chung / kiến nghị" khác màu các ô chấm** | — | Vì không thuộc tiêu chí chấm. Chấp nhận được, nhưng nên có tiêu đề nhóm cho rõ. |
+| P2-7 | **Trạng thái còn tiếng Anh ở màn Staff xét duyệt** | — | Sót sau đợt rà 36 màn (màn này vào bằng đường khác). |
+| P2-8 | **Tab "Kho tài liệu" trống** | — | Cần xác định: chưa làm, hay có mà không có dữ liệu. |
+| P2-9 | **Admin có nên sửa thông tin cá nhân của người khác không?** | ⚠️ | Quy định không nói. Đề xuất: Admin sửa **vai + khoá/mở tài khoản**; thông tin cá nhân (điện thoại, học vị) để chính chủ sửa ở Hồ sơ. |
+| P2-10 | **Tạo tài khoản mới không gửi mail** | — | Cần kiểm: `EMAIL_ENABLED` đang bật? Nếu bật mà không gửi thì là lỗi thật. |
+
+---
+
+## 🔵 P3 — để sau, không ảnh hưởng demo
+
+| # | Việc | Ghi chú |
+|---|---|---|
+| P3-1 | Tích hợp Google Meet | Đã ghi trong RP nên **sẽ phải quay lại**. Hiện chỉ dán link tay. |
+| P3-2 | Làm đẹp UI hợp đồng + bố cục file Word xuất ra | Anh thấy khác hợp đồng đời thật |
+| P3-3 | Quản lý token/chi phí AI + đo chất lượng đầu ra AI | Cẩm nang capstone có nêu |
+| P3-4 | `/ai/search` semantic | Đề xuất bỏ, thay bằng tìm kiếm nâng cao |
+
+---
+
+## Ba câu anh hỏi — trả lời bằng QĐ543
+
+### 1. Báo cáo tiến độ · Báo cáo tổng kết · Sản phẩm — khác nhau thế nào?
+
+| | Là gì | Khi nào | Biểu mẫu | Ai duyệt |
+|---|---|---|---|---|
+| **Báo cáo tiến độ** | Báo *đang làm tới đâu*, giữa chừng | Ứng dụng **2 lần** (cuối GĐ1, GĐ2) · Cơ bản **1 lần** giữa kỳ | **BM06** | Phòng QLKH (rule #16) |
+| **Sản phẩm** | Thứ **cam kết giao** trong đề cương/hợp đồng | Nộp dần theo mốc | — | Nghiệm thu từng cái |
+| **Báo cáo tổng kết** | Báo *kết quả cuối cùng*, để nghiệm thu | Nộp **≥ 30 ngày trước khi kết thúc** đề tài | **BM09** | Hội đồng nghiệm thu |
+
+Nguồn: **Điều 10.1** (tiến độ), **Điều 11.1.a + 11.2.a** (tổng kết + hạn 30 ngày), **Điều 11.1** (sản phẩm cam kết).
+
+⇒ Ba thứ **khác nhau thật**, không phải trùng lặp. Nhưng hiện hệ thống **chưa chặn hạn 30 ngày** của Điều 11.2.a.
+
+### 2. Chủ tịch có được sửa biên bản không?
+**Không.** Điều 8.3.c và 12.3.c đều ghi Thư ký soạn, *"các thành viên của Hội đồng thông qua"*. Code đang đúng. Cái thiếu là **đường yêu cầu sửa trong hệ thống** (P1-1).
+
+### 3. Quyết toán để làm gì?
+Điều 17 + Điều 13.1.e + 13.2: là bước **đóng hồ sơ tài chính** — kế toán xác nhận đã quyết toán kinh phí và xử lý tài sản, rồi ký **Biên bản thanh lý hợp đồng (BM13)**. Hiện hệ thống mới có phần đánh dấu, **thiếu BM13**.
+
+---
+
+## Thứ tự đề xuất làm
+
+1. **P0-6, P0-7** — luồng PI đang hỏng, PI là actor duy nhất
+2. **P0-1, P0-2** — AI là điểm thầy đã góp ý, và đang chạy sai chỗ dễ thấy nhất
+3. **P0-3, P0-4, P0-5** — ba ràng buộc rẻ, chặn được tai nạn khi demo trực tiếp
+4. **P1-1, P1-5** — hai chỗ lệch quy định rõ nhất
+5. **P1-7 (quên mật khẩu)** + **P1-3 (ký hợp đồng)** — cần anh chốt hướng trước
+6. P2 trở đi
+
+> **Cần anh quyết trước khi làm:** P1-3 (ký hợp đồng có bắt buộc bản ký không) · P2-9 (Admin sửa
+> được gì của người khác) · P0-1/P0-2 (AI chạy lúc nào, đọc gì) — ba cái này chọn sai hướng thì
+> làm lại từ đầu.
