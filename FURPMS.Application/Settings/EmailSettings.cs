@@ -17,14 +17,22 @@ public class EmailSettings
     public string FrontendUrl { get; set; } = "http://localhost:5173";
 
     /// <summary>
-    /// CHỈ DÙNG KHI DEV/DEMO. Có giá trị thì **mọi** email đều gửi về đúng địa chỉ này
-    /// thay vì người nhận thật, tiêu đề ghi kèm người đáng lẽ nhận.
+    /// CHỈ DÙNG KHI DEV/DEMO. Hộp thư hứng mail của những địa chỉ **không có thật**
+    /// (xem <see cref="RedirectDomains"/>), tiêu đề ghi kèm người đáng lẽ nhận.
     /// <para>
     /// Lý do: tài khoản seed dùng email không có thật (<c>pi.demo@furpms.edu.vn</c>…),
     /// test luồng sẽ không thấy mail nào. Đổi email seed thì hỏng — seeder dùng email
     /// làm khoá định danh. Chuyển hướng ở tầng gửi là chỗ đúng.
     /// </para>
-    /// <para>PRODUCTION phải để TRỐNG, nếu không mọi người dùng thật đều mất thư.</para>
+    /// <para>PRODUCTION phải để TRỐNG, nếu không người dùng thật có thể mất thư.</para>
     /// </summary>
     public string RedirectAllTo { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Các tên miền được coi là giả — chỉ mail gửi tới những miền này mới bị chuyển hướng
+    /// về <see cref="RedirectAllTo"/>. Địa chỉ thật (gmail, fpt.edu.vn…) vẫn đi thẳng tới
+    /// người nhận, nên demo "tạo tài khoản bằng mail thật" xem được thư ở đúng hộp thư đó.
+    /// <para>Để TRỐNG mà <see cref="RedirectAllTo"/> có giá trị ⇒ chuyển hướng TẤT CẢ (hành vi cũ).</para>
+    /// </summary>
+    public string[] RedirectDomains { get; set; } = [];
 }

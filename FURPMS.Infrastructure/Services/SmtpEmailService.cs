@@ -58,10 +58,12 @@ public class SmtpEmailService : IEmailService
                 EnableSsl = true
             };
 
-            // Dev/demo: dồn hết mail về 1 hộp thư thật (tài khoản seed dùng email không
-            // tồn tại nên không test được). Tiêu đề ghi rõ ai mới là người nhận thật.
+            // Dev/demo: hứng hộ mail của các địa chỉ KHÔNG CÓ THẬT (tài khoản seed) về một
+            // hộp thư thật, tiêu đề ghi rõ ai mới là người nhận. Địa chỉ thật vẫn đi thẳng —
+            // nếu chuyển hướng cả địa chỉ thật thì tạo tài khoản bằng mail thật sẽ không bao
+            // giờ nhận được thư, mà log vẫn báo "SENT" nên rất khó lần ra.
             var redirect = _email.RedirectAllTo?.Trim();
-            var isRedirected = !string.IsNullOrEmpty(redirect);
+            var isRedirected = !string.IsNullOrEmpty(redirect) && ShouldRedirect(recipientEmail);
 
             using var message = new MailMessage
             {
@@ -89,6 +91,22 @@ public class SmtpEmailService : IEmailService
         }
 
         await AddLogAndSaveAsync(recipientEmail, emailType, loggedSubject, status, errorMessage, recipientUserId);
+    }
+
+    /// <summary>
+    /// Địa chỉ này có thuộc miền giả cần hứng hộ không. Không khai <c>RedirectDomains</c>
+    /// ⇒ hứng tất cả (giữ nguyên hành vi cũ cho cấu hình đã có sẵn).
+    /// </summary>
+    private bool ShouldRedirect(string recipientEmail)
+    {
+        var domains = _email.RedirectDomains;
+        if (domains == null || domains.Length == 0) return true;
+
+        var at = recipientEmail.LastIndexOf('@');
+        if (at < 0) return true; // địa chỉ hỏng — cứ hứng về, đừng bắn ra ngoài
+
+        var domain = recipientEmail[(at + 1)..].Trim();
+        return domains.Any(d => string.Equals(d.Trim().TrimStart('@'), domain, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <summary>Ghép ActionUrl tương đối của thông báo với gốc FE thành link bấm được.</summary>
