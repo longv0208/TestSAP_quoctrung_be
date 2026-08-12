@@ -201,6 +201,34 @@ Table academic_profile {
   degree_level varchar
   is_eligible_pi bool
   updated_at datetime
+  Note: 'Các ô đếm công trình (isi_scopus_count, patents_count…) nay là SỐ SUY RA từ academic_work — không nhập tay nữa'
+}
+
+Table academic_work {
+  id guid [pk]
+  user_id guid
+  work_type varchar [note: 'BOOK(13) · PUBLICATION(14.6) · PATENT(15) · APPLICATION(16.3) · PROJECT(17) · AWARD(18) · SUPERVISION(19.4)']
+  category varchar [note: 'ISI_SCOPUS(14.1) · JOURNAL_INTL(14.2) · JOURNAL_DOMESTIC(14.3) · CONFERENCE_INTL(14.4) · CONFERENCE_DOMESTIC(14.5) · PROJECT_LEAD(17.1) · PROJECT_MEMBER(17.2) · PHD/MASTER(19) …']
+  title varchar
+  venue varchar [note: 'Tên tạp chí · NXB · nơi cấp văn bằng · cơ quan quản lý nhiệm vụ']
+  authors varchar
+  role varchar [note: 'MAIN_AUTHOR · CO_AUTHOR · CORRESPONDING · MAIN_SUPERVISOR · CO_SUPERVISOR']
+  year int
+  start_year int
+  identifier varchar [note: 'DOI · ISSN · ISBN · số văn bằng · mã số đề tài']
+  volume varchar [note: 'BM02 mục 14.6 đòi đích danh']
+  pages varchar [note: 'BM02 mục 14.6 đòi đích danh "trang số"']
+  status varchar [note: 'ACCEPTED / IN_PROGRESS / FAILED — BM02 mục 17 "đã/chưa nghiệm thu, không hoàn thành"']
+  url varchar
+  note varchar
+  sort_order int
+  created_at datetime
+  updated_at datetime
+  Note: 'MỚI 14/08 — QĐ543 BM02 đòi CẢ số lượng (14.1–14.5) LẪN danh sách chi tiết (14.6, 16.3, 17, 19.4). Trước chỉ có ô đếm ⇒ hồ sơ thiếu so với biểu mẫu, hội đồng không tra được nguồn. Nay danh sách là nguồn sự thật, ô đếm ở academic_profile tự tính lại sau mỗi thay đổi'
+
+  indexes {
+    (user_id, work_type)
+  }
 }
 
 // ─────────────── Domain 4 — Cycle & Track & Orders ((b) + (d)) ─────────────
@@ -754,6 +782,7 @@ Ref: user_role.role_id > role.id
 Ref: organizational_unit.parent_id > organizational_unit.id
 Ref: organizational_unit.head_user_id > user.id
 Ref: academic_profile.user_id - user.id
+Ref: academic_work.user_id > user.id
 
 // Domain 4 — (b)
 Ref: research_cycle.research_type_id > research_type.id

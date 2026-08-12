@@ -54,14 +54,10 @@ public class AcademicProfilesController : ControllerBase
         profile.Nationality = request.Nationality ?? "Việt Nam";
         profile.GsPgsYear = request.GsPgsYear;
         profile.GsPgsInstitution = request.GsPgsInstitution;
-        profile.IsiScopusCount = request.IsiScopusCount;
-        profile.IntlJournalCount = request.IntlJournalCount;
-        profile.DomesticJournalCount = request.DomesticJournalCount;
-        profile.IntlConferenceCount = request.IntlConferenceCount;
-        profile.DomesticConferenceCount = request.DomesticConferenceCount;
-        profile.PatentsCount = request.PatentsCount;
-        profile.PhdSupervisedCount = request.PhdSupervisedCount;
-        profile.MasterSupervisedCount = request.MasterSupervisedCount;
+        // ⚠️ CÁC Ô ĐẾM CỐ Ý KHÔNG GÁN Ở ĐÂY.
+        // Từ 14/08 chúng là **số suy ra** từ bảng `academic_works` (xem `AcademicWorksController`,
+        // hàm RecomputeCountsAsync) chứ không còn nhập tay. Gán lại ở đây là ghi đè số đúng bằng
+        // số client gửi lên — mà client nay không gửi nữa nên sẽ về 0 hết.
         profile.Institution = request.Institution;
         profile.InstitutionAddress = request.InstitutionAddress;
         profile.SpecializationAreas = request.SpecializationAreas;
@@ -153,15 +149,10 @@ public class AcademicProfileRequest
     public string? Nationality { get; set; }
     public int? GsPgsYear { get; set; }
     public string? GsPgsInstitution { get; set; }
-    public int IsiScopusCount { get; set; }
-    public int IntlJournalCount { get; set; }
-    public int DomesticJournalCount { get; set; }
-    public int IntlConferenceCount { get; set; }
-    public int DomesticConferenceCount { get; set; }
-    public int PatentsCount { get; set; }
-    public int PhdSupervisedCount { get; set; }
-    public int MasterSupervisedCount { get; set; }
     public string? Institution { get; set; }
     public string? InstitutionAddress { get; set; }
     public string? SpecializationAreas { get; set; }
+
+    // Không còn ô đếm ở đây — số công trình nay suy ra từ `academic_works`
+    // (POST/PUT/DELETE `/api/users/{userId}/academic-works`). Bản trả về vẫn có số để hiển thị.
 }

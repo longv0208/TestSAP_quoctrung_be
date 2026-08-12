@@ -224,6 +224,15 @@ Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
     - **Tổng dự toán = tổng các hạng mục**, không nhập tay riêng (hai con số ở hai chỗ là hai lần sai).
     - 6 cột tổng hợp của `proposal_budgets` (`labor_amount`, `equipment_amount`, …) map 1-1 với 6 hạng mục và **nay đã được ghi** — trước đây tồn tại nhưng luôn bằng 0.
 
+### Chốt buổi demo 14/08 — thầy góp ý. Chi tiết: `docs/GOPY_Thay_Demo_1408.md`
+28. **Lý lịch khoa học phải LIỆT KÊ CHI TIẾT, không chỉ đếm số** (thầy: *"đừng có đếm số mà phải xem được nguồn, các thứ báo nào"*).
+    - Căn cứ: **QĐ543 BM02 đòi CẢ HAI**. Mục **14.1–14.5** là số lượng, nhưng mục **14.6** ghi rõ: *"Liệt kê đầy đủ các công bố nêu trên từ trước đến nay theo thứ tự thời gian, ưu tiên các dòng đầu cho 5 công trình tiêu biểu… (tên tác giả, năm xuất bản, tên công trình, **tên tạp chí, volume, trang số**)"*. Tương tự **16.3** (sản phẩm ứng dụng), **17** (đề tài đã chủ trì/tham gia), **19.4** (hướng dẫn SĐH). Hệ thống cũ **chỉ làm phần số** ⇒ hồ sơ nộp lên thiếu so với biểu mẫu.
+    - Bảng mới `academic_work`, mỗi `work_type` ứng với **đúng một mục BM02**: `BOOK`(13) · `PUBLICATION`(14.6) · `PATENT`(15) · `APPLICATION`(16.3) · `PROJECT`(17) · `AWARD`(18) · `SUPERVISION`(19.4).
+    - **Mục 17 tách theo VAI TRÒ chứ không theo cấp quản lý**: 17.1 *"đã và đang chủ trì"* / 17.2 *"tham gia với tư cách thành viên"*. Có ô **tình trạng** với đúng 3 giá trị biểu mẫu liệt kê: *đã nghiệm thu / chưa nghiệm thu / không hoàn thành*.
+    - **8 ô đếm cũ nay là SỐ SUY RA** — máy chủ cộng lại từ `academic_work` sau mỗi thay đổi, không nhập tay. Lý do: khai tay hai chỗ (số ở 14.1–14.5, danh sách ở 14.6) thì sớm muộn cũng lệch, mà lệch ở hồ sơ năng lực chủ nhiệm là chuyện hội đồng soi trúng ngay.
+    - **Ghi thì chỉ chính chủ, kể cả Admin cũng 403.** Lý lịch khoa học là lời khai có trách nhiệm của người đứng tên; khai hộ là làm hỏng giá trị pháp lý. Admin/Staff **xem** được (thẩm định hồ sơ theo Điều 7).
+29. **Trang Hồ sơ chia tab, không cuộn một mạch** (thầy: *"chia phần ra, chứ đừng có lướt lướt xuống cuối thế"*) — 4 tab: Tài khoản · Lý lịch khoa học · Công trình & đề tài · Thông tin lập hợp đồng.
+
 ---
 *(Rule 1–6 — review round, giải ngân, COI, PARTIAL/WHOLE. ⚠️ #2/#3/#6 SUPERSEDED bởi #15/#16 — giữ lại để tra cứu lịch sử.)*
 

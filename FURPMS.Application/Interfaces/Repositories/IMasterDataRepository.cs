@@ -19,6 +19,7 @@ public interface IMasterDataRepository
     IQueryable<RubricTemplateScope> RubricTemplateScopes { get; }   // bộ tiêu chí ↔ (đợt + lĩnh vực)
     IQueryable<ProductCategory> ProductCategories { get; }
     IQueryable<AcademicProfile> AcademicProfiles { get; }
+    IQueryable<AcademicWork> AcademicWorks { get; }
     void Add<T>(T entity) where T : class;
     void Update<T>(T entity) where T : class;
     void Remove<T>(T entity) where T : class;

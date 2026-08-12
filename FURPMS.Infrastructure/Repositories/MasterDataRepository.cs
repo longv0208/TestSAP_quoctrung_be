@@ -25,6 +25,7 @@ public class MasterDataRepository : IMasterDataRepository
     public IQueryable<RubricTemplateScope> RubricTemplateScopes => _db.RubricTemplateScopes;
     public IQueryable<ProductCategory> ProductCategories => _db.ProductCategories;
     public IQueryable<AcademicProfile> AcademicProfiles => _db.AcademicProfiles;
+    public IQueryable<AcademicWork> AcademicWorks => _db.AcademicWorks;
 
     public void Add<T>(T entity) where T : class => _db.Set<T>().Add(entity);
     public void Update<T>(T entity) where T : class => _db.Set<T>().Update(entity);

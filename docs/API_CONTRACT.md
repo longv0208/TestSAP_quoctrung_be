@@ -145,6 +145,44 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | GET | `/api/users/{userId}/profile` | * (chủ hồ sơ; Admin/Staff xem mọi người) | Hồ sơ khoa học |
 | PUT | `/api/users/{userId}/profile` | như trên | Tạo/cập nhật hồ sơ |
 
+⚠️ **Đổi 14/08 — `PUT` KHÔNG còn nhận 8 ô đếm công trình** (`isiScopusCount`, `intlJournalCount`,
+`domesticJournalCount`, `intlConferenceCount`, `domesticConferenceCount`, `patentsCount`,
+`phdSupervisedCount`, `masterSupervisedCount`). Chúng nay là **số suy ra** — máy chủ tính lại từ
+`academic_works` sau mỗi lần thêm/sửa/xoá công trình. `GET` **vẫn trả** các số này để hiển thị.
+Gửi kèm chúng trong `PUT` thì bị bỏ qua (không lỗi).
+
+### Công trình khoa học — `/api/users/{userId}/academic-works`
+
+QĐ543 **Biểu mẫu 02** đòi **cả hai**: số lượng (mục 14.1–14.5, 15, 19.1/19.3) *và* danh sách chi
+tiết (14.6, 16.3, 17, 19.4). Trước 14/08 hệ thống chỉ có ô đếm nhập tay ⇒ hồ sơ thiếu so với biểu
+mẫu, hội đồng xét năng lực chủ nhiệm (Điều 7) không tra được nguồn.
+
+| Method | Path | Quyền | Mô tả |
+|---|---|---|---|
+| GET | `/api/users/{userId}/academic-works` | chủ hồ sơ; **Admin/Staff xem được** (thẩm định) | Danh sách, sắp theo mục → thứ tự → năm mới nhất |
+| POST | `/api/users/{userId}/academic-works` | **CHỈ chủ hồ sơ** | Thêm |
+| PUT | `/api/users/{userId}/academic-works/{workId}` | **CHỈ chủ hồ sơ** | Sửa |
+| DELETE | `/api/users/{userId}/academic-works/{workId}` | **CHỈ chủ hồ sơ** | Xoá |
+
+> ⚠️ Ghi thì **kể cả Admin cũng bị 403** — lý lịch khoa học là lời khai có trách nhiệm của người
+> đứng tên, khai hộ là làm hỏng giá trị pháp lý của nó.
+
+**AcademicWorkRequest**: `{ workType, category, title, venue?, authors?, role?, year?, startYear?,
+identifier?, volume?, pages?, status?, url?, note?, sortOrder }`
+
+- `workType` ∈ `BOOK`(13) · `PUBLICATION`(14.6) · `PATENT`(15) · `APPLICATION`(16.3) ·
+  `PROJECT`(17) · `AWARD`(18) · `SUPERVISION`(19.4)
+- `category` phải **thuộc đúng `workType`**, nếu không → 400 kèm danh sách giá trị hợp lệ:
+  - `PUBLICATION` → `ISI_SCOPUS` · `JOURNAL_INTL` · `JOURNAL_DOMESTIC` · `CONFERENCE_INTL` · `CONFERENCE_DOMESTIC`
+  - `PROJECT` → `PROJECT_LEAD`(17.1) · `PROJECT_MEMBER`(17.2)
+  - `BOOK` → `BOOK_MONOGRAPH` · `BOOK_TEXTBOOK` · `PATENT` → `PATENT_GRANTED`
+  - `APPLICATION` → `APPLIED_ABROAD` · `APPLIED_DOMESTIC` · `AWARD` → `AWARD_GENERAL`
+  - `SUPERVISION` → `PHD` · `MASTER`
+- `role` ∈ `MAIN_AUTHOR` · `CO_AUTHOR` · `CORRESPONDING` · `LEAD` · `MEMBER` · `MAIN_SUPERVISOR` · `CO_SUPERVISOR`
+- `status` ∈ `ACCEPTED` · `IN_PROGRESS` · `FAILED` (nguyên văn 3 giá trị BM02 mục 17 liệt kê)
+- `volume` / `pages` — BM02 mục 14.6 **đòi đích danh** *"tên tạp chí, volume, trang số"*
+- Chặn: năm ngoài 1900–2100 · năm công bố vượt năm hiện tại · `startYear > year`
+
 ---
 
 ## 5. Master data (cấu hình)

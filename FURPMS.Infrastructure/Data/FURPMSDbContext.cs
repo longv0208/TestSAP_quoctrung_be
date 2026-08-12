@@ -42,6 +42,7 @@ public class FURPMSDbContext : DbContext
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<OrganizationalUnit> OrganizationalUnits => Set<OrganizationalUnit>();
     public DbSet<AcademicProfile> AcademicProfiles => Set<AcademicProfile>();
+    public DbSet<AcademicWork> AcademicWorks => Set<AcademicWork>();
 
     // Domain 4 — Research Cycle & Orders
     public DbSet<ResearchCycle> ResearchCycles => Set<ResearchCycle>();
@@ -151,6 +152,29 @@ public class FURPMSDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
             b.Property(u => u.Email).HasMaxLength(255);
             b.HasIndex(u => u.Email).IsUnique();
+        });
+
+        // ── AcademicWork — công trình/đề tài trong lý lịch khoa học (BM02) ──
+        modelBuilder.Entity<AcademicWork>(b =>
+        {
+            b.Property(w => w.WorkType).HasMaxLength(20).IsRequired();
+            b.Property(w => w.Category).HasMaxLength(30).IsRequired();
+            b.Property(w => w.Title).HasMaxLength(500).IsRequired();
+            b.Property(w => w.Venue).HasMaxLength(500);
+            b.Property(w => w.Authors).HasMaxLength(1000);
+            b.Property(w => w.Role).HasMaxLength(30);
+            b.Property(w => w.Identifier).HasMaxLength(200);
+            b.Property(w => w.Volume).HasMaxLength(50);
+            b.Property(w => w.Pages).HasMaxLength(50);
+            b.Property(w => w.Status).HasMaxLength(20);
+            b.Property(w => w.Url).HasMaxLength(1000);
+            b.Property(w => w.Note).HasMaxLength(1000);
+            b.HasOne(w => w.User)
+                .WithMany()
+                .HasForeignKey(w => w.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            // Lý lịch luôn đọc theo người + gom nhóm theo loại, nên đánh chỉ mục đúng thứ tự đó.
+            b.HasIndex(w => new { w.UserId, w.WorkType });
         });
 
         // ── OrganizationalUnit self-reference ──
