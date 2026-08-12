@@ -157,7 +157,7 @@ public class TeamMemberService : ITeamMemberService
 
         if (proposal.Status != ProposalStatus.Draft && proposal.Status != ProposalStatus.RevisionRequired)
             throw new InvalidOperationException(
-                $"Đề cương đang ở trạng thái {proposal.Status} — chỉ {action} được thành viên khi đề cương " +
+                $"Đề cương đang ở trạng thái {StatusText.Vi(proposal.Status)} — chỉ {action} được thành viên khi đề cương " +
                 "còn là bản nháp hoặc đang chờ chỉnh sửa. Đã nộp thì gửi đề nghị thay đổi nhân sự (BM07).");
 
         var member = await _proposals.ProjectMembers

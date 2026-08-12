@@ -230,7 +230,7 @@ public class ProgressReportService : IProgressReportService
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được báo cáo này.");
 
         if (report.Status != ProgressReportStatus.Draft)
-            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ nộp được bản nháp.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ nộp được bản nháp.");
 
         /*
          * QĐ543 Điều 10.1: báo cáo tiến độ là báo cáo **ĐỊNH KỲ** — kỳ sau chỉ có nghĩa khi kỳ
@@ -295,7 +295,7 @@ public class ProgressReportService : IProgressReportService
 
         if (report.Status != ProgressReportStatus.Draft)
             throw new InvalidOperationException(
-                $"Báo cáo đang ở trạng thái {report.Status} — chỉ xoá được bản nháp. " +
+                $"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ xoá được bản nháp. " +
                 "Báo cáo đã nộp là căn cứ trong hồ sơ nghiệm thu, không xoá khỏi lịch sử.");
 
         var items = await _contracts.ProgressReportItems.Where(i => i.ReportId == reportId).ToListAsync();
@@ -318,7 +318,7 @@ public class ProgressReportService : IProgressReportService
             ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
 
         if (report.Status != ProgressReportStatus.Submitted)
-            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ đánh giá được báo cáo đã nộp.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ đánh giá được báo cáo đã nộp.");
 
         // Thầy 29/07: "Staff phải xem được bản báo cáo mới đánh giá". Trước đây luật này CHỈ khoá ở
         // giao diện (nút mờ đi) — gọi thẳng API là đánh giá được báo cáo trắng trơn, không có gì để

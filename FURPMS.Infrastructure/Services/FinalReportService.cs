@@ -50,7 +50,7 @@ public class FinalReportService : IFinalReportService
         if (existing != null)
         {
             if (existing.Status == FinalReportStatus.Accepted || existing.Status == FinalReportStatus.Archived)
-                throw new InvalidOperationException($"Báo cáo tổng kết đang ở trạng thái {existing.Status} — không sửa được nữa.");
+                throw new InvalidOperationException($"Báo cáo tổng kết đang ở trạng thái {StatusText.Vi(existing.Status)} — không sửa được nữa.");
 
             // Resubmission after revision
             existing.ReportFileUrl = request.ReportFileUrl;
@@ -90,7 +90,7 @@ public class FinalReportService : IFinalReportService
             ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
 
         if (report.Status != FinalReportStatus.Submitted)
-            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ yêu cầu chỉnh sửa được với báo cáo đã nộp.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ yêu cầu chỉnh sửa được với báo cáo đã nộp.");
 
         report.Status = FinalReportStatus.RevisionRequired;
         report.RevisionNotes = request.RevisionNotes;
@@ -106,7 +106,7 @@ public class FinalReportService : IFinalReportService
             ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
 
         if (report.Status != FinalReportStatus.Submitted)
-            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ chấp nhận được báo cáo đã nộp.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ chấp nhận được báo cáo đã nộp.");
 
         report.Status = FinalReportStatus.Accepted;
         report.ArchivalDeadline = DateOnly.FromDateTime(_clock.UtcNow.AddMonths(3));
@@ -121,7 +121,7 @@ public class FinalReportService : IFinalReportService
             ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
 
         if (report.Status != FinalReportStatus.Accepted)
-            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {report.Status} — chỉ lưu trữ được báo cáo đã được chấp nhận.");
+            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ lưu trữ được báo cáo đã được chấp nhận.");
 
         report.Status = FinalReportStatus.Archived;
         report.ArchivedAt = _clock.UtcNow;

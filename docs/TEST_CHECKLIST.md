@@ -52,8 +52,8 @@ Những mục dưới đây tôi đã chạy thật bằng API hoặc có test t
 > trần kinh phí Điều 14 · tỷ lệ hạng mục Điều 15 · nhãn vai hội đồng.
 > Mỗi lần chạy có bắt console error + mọi phản hồi API ≥ 400.
 >
-> **Chưa chạy trên trình duyệt:** §5 (nghiệm thu — đã kiểm ở tầng API) · §6 (Admin master data) ·
-> §7 (đa vai).
+> ✅ **Chạy tiếp 12/08:** §5 (duyệt báo cáo tiến độ · hồ sơ nghiệm thu) · §6 (6 màn master data) ·
+> §7 (đa vai M-01…M-03). Lỗi tìm được đã sửa trong cùng lượt — xem nhật ký commit ngày 12/08.
 
 ---
 
@@ -164,14 +164,15 @@ duyệt báo cáo) — mới kiểm màn hiện đúng chứ chưa bấm hết.
 
 ## 7. Đa vai — cần tài khoản có ≥2 vai
 
-> Data demo hiện **chưa có** tài khoản đa vai. Muốn thử: Admin → Người dùng → gán thêm vai
-> `Faculty` cho `staff.demo`, đăng nhập lại.
+> ✅ **Từ 12/08 data demo đã có sẵn:** `staff.demo@furpms.edu.vn` mang **2 vai** — Cán bộ (Phòng
+> QLKH) + Giảng viên (`DatabaseSeeder.SeedMultiRoleAccountAsync`). Đăng nhập là thấy ngay dropdown
+> đổi vai trong menu avatar. **Đã chạy trên trình duyệt 12/08: M-01…M-03 đạt.**
 
 | Mã | Bấm gì | Phải thấy gì |
 |---|---|---|
 | M-01 | Dropdown vai ở header | Chỉ hiện vai người đó **thực có** |
 | M-02 | Chuyển sang vai **Giảng viên** | Menu đổi sang PI |
-| M-03 | Vẫn ở vai Giảng viên → mở chi tiết hợp đồng | **Không còn** nút của Phòng QLKH (sinh lịch giải ngân, xác nhận chi, quyết toán) |
+| M-03 | Vẫn ở vai Giảng viên → **gõ thẳng URL** `/contracts` | Trang **"Bạn không có quyền truy cập"**. *(Sửa 12/08: guard trước đây soi toàn bộ vai người đó có nên vẫn vào được, thấy hợp đồng của mọi chủ nhiệm và còn nguyên nút "Tạo hợp đồng")* |
 | M-04 | Chuyển lại vai Staff | Nút quay lại |
 
 ## 8. Toàn cục

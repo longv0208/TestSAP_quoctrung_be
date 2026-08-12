@@ -165,7 +165,7 @@ public class DisbursementService : IDisbursementService
         throw new InvalidOperationException(
             $"Đợt {d.RoundNumber} là đợt giải ngân CUỐI — theo QĐ543 (BM05 Điều 4.2) chỉ được chi " +
             "kinh phí còn lại sau khi đề tài được hội đồng nghiệm thu công nhận kết quả Đạt. " +
-            $"Đề tài đang ở trạng thái \"{project.Status}\", chưa có kết luận nghiệm thu Đạt.");
+            $"Đề tài đang ở trạng thái \"{StatusText.Vi(project.Status)}\", chưa có kết luận nghiệm thu Đạt.");
     }
 
     /// <summary>

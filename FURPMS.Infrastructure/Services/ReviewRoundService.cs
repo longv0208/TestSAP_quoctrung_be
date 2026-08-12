@@ -146,7 +146,7 @@ public class ReviewRoundService : IReviewRoundService
             ?? throw new KeyNotFoundException($"Round {roundId} not found.");
 
         if (round.Status != ReviewRoundStatus.Pending)
-            throw new InvalidOperationException($"Vòng đang ở trạng thái {round.Status} — chỉ mở được vòng chưa bắt đầu.");
+            throw new InvalidOperationException($"Vòng đang ở trạng thái {StatusText.Vi(round.Status)} — chỉ mở được vòng chưa bắt đầu.");
 
         if (round.PrerequisiteRoundId.HasValue)
         {
@@ -155,7 +155,7 @@ public class ReviewRoundService : IReviewRoundService
 
             if (prereq.Status != ReviewRoundStatus.Passed)
                 throw new InvalidOperationException(
-                    $"Prerequisite round (#{prereq.RoundNumber}, {prereq.Dimension}) has not PASSED yet. Current status: {prereq.Status}.");
+                    $"Vòng tiên quyết (vòng #{prereq.RoundNumber}) chưa ĐẠT — đang ở trạng thái {StatusText.Vi(prereq.Status)}. Phải qua vòng đó trước.");
         }
 
         round.Status = ReviewRoundStatus.Open;
@@ -178,7 +178,7 @@ public class ReviewRoundService : IReviewRoundService
             ?? throw new KeyNotFoundException($"Round {roundId} not found.");
 
         if (round.Status != ReviewRoundStatus.Open)
-            throw new InvalidOperationException($"Vòng đang ở trạng thái {round.Status} — chỉ đóng được vòng đang mở.");
+            throw new InvalidOperationException($"Vòng đang ở trạng thái {StatusText.Vi(round.Status)} — chỉ đóng được vòng đang mở.");
 
         // Kết quả áp cho TỪNG đề tài (project_round). Round nhiều đề tài → phải chỉ rõ.
         var targetLink = ResolveTargetProjectRound(round, request.ProposalProjectId);

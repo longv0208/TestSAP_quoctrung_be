@@ -674,7 +674,7 @@ public class DocumentExportService : IDocumentExportService
         // Chỉ xuất phụ lục cho đề nghị ĐÃ DUYỆT — bản chờ duyệt mà in ra thì thành giấy tờ khống.
         if (!string.Equals(a.Status, AmendmentStatus.Approved, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(
-                $"Đề nghị điều chỉnh đang ở trạng thái \"{a.Status}\" — chỉ xuất phụ lục sau khi đã được duyệt.");
+                $"Đề nghị điều chỉnh đang ở trạng thái \"{FURPMS.Application.Constants.StatusText.Vi(a.Status)}\" — chỉ xuất phụ lục sau khi đã được duyệt.");
 
         var c = a.Contract;
         var pi = c.Project?.PiUser;

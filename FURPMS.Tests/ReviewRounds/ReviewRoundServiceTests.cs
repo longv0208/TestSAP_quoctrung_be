@@ -94,7 +94,10 @@ public class ReviewRoundServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => service.OpenRoundAsync(financeRound.Id));
 
-        Assert.Contains("not PASSED", ex.Message);
+        // Thông báo lỗi phải là tiếng Việt và KHÔNG lòi mã trạng thái tiếng Anh ra cho người dùng.
+        Assert.Contains("Vòng tiên quyết", ex.Message);
+        Assert.Contains("chưa ĐẠT", ex.Message);
+        Assert.DoesNotContain("PASSED", ex.Message);
     }
 
     // ── test 2: Closing a round with REJECTED → proposal.Status = REJECTED ────

@@ -46,7 +46,7 @@ public class ChangeRequestService : IChangeRequestService
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới gửi được đề nghị điều chỉnh.");
 
         if (project.Status is ProjectStatus.Completed or ProjectStatus.Cancelled or ProjectStatus.Terminated)
-            throw new InvalidOperationException($"Đề tài đã ở trạng thái '{project.Status}' — không thể gửi yêu cầu thay đổi.");
+            throw new InvalidOperationException($"Đề tài đã ở trạng thái '{StatusText.Vi(project.Status)}' — không thể gửi yêu cầu thay đổi.");
 
         var entity = new ProposalChangeRequest
         {
@@ -101,7 +101,7 @@ public class ChangeRequestService : IChangeRequestService
             ?? throw new KeyNotFoundException($"Change request {id} not found.");
 
         if (entity.Status != "Pending")
-            throw new InvalidOperationException($"Yêu cầu đã được xử lý ('{entity.Status}') — không thể duyệt lại.");
+            throw new InvalidOperationException($"Yêu cầu đã được xử lý ('{StatusText.Vi(entity.Status)}') — không thể duyệt lại.");
 
         entity.Status = request.Approved ? "Approved" : "Rejected";
         entity.AdminNote = request.AdminNote;

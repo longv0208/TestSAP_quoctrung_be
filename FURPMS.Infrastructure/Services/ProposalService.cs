@@ -393,7 +393,7 @@ public class ProposalService : IProposalService
             return await CreateRevisionAsync(proposal, request, userId);
 
         if (proposal.Status != ProposalStatus.Draft)
-            throw new InvalidOperationException($"Đề cương đang ở trạng thái {proposal.Status} — chỉ sửa được bản nháp. Hãy rút lại trước khi sửa.");
+            throw new InvalidOperationException($"Đề cương đang ở trạng thái {StatusText.Vi(proposal.Status)} — chỉ sửa được bản nháp. Hãy rút lại trước khi sửa.");
 
         // Hết hạn đợt → khoá, không cho sửa nháp nữa (đồng bộ với chặn nộp quá hạn).
         var todayEdit = DateOnly.FromDateTime(_clock.UtcNow);
@@ -552,7 +552,7 @@ public class ProposalService : IProposalService
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được đề cương này.");
 
         if (proposal.Status != ProposalStatus.Draft)
-            throw new InvalidOperationException($"Đề cương đang ở trạng thái {proposal.Status} — chỉ nộp được bản nháp.");
+            throw new InvalidOperationException($"Đề cương đang ở trạng thái {StatusText.Vi(proposal.Status)} — chỉ nộp được bản nháp.");
 
         // Chặn nộp quá hạn (dùng đồng hồ hệ thống — công cụ tua thời gian test được).
         // Bản revision (v2+) không bị chặn deadline nộp lần đầu — deadline sửa nằm ở RevisionDeadline.
@@ -606,7 +606,7 @@ public class ProposalService : IProposalService
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới rút lại được đề cương này.");
 
         if (proposal.Status != ProposalStatus.Submitted)
-            throw new InvalidOperationException($"Đề cương đang ở trạng thái {proposal.Status} — chỉ rút lại được đề cương đã nộp.");
+            throw new InvalidOperationException($"Đề cương đang ở trạng thái {StatusText.Vi(proposal.Status)} — chỉ rút lại được đề cương đã nộp.");
 
         proposal.Status = ProposalStatus.Draft;
         proposal.SubmittedAt = null;

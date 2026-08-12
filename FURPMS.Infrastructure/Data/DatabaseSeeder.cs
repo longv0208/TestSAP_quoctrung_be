@@ -182,6 +182,32 @@ public class DatabaseSeeder
             _db.UserRoles.Add(new UserRole { UserId = user.Id, RoleId = role.Id, AssignedAt = DateTime.UtcNow });
             await _db.SaveChangesAsync();
         }
+
+        await SeedMultiRoleAccountAsync();
+    }
+
+    /// <summary>
+    /// Gán thêm vai <b>Giảng viên</b> cho tài khoản Phòng QLKH demo — để rule #23 (đa vai, đổi vai ở
+    /// dropdown header) <b>có tài khoản mà demo</b>. Trước đây không tài khoản demo nào có 2 vai nên
+    /// dropdown đổi vai không bao giờ hiện ra, muốn thử phải tự đi gán tay trước.
+    /// <para>
+    /// Cũng là bộ dữ liệu để kiểm ranh giới hiển thị theo vai: đang ở vai Giảng viên thì gõ thẳng
+    /// <c>/contracts</c> phải bị chặn, dù người đó thật sự có vai Phòng QLKH.
+    /// </para>
+    /// </summary>
+    private async Task SeedMultiRoleAccountAsync()
+    {
+        var staff = await _db.Users.IgnoreQueryFilters()
+            .FirstOrDefaultAsync(u => u.Email == "staff.demo@furpms.edu.vn");
+        if (staff == null) return;
+
+        var faculty = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "Faculty");
+        if (faculty == null) return;
+
+        if (await _db.UserRoles.AnyAsync(ur => ur.UserId == staff.Id && ur.RoleId == faculty.Id)) return;
+
+        _db.UserRoles.Add(new UserRole { UserId = staff.Id, RoleId = faculty.Id, AssignedAt = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
     }
 
     // Bộ tiêu chí chấm (rubric) cho vòng xét duyệt — để reviewer chấm điểm được.

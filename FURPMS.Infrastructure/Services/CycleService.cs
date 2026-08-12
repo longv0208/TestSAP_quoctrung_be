@@ -369,7 +369,7 @@ public class CycleService : ICycleService
             ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
 
         if (cycle.Status != CycleStatus.Open)
-            throw new InvalidOperationException($"Đợt đang ở trạng thái {cycle.Status} — chỉ đóng được đợt đang mở.");
+            throw new InvalidOperationException($"Đợt đang ở trạng thái {StatusText.Vi(cycle.Status)} — chỉ đóng được đợt đang mở.");
 
         cycle.Status = CycleStatus.Closed;
         cycle.UpdatedAt = DateTime.UtcNow;

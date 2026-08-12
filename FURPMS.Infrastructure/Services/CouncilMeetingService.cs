@@ -190,7 +190,7 @@ public class CouncilMeetingService : ICouncilMeetingService
 
         if (meeting.Status != MeetingStatus.Scheduled)
             throw new InvalidOperationException(
-                $"Buổi họp đang ở trạng thái \"{meeting.Status}\" — chỉ xoá được buổi họp CHƯA DIỄN RA.");
+                $"Buổi họp đang ở trạng thái \"{StatusText.Vi(meeting.Status)}\" — chỉ xoá được buổi họp CHƯA DIỄN RA.");
 
         var attendances = await _review.MeetingAttendances
             .Where(a => a.MeetingId == meetingId).ToListAsync();
@@ -219,7 +219,7 @@ public class CouncilMeetingService : ICouncilMeetingService
             ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
 
         if (meeting.Status != MeetingStatus.Scheduled)
-            throw new InvalidOperationException($"Buổi họp đang ở trạng thái {meeting.Status} — chỉ buổi đã lên lịch mới bắt đầu được.");
+            throw new InvalidOperationException($"Buổi họp đang ở trạng thái {StatusText.Vi(meeting.Status)} — chỉ buổi đã lên lịch mới bắt đầu được.");
 
         meeting.ActualStartAt = DateTime.UtcNow;
         meeting.Status = MeetingStatus.InProgress;
@@ -234,7 +234,7 @@ public class CouncilMeetingService : ICouncilMeetingService
             ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
 
         if (meeting.Status != MeetingStatus.InProgress)
-            throw new InvalidOperationException($"Buổi họp đang ở trạng thái {meeting.Status} — chỉ buổi đang diễn ra mới kết thúc được.");
+            throw new InvalidOperationException($"Buổi họp đang ở trạng thái {StatusText.Vi(meeting.Status)} — chỉ buổi đang diễn ra mới kết thúc được.");
 
         meeting.ActualEndAt = DateTime.UtcNow;
         meeting.Status = MeetingStatus.Completed;

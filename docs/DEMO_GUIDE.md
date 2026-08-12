@@ -30,7 +30,7 @@ Mọi tài khoản dùng chung mật khẩu **`password`** (E8 — một chuỗi
 | Vai trò | Họ tên hiển thị | Email |
 |---|---|---|
 | Admin | Quản trị hệ thống | `admin@furpms.edu.vn` |
-| Staff (Phòng QLKH) | Trần Thị Mai Lan | `staff.demo@furpms.edu.vn` |
+| Staff (Phòng QLKH) | Trần Thị Mai Lan | `staff.demo@furpms.edu.vn` — **có 2 vai** (Cán bộ + Giảng viên) để demo đổi vai ở dropdown avatar, rule #23 |
 | Hội đồng — **Chủ tịch** | PGS.TS. Lê Quang Minh | `reviewer1.demo@furpms.edu.vn` |
 | Hội đồng — **Thư ký** | TS. Phạm Thu Hương | `reviewer2.demo@furpms.edu.vn` |
 | Hội đồng — **Phản biện** | TS. Vũ Đình Nam | `reviewer3.demo@furpms.edu.vn` |

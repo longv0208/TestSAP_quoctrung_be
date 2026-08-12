@@ -62,7 +62,7 @@ public class ContractService : IContractService
 
         if (proposal.Status != ProposalStatus.Approved)
             throw new InvalidOperationException(
-                $"Cannot create contract: proposal status is '{proposal.Status}', expected APPROVED.");
+                $"Đề cương đang ở trạng thái {StatusText.Vi(proposal.Status)} — chỉ lập được hợp đồng cho đề cương ĐÃ DUYỆT.");
 
         var project = proposal.Project;
         var totalAmount = proposal.Budget?.TotalAmount ?? 0m;
@@ -188,7 +188,7 @@ public class ContractService : IContractService
 
         if (contract.Status != ContractStatus.PendingSignature)
             throw new InvalidOperationException(
-                $"Hợp đồng đã ở trạng thái \"{contract.Status}\" — chỉ xoá được hợp đồng CHƯA KÝ. " +
+                $"Hợp đồng đã ở trạng thái \"{StatusText.Vi(contract.Status)}\" — chỉ xoá được hợp đồng CHƯA KÝ. " +
                 "Hợp đồng đang hiệu lực thì dùng chấm dứt hợp đồng.");
 
         var blockers = new List<string>();
@@ -234,7 +234,7 @@ public class ContractService : IContractService
 
         if (contract.Status != ContractStatus.PendingSignature)
             throw new InvalidOperationException(
-                $"Cannot sign contract: current status is '{contract.Status}'.");
+                $"Hợp đồng đang ở trạng thái {StatusText.Vi(contract.Status)} — chỉ ký được hợp đồng đang chờ ký.");
 
         contract.Status = ContractStatus.Active;
         contract.SignedAt = _clock.UtcNow;
