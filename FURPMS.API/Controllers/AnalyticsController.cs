@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FURPMS.Application.Common;
+using FURPMS.Application.Constants;
 using FURPMS.Infrastructure.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -52,6 +53,83 @@ public class AnalyticsController : ControllerBase
             .Select(c => c.SemesterCode ?? c.CycleYear.ToString())
             .FirstOrDefaultAsync();
 
+        // ── Số liệu cho bảng điều khiển Quản trị ────────────────────────────────────────────
+        // Sáu ô KPI + ba biểu đồ ở màn Admin trước đây KHÔNG có nguồn: giao diện đọc
+        // `totalCycles`, `approvedProposals`, `pendingReviews`, `totalCouncils`, `totalContracts`,
+        // `monthlyTrend`, `budgetDistribution`, `reviewProgress` — endpoint này chưa trả cái nào,
+        // nên mọi ô rơi về 0 và biểu đồ trống, dù dữ liệu trong DB có đủ.
+        var totalCycles = await _db.ResearchCycles.CountAsync();
+        var totalCouncils = await _db.ReviewCouncils.CountAsync();
+        var totalContracts = await _db.Contracts.CountAsync();
+        var approvedProposals = byStatus.TryGetValue("APPROVED", out var ap) ? ap : 0;
+
+        // "Đang chờ xét duyệt" = đề cương đã nộp nhưng chưa có kết luận.
+        var pendingReviews = (byStatus.TryGetValue("SUBMITTED", out var sub) ? sub : 0)
+                           + (byStatus.TryGetValue("UNDER_REVIEW", out var ur) ? ur : 0);
+
+        // Xu hướng nộp/duyệt theo THÁNG, 6 tháng gần nhất tính từ tháng hiện tại.
+        var now = DateTime.UtcNow;
+        var monthStart = new DateTime(now.Year, now.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var from = monthStart.AddMonths(-5);
+        var monthlyTrend = Enumerable.Range(0, 6)
+            .Select(i => monthStart.AddMonths(-5 + i))
+            .Select(m => new
+            {
+                label = $"{m.Month:00}/{m.Year}",
+                submitted = proposals.Count(p => p.SubmittedAt != null
+                    && p.SubmittedAt.Value.Year == m.Year && p.SubmittedAt.Value.Month == m.Month),
+                approved = proposals.Count(p => p.ApprovedAt != null
+                    && p.ApprovedAt.Value.Year == m.Year && p.ApprovedAt.Value.Month == m.Month),
+            })
+            .ToList();
+        _ = from;
+
+        // Cơ cấu dự toán theo 06 hạng mục QĐ543 Điều 15 — cộng toàn hệ thống.
+        var budgetDistribution = await _db.ProposalBudgetItems
+            .GroupBy(i => i.Category!.Name)
+            .Select(g => new { category = g.Key, amount = g.Sum(x => x.Amount) })
+            .OrderByDescending(x => x.amount)
+            .ToListAsync();
+
+        // Tiến độ chấm từng vòng. Một hội đồng chấm NHIỀU đề tài (quan hệ M-N), nên số phiếu cần
+        // có = số thành viên × số đề tài được gán, chứ không phải chỉ số thành viên — tính thiếu
+        // vế đó thì "còn lại" ra số ÂM ngay khi hội đồng chấm từ 2 đề tài trở lên.
+        // Đếm cả hai bảng phiếu: chấm điểm (xét duyệt) và Đạt/Không đạt (nghiệm thu).
+        var roundIds = await _db.ReviewRounds
+            .OrderByDescending(r => r.Id).Take(6)
+            .Select(r => new { r.Id, r.RoundNumber })
+            .ToListAsync();
+
+        var reviewProgress = new List<object>();
+        foreach (var r in roundIds)
+        {
+            var councilIds = await _db.ReviewCouncils
+                .Where(c => c.RoundId == r.Id).Select(c => c.Id).ToListAsync();
+            if (councilIds.Count == 0)
+            {
+                reviewProgress.Add(new { label = $"Vòng {r.RoundNumber}", completed = 0, pending = 0 });
+                continue;
+            }
+
+            var members = await _db.CouncilMembers.CountAsync(m => councilIds.Contains(m.CouncilId));
+            var projects = await _db.CouncilProjectAssignments
+                .CountAsync(a => councilIds.Contains(a.CouncilId));
+            var expected = members * Math.Max(projects, 1);
+
+            var scored = await _db.ProposalReviewScores
+                .CountAsync(sc => councilIds.Contains(sc.CouncilId) && sc.SubmittedAt != null);
+            var accepted = await _db.AcceptanceEvaluations
+                .CountAsync(e => councilIds.Contains(e.CouncilId) && e.SubmittedAt != null);
+            var completed = scored + accepted;
+
+            reviewProgress.Add(new
+            {
+                label = $"Vòng {r.RoundNumber}",
+                completed,
+                pending = Math.Max(0, expected - completed),
+            });
+        }
+
         var result = new
         {
             totalProposals = proposals.Count,
@@ -60,6 +138,14 @@ public class AnalyticsController : ControllerBase
             totalPIs,
             totalReviewers,
             activeCycle,
+            totalCycles,
+            approvedProposals,
+            pendingReviews,
+            totalCouncils,
+            totalContracts,
+            monthlyTrend,
+            budgetDistribution,
+            reviewProgress,
         };
 
         return Ok(ApiResponse<object>.Ok(result));
@@ -146,7 +232,9 @@ public class AnalyticsController : ControllerBase
         var reviewProgress = await _db.ReviewRounds
             .Select(r => new
             {
-                label = r.Dimension + " " + r.RoundType + " #" + r.RoundNumber,
+                // Trước đây ghép mã thô: "SCIENCE REVIEW #1". Phương diện SCIENCE đã bỏ (rule #16)
+                // nên không còn gì để phân biệt; chỉ cần loại vòng + số vòng bằng tiếng Việt.
+                label = (r.RoundType == "ACCEPTANCE" ? "Nghiệm thu" : "Xét duyệt") + " — vòng " + r.RoundNumber,
                 completed = r.ProjectRounds.Count(pr => pr.Status == "PASSED" || pr.Status == "FAILED"),
                 pending = r.ProjectRounds.Count(pr => pr.Status != "PASSED" && pr.Status != "FAILED"),
             })
@@ -185,7 +273,7 @@ public class AnalyticsController : ControllerBase
 
         var proposalStatus = await myProposals
             .GroupBy(p => p.Status)
-            .Select(g => new { status = g.Key, count = g.Count() })
+            .Select(g => new { status = StatusText.Vi(g.Key), count = g.Count() })
             .ToListAsync();
 
         var soon = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
@@ -243,7 +331,7 @@ public class AnalyticsController : ControllerBase
         var reviewDecisions = await _db.CouncilDecisions
             .Where(d => myCouncilIds.Contains(d.CouncilId) && d.FinalizedAt != null)
             .GroupBy(d => d.Result)
-            .Select(g => new { decision = g.Key, count = g.Count() })
+            .Select(g => new { decision = StatusText.Vi(g.Key), count = g.Count() })
             .ToListAsync();
 
         var activity = await RecentActivityAsync(userId);
