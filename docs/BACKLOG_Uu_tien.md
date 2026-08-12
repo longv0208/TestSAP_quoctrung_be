@@ -77,6 +77,63 @@
 
 ---
 
+## 📄 Kế hoạch riêng cho HỢP ĐỒNG (anh chốt là ưu tiên nhất)
+
+### Hiện trạng đã tra được trong code
+
+| Câu hỏi của anh | Sự thật đo được |
+|---|---|
+| "Form tạo hợp đồng ít trường quá, Bên B thì sao?" | **Đúng như anh đoán: hệ thống tự bốc.** File Word xuất ra điền sẵn Bên B từ hồ sơ chủ nhiệm — họ tên, đơn vị công tác, điện thoại, email, **số tài khoản + ngân hàng**. Staff chỉ nhập 5 trường vì 5 trường đó là thứ *duy nhất* hệ thống không tự biết. |
+| "Có cho CRUD hợp đồng chưa?" | Có `GET · POST · PUT · DELETE · sign`. **Nhưng `PUT` KHÔNG chặn khi hợp đồng đã ký** ⇒ sửa đè được bản đã ký, trái rule #21 (phải đi đường phụ lục). |
+| "Ký chỉ cần bấm một phát?" | Đúng. `POST /contracts/{id}/sign` **không đòi bằng chứng gì**: đổi trạng thái sang Đang hiệu lực rồi thôi. Trong khi `ContractDocumentsController` để upload bản ký thì đã có sẵn, chỉ là không ai bắt buộc dùng. |
+| "Quyết toán bấm phát là xong?" | Đúng. Hai nút đánh dấu, không xác nhận, không bỏ đánh dấu được, **chưa có Biên bản thanh lý BM13** (Điều 13.2). |
+
+### Ký hợp đồng — ba cách người ta hay làm
+
+| Cách | Mô tả | Hợp với mình không |
+|---|---|---|
+| **1. Tích hợp nhà cung cấp chữ ký số** (FPT.eContract, VNPT-CA, Viettel-CA, DocuSign) | Hệ thống đẩy file lên, hai bên ký bằng USB token/OTP, nhận về file đã ký + dấu thời gian có giá trị pháp lý | ❌ Cần hợp đồng thương mại + tài khoản CA thật. Không khả thi cho capstone, và **thầy cũng không đòi** |
+| **2. Ký ngoài → tải bản ký lên làm minh chứng** | Hệ thống sinh Word/PDF → hai bên ký ngoài (tay hoặc chữ ký số cá nhân) → upload lại. Hệ thống đóng vai **sổ cái giữ bằng chứng**, không phải công cụ ký | ✅ **Đúng cái nhóm đã chốt ở rule #21**, và hạ tầng đã có đủ (xuất Word + `ContractDocumentsController`) |
+| **3. "Ký trong hệ thống" bằng xác nhận có ràng buộc** | Không phải chữ ký số pháp lý, mà ghi nhận: ai bấm, lúc nào, trên **phiên bản file nào** (lưu hash), có nhập lại mật khẩu để xác nhận | 🔸 Nhiều hệ thống nội bộ dùng. Có thể **bổ sung** cho cách 2, không thay thế |
+
+### Đề xuất: giữ cách 2, nhưng bắt nút "Ký" phải nói thật
+
+Vấn đề hiện tại **không phải thiếu tính năng, mà là nút đang nói dối**: bấm "Ký hợp đồng" là hợp
+đồng thành "Đang hiệu lực" dù chưa ai ký gì cả. Hội đồng hỏi *"bằng chứng ký đâu"* là không có gì
+để đưa ra.
+
+Sửa nhỏ, ánh xạ đúng đời thực:
+
+1. **Đổi nhãn nút** "Ký hợp đồng" → **"Ghi nhận đã ký"**. Hệ thống không ký thay ai — nó ghi nhận
+   việc đã xảy ra ngoài đời. Nhãn đúng thì không phải giải thích.
+2. **Chặn ghi nhận khi chưa có bản ký đính kèm.** Chưa có thì nút mờ, kèm câu chỉ đường:
+   *"Xuất hợp đồng (Word) → ký ngoài → Tải bản đã ký lên đây."* Đúng ba bước rule #21 đã định.
+3. **Thêm ô "Ngày ký thực tế"** — ngày ghi trên giấy, tách khỏi ngày bấm nút. Hai ngày này luôn
+   khác nhau, và mọi mốc hợp đồng phải tính theo ngày trên giấy.
+4. **Ký xong là khoá**: `PUT /contracts/{id}` chặn lại, muốn đổi phải qua **phụ lục** (rule #21).
+   Đây là lỗ hổng thật hiện nay, không chỉ là chuyện nhãn.
+5. *(tuỳ chọn, làm sau)* Lưu **hash của file bản ký** để về sau đối chiếu được là file không bị
+   tráo — chính là ý tưởng của cách 3, gắn thêm vào cách 2.
+
+**Việc khoe được trước hội đồng:** *"Hệ thống không giả vờ ký thay người. Nó sinh đúng biểu mẫu,
+giữ bản đã ký làm bằng chứng, và từ lúc ký thì khoá lại — muốn đổi phải có phụ lục."*
+
+### Danh sách việc cho nhóm hợp đồng
+
+| Mã | Việc | Ưu tiên | Cần anh chốt? |
+|---|---|---|---|
+| HD-1 | Nút "Ghi nhận đã ký" + **bắt buộc có bản ký** mới cho ghi nhận | P1 | ✅ **có** — hay vẫn cho ghi nhận không cần bằng chứng? |
+| HD-2 | **Khoá sửa sau khi ký** (`PUT` trả 409, chỉ đường sang phụ lục) | P1 | không |
+| HD-3 | Ô **"Ngày ký thực tế"** tách khỏi ngày bấm nút | P1 | không |
+| HD-4 | **Quyết toán**: xác nhận trước khi đánh dấu · bỏ đánh dấu được | P1 | không |
+| HD-5 | **Biên bản thanh lý hợp đồng BM13** (Điều 13.2) | P1 | không |
+| HD-6 | Đối chiếu **BM05 gốc** từng trường, liệt kê cái còn thiếu | P1 | cần file biểu mẫu gốc |
+| HD-7 | Lưu **hash file bản ký** để chống tráo file | P2 | không |
+| HD-8 | Bố cục file Word xuất ra cho giống hợp đồng thật | P3 | không |
+| HD-9 | Làm lại giao diện màn hợp đồng | P3 | không |
+
+---
+
 ## Ba câu anh hỏi — trả lời bằng QĐ543
 
 ### 1. Báo cáo tiến độ · Báo cáo tổng kết · Sản phẩm — khác nhau thế nào?
