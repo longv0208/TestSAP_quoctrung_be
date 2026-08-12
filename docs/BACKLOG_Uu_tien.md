@@ -26,7 +26,7 @@
 | # | Việc | Doc? | Ghi chú |
 |---|---|---|---|
 | P0-1 | **Tóm tắt AI phải sinh SẴN lúc PI nộp, không bắt người chấm ngồi chờ** | ❓ | Thầy đã góp ý. Hiện phản biện mở ra mới bấm "Tạo" rồi chờ — đúng lúc đang có hội đồng ngồi nhìn. Cần: nộp xong chạy nền, lưu lại, người chấm chỉ việc đọc. |
-| P0-2 | **Tóm tắt AI không đọc file đính kèm, chỉ tóm tắt phần gõ tay** | ❓ | Trong khi "AI gợi ý điểm" thì lại có đọc file ⇒ hai đường AI hành xử khác nhau, khó giải thích trước hội đồng. Phải thống nhất một đường. |
+| ~~P0-2~~ | ~~Tóm tắt AI không đọc file đính kèm~~ | — | ❌ **BÁO ĐỘNG NHẦM — tôi ghi sai.** `AiSummaryService` **CÓ** đọc file (`GetLatestProposalFileAsync`; PDF gửi thẳng bytes, .docx bóc text). Chính bản tóm tắt anh chụp cũng ghi *"AI đã đọc file đề cương: Report3_SRS_FURPMS_v0.9.docx"* và chỉ ra file không khớp đề tài — đó là **AI làm đúng việc**, không phải nó không đọc. |
 | P0-3 | **Bấm "Duyệt & khoá" biên bản không có xác nhận** | ⚠️ | Khoá là **không sửa lại được** (rule #12). Bấm nhầm là hỏng cả vòng. Cần hộp thoại xác nhận nêu rõ hậu quả. |
 | P0-4 | **Tạo vòng NGHIỆM THU khi chưa có vòng xét duyệt nào vẫn được** | ✅ | QĐ543 Điều 11.2.c: hội đồng nghiệm thu lập **dựa trên hồ sơ nghiệm thu**, mà hồ sơ đó chỉ có sau khi đề tài được duyệt và ký hợp đồng. Cần chặn: chưa có vòng REVIEW đạt thì không mở được ACCEPTANCE. |
 | P0-5 | **Lịch họp bấm "Bắt đầu" là kẹt vĩnh viễn, không xoá/không lùi được** | ⚠️ | Anh đã dính. Cần: xoá được buổi họp chưa diễn ra · hoàn tác "Bắt đầu" · hoặc ít nhất xác nhận trước khi bấm. |
@@ -62,7 +62,7 @@
 | P2-7 | **Trạng thái còn tiếng Anh ở màn Staff xét duyệt** | — | Sót sau đợt rà 36 màn (màn này vào bằng đường khác). |
 | P2-8 | **Tab "Kho tài liệu" trống** | — | Cần xác định: chưa làm, hay có mà không có dữ liệu. |
 | P2-9 | **Admin có nên sửa thông tin cá nhân của người khác không?** | ⚠️ | Quy định không nói. Đề xuất: Admin sửa **vai + khoá/mở tài khoản**; thông tin cá nhân (điện thoại, học vị) để chính chủ sửa ở Hồ sơ. |
-| P2-10 | **Tạo tài khoản mới không gửi mail** | — | Cần kiểm: `EMAIL_ENABLED` đang bật? Nếu bật mà không gửi thì là lỗi thật. |
+| ✅ P2-10 | **Tạo tài khoản mới không gửi mail** | — | **XONG 12/08** — `ACCOUNT_CREATED`: chuông + mail kèm mật khẩu tạm, dẫn thẳng tới màn đổi mật khẩu. Đo thật: `email_logs` ghi `SENT`. |
 
 ---
 

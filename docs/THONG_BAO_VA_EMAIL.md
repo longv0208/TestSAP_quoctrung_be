@@ -45,10 +45,11 @@ NotifyAsync(...)  →  ① LUÔN tạo bản ghi `notifications` (chuông trong 
 | `MINUTES_FINALIZED` | Chủ tịch **duyệt & khoá biên bản** | **Toàn bộ thành viên hội đồng** | ✅ | ✅ | NORMAL |
 | `ACCEPTANCE_FINALIZED` | Khoá biên bản của vòng **nghiệm thu** | Chủ nhiệm | ✅ | ✅ | HIGH |
 | `CYCLE_DEADLINE_EXTENDED` | **Gia hạn hạn nộp** của đợt | Mọi chủ nhiệm **có đề tài trong đợt đó** | ✅ | ✅ | HIGH |
+| `ACCOUNT_CREATED` | Admin **tạo tài khoản mới** | Chính người được tạo | ✅ | ✅ | HIGH |
 
-**14 loại**, chia hai nhóm:
+**15 loại**, chia hai nhóm:
 
-- **Theo sự kiện** (10 loại) — bắn ngay lúc ai đó bấm nút.
+- **Theo sự kiện** (11 loại) — bắn ngay lúc ai đó bấm nút.
 - **Theo lịch quét** (4 loại nhắc hạn/quá hạn) — `DeadlineReminderService` là background service,
   **chạy mỗi 24 giờ**, và **chống gửi trùng**: đã bắn `DEADLINE_REMINDER_T3` cho sản phẩm đó rồi thì
   lần quét sau không bắn lại. Admin có nút chạy tay để demo (không phải đợi 24h).

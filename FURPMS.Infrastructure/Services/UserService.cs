@@ -11,9 +11,12 @@ public class UserService : IUserService
 {
     private readonly IUserRepository _users;
 
-    public UserService(IUserRepository users)
+    private readonly INotifier _notifier;
+
+    public UserService(IUserRepository users, INotifier notifier)
     {
         _users = users;
+        _notifier = notifier;
     }
 
     public async Task<IEnumerable<UserDto>> GetUsersAsync()
@@ -92,6 +95,10 @@ public class UserService : IUserService
             });
         }
         await _users.SaveChangesAsync();
+
+        // Gửi SAU CÙNG, khi tài khoản đã đủ vai — thư báo trước khi gán vai xong thì người ta đăng
+        // nhập vào là màn hình trống.
+        await SendWelcomeAsync(user, request.TemporaryPassword!);
 
         return await GetUserByIdAsync(user.Id);
     }
@@ -172,6 +179,38 @@ public class UserService : IUserService
     /// thao tác sửa tên chỉ vì gõ sai tên khoa là quá tay.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Gửi <b>thư chào mừng kèm mật khẩu tạm</b> cho tài khoản vừa tạo.
+    /// <para>
+    /// Trước đây tạo xong hệ thống im lặng: người được tạo <b>không biết mình có tài khoản</b>, và
+    /// Admin phải tự nhắn mật khẩu tạm qua kênh khác — vừa phiền vừa không có dấu vết.
+    /// </para>
+    /// <para>
+    /// <b>Phải <c>await</c></b>, không được bắn kiểu "chạy ngầm rồi quên": repository dùng chung một
+    /// <c>DbContext</c> mà <c>DbContext</c> KHÔNG an toàn đa luồng — thả song song là hai luồng cùng
+    /// ghi, gây lỗi ngay ở chính thao tác tạo tài khoản (đã đo được: trả về 409 trong khi tài khoản
+    /// vẫn được tạo).
+    /// </para>
+    /// <para>
+    /// Lỗi gửi mail thì đã được <c>IEmailService</c> nuốt và ghi <c>email_logs</c>, nên await ở đây
+    /// vẫn không làm hỏng việc tạo tài khoản. Tắt <c>EMAIL_ENABLED</c> ⇒ ghi SKIPPED, chuông vẫn có.
+    /// </para>
+    /// </summary>
+    private async Task SendWelcomeAsync(User user, string temporaryPassword)
+    {
+        await _notifier.NotifyAsync(
+            user.Id,
+            "ACCOUNT_CREATED",
+            "Tài khoản FURPMS của bạn đã được tạo",
+            $"Chào {user.FullName}, Phòng Quản lý khoa học đã tạo tài khoản cho bạn trên Hệ thống " +
+            $"Quản lý đề tài NCKH (FURPMS). Email đăng nhập: {user.Email} — Mật khẩu tạm: " +
+            $"{temporaryPassword}. Vui lòng đăng nhập và ĐỔI MẬT KHẨU ngay trong lần đầu sử dụng.",
+            actionUrl: "/change-password",
+            entityType: "User",
+            entityId: user.Id.ToString(),
+            priority: "HIGH");
+    }
+
     private async Task ApplyUnitAndDegreeAsync(User user, string? department, int? academicDegree)
     {
         if (!string.IsNullOrWhiteSpace(department))
