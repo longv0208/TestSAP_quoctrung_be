@@ -45,7 +45,7 @@
 | P1-4 | **CRUD hợp đồng** | — | Có sửa + xoá (chỉ khi chưa ký). Cần rà lại: sửa được những trường nào sau khi ký? Rule #21 nói sau khi ký phải đi đường **phụ lục**, không sửa đè. |
 | P1-5 | **Quyết toán: bấm một phát xong hết, không xác nhận, không sửa lại** | ✅ | QĐ543 **Điều 13.1.e** đòi *"Xác nhận của Ban kế toán về việc đề tài đã quyết toán kinh phí và đã xử lý tài sản"* và **Điều 13.2** đòi ký **Biên bản thanh lý hợp đồng (BM13)**. Hiện chỉ có 2 nút đánh dấu, **chưa có biên bản thanh lý**. Cần: xác nhận trước khi đánh dấu · bỏ đánh dấu được · thêm BM13. |
 | P1-6 | **Thông báo còn thiếu** | — | Xác nhận giải ngân · duyệt báo cáo tiến độ. Chi tiết ở `THONG_BAO_VA_EMAIL.md`. |
-| P1-7 | **Quên mật khẩu qua email** | — | Chưa có endpoint lẫn liên kết trên màn đăng nhập. Người ngoài dễ hỏi nhất. |
+| ✅ P1-7 | **Quên mật khẩu qua email** | — | **XONG 12/08** — `POST /auth/forgot-password` + `/auth/reset-password`, liên kết "Quên mật khẩu?" ở màn đăng nhập, 2 màn mới. Mã băm SHA-256 trong DB, sống 30 phút, dùng một lần; email không tồn tại vẫn trả 200 (chống dò tài khoản). |
 
 ---
 

@@ -17,6 +17,18 @@ public class User
     public bool IsDeleted { get; set; }
     public DateTime? DeletedAt { get; set; }
     public Guid? DeletedBy { get; set; }
+    /// <summary>
+    /// <b>Băm SHA-256</b> của mã đặt lại mật khẩu — không lưu mã gốc.
+    /// <para>
+    /// Ai đọc được DB cũng không dùng được để chiếm tài khoản; mã gốc chỉ tồn tại trong đúng lá
+    /// thư gửi đi. Dùng một lần: đặt lại xong thì xoá.
+    /// </para>
+    /// </summary>
+    public string? PasswordResetTokenHash { get; set; }
+
+    /// <summary>Hạn của mã đặt lại (30 phút). Quá hạn coi như không có mã.</summary>
+    public DateTime? PasswordResetExpiresAt { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 

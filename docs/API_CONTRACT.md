@@ -100,6 +100,8 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 | POST | `/api/auth/login` | công khai | Đăng nhập, trả token + thông tin user |
 | GET | `/api/auth/me` | * | Thông tin user hiện tại |
 | POST | `/api/auth/change-password` | * | Đổi mật khẩu |
+| POST | `/api/auth/forgot-password` | **Không cần đăng nhập** | Xin mã đặt lại mật khẩu: `{ email }`. **LUÔN trả 200** dù email có tồn tại hay không — trả lời khác nhau là biến màn này thành công cụ dò tài khoản. Mã băm SHA-256 lưu DB, sống **30 phút**, dùng **một lần**. Gửi kèm chuông + email (`PASSWORD_RESET`). |
+| POST | `/api/auth/reset-password` | **Không cần đăng nhập** | Đặt lại mật khẩu: `{ token, newPassword }`. **400** nếu mã sai/hết hạn/đã dùng, hoặc mật khẩu < 8 ký tự. Đổi xong xoá mã ngay. |
 
 **Login request**
 ```json

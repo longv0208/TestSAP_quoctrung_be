@@ -35,6 +35,28 @@ public class AuthController : ControllerBase
     }
 
     [Authorize]
+    /// <summary>
+    /// Xin liên kết đặt lại mật khẩu. <b>Luôn trả 200</b> dù email có tồn tại hay không — trả lời
+    /// khác nhau là biến màn này thành công cụ dò tài khoản.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("forgot-password")]
+    public async Task<ActionResult<ApiResponse>> ForgotPassword([FromBody] ForgotPasswordRequest request)
+    {
+        await _authService.ForgotPasswordAsync(request);
+        return Ok(ApiResponse.Ok(
+            "Nếu email có trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu. Vui lòng kiểm tra hộp thư (kể cả mục Spam)."));
+    }
+
+    /// <summary>Đặt lại mật khẩu bằng mã trong thư — mã dùng một lần, hết hạn sau 30 phút.</summary>
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<ApiResponse>> ResetPassword([FromBody] ResetPasswordRequest request)
+    {
+        await _authService.ResetPasswordAsync(request);
+        return Ok(ApiResponse.Ok("Đã đổi mật khẩu. Hãy đăng nhập bằng mật khẩu mới."));
+    }
+
     [HttpPost("change-password")]
     public async Task<ActionResult<ApiResponse>> ChangePassword([FromBody] ChangePasswordRequest request)
     {

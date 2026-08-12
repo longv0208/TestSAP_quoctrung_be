@@ -11,10 +11,81 @@ public class AuthService : IAuthService
     private readonly IUserRepository _users;
     private readonly IJwtService _jwt;
 
-    public AuthService(IUserRepository users, IJwtService jwt)
+    private readonly INotifier _notifier;
+
+    public AuthService(IUserRepository users, IJwtService jwt, INotifier notifier)
     {
         _users = users;
         _jwt = jwt;
+        _notifier = notifier;
+    }
+
+    /// <summary>Mã sống 30 phút — đủ để mở thư và đổi, ngắn đủ để mã lọt ra ngoài cũng nhanh vô dụng.</summary>
+    private static readonly TimeSpan ResetTokenLifetime = TimeSpan.FromMinutes(30);
+
+    private static string HashToken(string token)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToHexString(bytes);
+    }
+
+    /// <inheritdoc/>
+    public async Task ForgotPasswordAsync(ForgotPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Email))
+            throw new ArgumentException("Phải nhập email.");
+
+        var user = await _users.Query()
+            .FirstOrDefaultAsync(u => u.Email == request.Email.Trim() && !u.IsDeleted);
+
+        // Email không tồn tại (hoặc tài khoản bị khoá) thì IM LẶNG kết thúc — không ném lỗi.
+        // Trả lời khác nhau giữa "có" và "không có" là biến màn này thành công cụ dò tài khoản.
+        if (user == null || user.Status != "ACTIVE") return;
+
+        // Mã gốc chỉ tồn tại trong lá thư; DB giữ bản băm.
+        var token = Convert.ToHexString(System.Security.Cryptography.RandomNumberGenerator.GetBytes(32));
+        user.PasswordResetTokenHash = HashToken(token);
+        user.PasswordResetExpiresAt = DateTime.UtcNow.Add(ResetTokenLifetime);
+        user.UpdatedAt = DateTime.UtcNow;
+        await _users.SaveChangesAsync();
+
+        await _notifier.NotifyAsync(
+            user.Id,
+            "PASSWORD_RESET",
+            "Đặt lại mật khẩu FURPMS",
+            $"Chào {user.FullName}, có yêu cầu đặt lại mật khẩu cho tài khoản {user.Email}. " +
+            $"Mã đặt lại: {token} — mã có hiệu lực trong 30 phút và chỉ dùng được MỘT LẦN. " +
+            "Nếu không phải bạn yêu cầu, hãy bỏ qua thư này; mật khẩu hiện tại vẫn giữ nguyên.",
+            actionUrl: $"/reset-password?token={token}",
+            entityType: "User",
+            entityId: user.Id.ToString(),
+            priority: "HIGH");
+    }
+
+    /// <inheritdoc/>
+    public async Task ResetPasswordAsync(ResetPasswordRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Token))
+            throw new ArgumentException("Thiếu mã đặt lại mật khẩu.");
+        if (string.IsNullOrWhiteSpace(request.NewPassword) || request.NewPassword.Length < 8)
+            throw new ArgumentException("Mật khẩu mới phải có ít nhất 8 ký tự.");
+
+        var hash = HashToken(request.Token.Trim());
+        var user = await _users.Query().FirstOrDefaultAsync(u => u.PasswordResetTokenHash == hash && !u.IsDeleted);
+
+        // Gộp chung một câu cho cả "sai mã" lẫn "hết hạn": nói rõ mã nào sai thì người dò biết
+        // mình đang đi đúng hướng.
+        if (user == null || user.PasswordResetExpiresAt == null || user.PasswordResetExpiresAt < DateTime.UtcNow)
+            throw new ArgumentException(
+                "Mã đặt lại không đúng hoặc đã hết hạn (mã chỉ sống 30 phút và dùng được một lần). " +
+                "Hãy yêu cầu gửi lại mã mới.");
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
+        // Xoá mã ngay — dùng một lần, không để lại đường quay lại.
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetExpiresAt = null;
+        user.UpdatedAt = DateTime.UtcNow;
+        await _users.SaveChangesAsync();
     }
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request)
