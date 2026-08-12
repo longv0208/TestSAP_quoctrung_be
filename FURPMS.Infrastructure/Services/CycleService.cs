@@ -245,6 +245,8 @@ public class CycleService : ICycleService
         var researchType = await _masterData.ResearchTypes.FirstOrDefaultAsync(t => t.Id == request.ResearchTypeId)
             ?? throw new KeyNotFoundException($"Loại đề tài {request.ResearchTypeId} không tồn tại.");
 
+        await ValidateCycleAsync(request.Name, cycleYear, openDate, deadline, researchType.Id, excludeCycleId: null);
+
         var cycle = new ResearchCycle
         {
             CycleYear = cycleYear,
@@ -262,6 +264,48 @@ public class CycleService : ICycleService
         await _cycles.SaveChangesAsync();
 
         return await GetCycleByIdAsync(cycle.Id);
+    }
+
+    /// <summary>
+    /// Kiểm tra một đợt trước khi ghi.
+    ///
+    /// <para>
+    /// Trước 14/08 <b>máy chủ không kiểm gì cả</b> — chỉ có form ở giao diện chặn. Tức là gọi
+    /// thẳng API (hoặc giao diện lỡ hỏng) thì tạo được đợt có <b>hạn nộp trước ngày mở</b> — đợt
+    /// đó không ai nộp vào được và cũng không có màn nào báo vì sao. Kiểm ở tầng dịch vụ mới là
+    /// chỗ đúng: mọi đường ghi đều đi qua đây.
+    /// </para>
+    /// </summary>
+    /// <param name="excludeCycleId">Khi SỬA thì bỏ chính đợt đang sửa ra khỏi phép so trùng.</param>
+    private async Task ValidateCycleAsync(
+        string? name, int cycleYear, DateOnly openDate, DateOnly deadline, int researchTypeId, int? excludeCycleId)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Phải đặt tên cho đợt.");
+
+        // Năm quá xa là gõ nhầm, không phải kế hoạch dài hạn.
+        var thisYear = DateTime.UtcNow.Year;
+        if (cycleYear < thisYear - 10 || cycleYear > thisYear + 10)
+            throw new ArgumentException(
+                $"Năm đợt ({cycleYear}) nằm ngoài khoảng hợp lý {thisYear - 10}–{thisYear + 10} — kiểm tra lại.");
+
+        if (deadline <= openDate)
+            throw new ArgumentException(
+                $"Hạn nộp ({deadline:dd/MM/yyyy}) phải SAU ngày mở nhận ({openDate:dd/MM/yyyy}) — " +
+                "đặt ngược thì không ai nộp đề cương vào đợt này được.");
+
+        // Rule #7: 1 đợt = đúng 1 loại đề tài. Mở cả hai loại thì tạo 2 đợt độc lập. Trùng
+        // (năm + loại) là dấu hiệu bấm tạo hai lần, hoặc quên mất đợt đã có — chặn để khỏi có
+        // hai đợt song song mà PI không biết nộp vào đâu.
+        var duplicate = await _cycles.Query().AnyAsync(c =>
+            c.CycleYear == cycleYear &&
+            c.ResearchTypeId == researchTypeId &&
+            (excludeCycleId == null || c.Id != excludeCycleId));
+
+        if (duplicate)
+            throw new InvalidOperationException(
+                $"Đã có đợt năm {cycleYear} cho loại đề tài này. Mỗi năm chỉ mở MỘT đợt cho mỗi loại " +
+                "(rule #7) — hãy sửa đợt đang có, hoặc chọn loại đề tài khác.");
     }
 
     public async Task<CycleDto> UpdateCycleAsync(int cycleId, CreateCycleRequest request)
@@ -293,6 +337,12 @@ public class CycleService : ICycleService
 
         if (request.Description != null)
             cycle.Description = request.Description;
+
+        // Kiểm SAU khi gán để bắt đúng trạng thái cuối cùng: sửa từng phần thì hạn nộp mới có thể
+        // rơi trước ngày mở CŨ (hoặc ngược lại), mà kiểm riêng lẻ từng trường sẽ không thấy.
+        await ValidateCycleAsync(
+            cycle.SemesterCode, cycle.CycleYear, cycle.SubmissionOpenDate, cycle.SubmissionDeadline,
+            cycle.ResearchTypeId, excludeCycleId: cycleId);
 
         cycle.UpdatedAt = DateTime.UtcNow;
         await _cycles.SaveChangesAsync();
