@@ -124,3 +124,5 @@ print('\n'.join((p.extract_text() or '') for p in PdfReader('docs/Cam-nang-tranh
 ---
 
 *Xếp lại 06/08/2026. Trước đó `docs/` có 24 file phẳng, không biết cái nào quan trọng hơn cái nào.*
+
+- `THONG_BAO_VA_EMAIL.md` — 8 loại thông báo (kích hoạt khi nào, gửi cho ai, có kèm mail không) + phần chưa có.

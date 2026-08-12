@@ -145,14 +145,6 @@ public class SystemSettingService : ISystemSettingService
                     throw new ArgumentException("Giá trị phải là true hoặc false.");
                 return enabled.ToString().ToLowerInvariant();
 
-            case SystemSettingKeys.DisbursementWholeTranches:
-                if (!int.TryParse(value, out var tranches) || tranches < SystemSettingKeys.MinDisbursementWholeTranches)
-                    throw new ArgumentException(
-                        $"Đề tài cấp trọn gói phải có tối thiểu {SystemSettingKeys.MinDisbursementWholeTranches} đợt giải ngân (QĐ 543).");
-                if (tranches > 12)
-                    throw new ArgumentException("Tối đa 12 đợt giải ngân.");
-                return tranches.ToString();
-
             case SystemSettingKeys.ContractSideARepresentative:
                 if (value.Length > 200)
                     throw new ArgumentException("Tên người đại diện quá dài.");

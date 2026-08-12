@@ -40,6 +40,7 @@ public class DatabaseSeeder
         await SeedSystemFinancialConfigsAsync();
         await SeedSystemSettingsAsync();
         await SeedDisbursementTemplatesAsync();
+        await RemoveObsoleteSettingsAsync();
         await FixAppliedOrderingUnitFlagAsync();
         await SeedDemoProposalAsync();
         await EnsureDemoCycleOpenAsync();
@@ -534,6 +535,26 @@ public class DatabaseSeeder
     /// cẩm nang capstone gọi việc cắm tỷ lệ 30/30/30/10 vào mã nguồn là hardcode tham số nghiệp vụ.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Dọn cấu hình <c>DISBURSEMENT_WHOLE_TRANCHES</c> khỏi DB đã triển khai.
+    /// <para>
+    /// Từ 11/08 lịch giải ngân sinh theo <b>loại đề tài</b> (QĐ543 Điều 16, bảng
+    /// <c>disbursement_templates</c>) nên cấu hình này <b>không còn ảnh hưởng gì</b>. Để lại thì
+    /// Admin vẫn thấy nó trên màn Cài đặt, sửa xong tưởng có tác dụng — mà phần mô tả lại viện dẫn
+    /// QĐ543 sai ("yêu cầu tối thiểu 3 đợt"). Nút bấm không làm gì còn tệ hơn không có nút.
+    /// </para>
+    /// </summary>
+    private async Task RemoveObsoleteSettingsAsync()
+    {
+        var obsolete = await _db.SystemSettings
+            .Where(s => s.Key == "DISBURSEMENT_WHOLE_TRANCHES")
+            .ToListAsync();
+        if (obsolete.Count == 0) return;
+
+        _db.SystemSettings.RemoveRange(obsolete);
+        await _db.SaveChangesAsync();
+    }
+
     private async Task SeedDisbursementTemplatesAsync()
     {
         if (await _db.DisbursementTemplates.AnyAsync()) return;
@@ -611,13 +632,6 @@ public class DatabaseSeeder
                 Value = SystemSettingKeys.DefaultEmailEnabled.ToString().ToLowerInvariant(),
                 RecommendedValue = SystemSettingKeys.DefaultEmailEnabled.ToString().ToLowerInvariant(),
                 Description = "Tắt để chạy demo mà không gửi email thật ra ngoài. Thông báo trong ứng dụng vẫn hoạt động."
-            },
-            new SystemSetting
-            {
-                Key = SystemSettingKeys.DisbursementWholeTranches,
-                Value = SystemSettingKeys.DefaultDisbursementWholeTranches.ToString(),
-                RecommendedValue = SystemSettingKeys.DefaultDisbursementWholeTranches.ToString(),
-                Description = "Số đợt giải ngân cho đề tài cấp trọn gói. QĐ 543 yêu cầu tối thiểu 3 (đầu/giữa/cuối)."
             },
             new SystemSetting
             {

@@ -38,6 +38,7 @@ Không phải thứ gì cũng nên cấu hình được. Mấy mã sau **là log
 
 ## 1. ✂️ Thừa / nợ kỹ thuật (nên dọn)
 - **Dimension FINANCE + FINANCE round** — superseded rule #16 (chỉ 2 hội đồng). Đã ẩn FE, code còn → nên strip.
+- ✅ **ĐÃ DỌN 12/08:** `GenerateWholeAsync` / `GeneratePartialAsync` / `ResolvePercentages` trong `DisbursementService` — mã chết sau khi giải ngân chuyển sang bám Điều 16, không còn ai gọi. Kèm theo, gỡ cấu hình `DISBURSEMENT_WHOLE_TRANCHES` khỏi màn Cài đặt: nó không còn ảnh hưởng gì mà phần mô tả lại viện dẫn QĐ543 sai ("yêu cầu tối thiểu 3 đợt"), Admin sửa xong tưởng có tác dụng. Nút bấm không làm gì còn tệ hơn không có nút. Seeder tự dọn bản ghi cũ khỏi DB đã triển khai.
 - ~~**Tính tiền / % giải ngân / budget cap**~~ — ⚠️ **ĐÃ ĐẢO 11–12/08.** Rule #15 ("không quản tiền") vẫn đúng ở khâu **chi tiền** (giải ngân = mốc + minh chứng, không nhập số tiền), nhưng **dự toán trong đề cương** thì QĐ543 Điều 14–15 bắt buộc phải soi trần ⇒ nay có `BudgetPolicyService` chặn thật. Đừng strip bảng budget.
 - **Endpoint chốt trực tiếp** `POST councils/{id}/decision` — đã khóa 409, luôn dùng luồng biên bản. Dead endpoint (giữ tra cứu).
 - **Quorum** (`QuorumNumerator/Denominator`) — rule #12 (quyết định Chủ tịch, không đếm phiếu) → vô dụng.

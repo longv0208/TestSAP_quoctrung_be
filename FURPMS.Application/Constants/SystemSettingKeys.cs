@@ -41,9 +41,6 @@ public static class SystemSettingKeys
 
     // ── Tài chính ─────────────────────────────────────────────────────────────
     /// <summary>Số đợt giải ngân cho đề tài cấp trọn gói (rule #6: tối thiểu 3 — đầu/giữa/cuối).</summary>
-    public const string DisbursementWholeTranches = "DISBURSEMENT_WHOLE_TRANCHES";
-    public const int DefaultDisbursementWholeTranches = 3;
-    public const int MinDisbursementWholeTranches = 3;
 
     // ── Hợp đồng ──────────────────────────────────────────────────────────────
     /// <summary>Người đại diện Bên A ký hợp đồng, dùng khi tạo hợp đồng không ghi rõ.</summary>

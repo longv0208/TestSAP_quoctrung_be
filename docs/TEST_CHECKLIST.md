@@ -54,6 +54,11 @@ Những mục dưới đây tôi đã chạy thật bằng API hoặc có test t
 >
 > ✅ **Chạy tiếp 12/08:** §5 (duyệt báo cáo tiến độ · hồ sơ nghiệm thu) · §6 (6 màn master data) ·
 > §7 (đa vai M-01…M-03). Lỗi tìm được đã sửa trong cùng lượt — xem nhật ký commit ngày 12/08.
+>
+> ✅ **Rà toàn bộ giao diện 12/08 — `36/36 màn`** của cả 4 vai (`.e2e/ui-sweep.mjs`): soi chữ tiếng
+> Anh lọt vào bản Việt, mã enum lòi ra, khoá i18n hiện thô, cộng bắt console error và mọi phản hồi
+> API ≥ 400. Kết quả cuối: **0 lỗi nhãn · 0 lỗi API · 0 lỗi console**. Chạy lại bất cứ lúc nào bằng
+> `node .e2e/ui-sweep.mjs` — đây là lưới an toàn cho mọi thay đổi giao diện về sau.
 
 ---
 

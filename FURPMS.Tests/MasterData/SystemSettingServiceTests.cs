@@ -87,15 +87,20 @@ public class SystemSettingServiceTests
         return new SystemSettingService(new MasterDataRepository(db));
     }
 
+    /// <summary>
+    /// Cấu hình <c>DISBURSEMENT_WHOLE_TRANCHES</c> đã bị gỡ (11–12/08): lịch giải ngân sinh theo
+    /// LOẠI ĐỀ TÀI từ <c>disbursement_templates</c> (QĐ543 Điều 16), không còn khái niệm "cấp trọn
+    /// gói tối thiểu 3 đợt". Khoá lại để không ai vô tình dựng lại một nút không làm gì.
+    /// </summary>
     [Fact]
-    public async Task WholeTranches_DuoiMucToiThieu_Throws()
+    public async Task ObsoleteWholeTranchesSetting_KhongConDuocChapNhan()
     {
         var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
-        var svc = WithKey(db, SystemSettingKeys.DisbursementWholeTranches, "3");
+        // Seeder gỡ bản ghi này khỏi DB (RemoveObsoleteSettingsAsync) ⇒ không còn hàng nào để sửa.
+        var svc = WithKey(db, SystemSettingKeys.DeadlineReminderDays, "30,14,7");
 
-        // QĐ 543: cấp trọn gói phải tối thiểu 3 đợt (đầu/giữa/cuối) — rule #6.
-        await Assert.ThrowsAsync<ArgumentException>(
-            () => svc.UpdateAsync(SystemSettingKeys.DisbursementWholeTranches, "2", Guid.NewGuid()));
+        await Assert.ThrowsAsync<KeyNotFoundException>(
+            () => svc.UpdateAsync("DISBURSEMENT_WHOLE_TRANCHES", "5", Guid.NewGuid()));
     }
 
     [Fact]
