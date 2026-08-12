@@ -44,9 +44,16 @@ Những mục dưới đây tôi đã chạy thật bằng API hoặc có test t
 | A-12 | Khoá bộ tiêu chí đã chấm: sửa tên · sửa điểm · thêm/xoá tiêu chí đều chặn; **nhân bản rồi sửa bản sao thì được** | API |
 | A-13 | Tải nhiều tệp tuần tự + chặn `.exe` | API |
 
-> ⚠️ **Toàn bộ phần trên kiểm ở tầng API, KHÔNG phải trên trình duyệt.** Giao diện có gọi đúng
-> endpoint, hiện đúng thông báo, bật/tắt đúng nút hay không thì **chưa ai bấm thử** — đó chính là
-> việc của §1–§6.
+> ⚠️ **Phần A-01…A-13 ở trên kiểm ở tầng API.**
+>
+> ✅ **Cập nhật 09–12/08 — đã chạy trên trình duyệt thật** (Chrome headless qua Playwright, script ở
+> `core/FURPMS-Web/.e2e/*.mjs`, gitignore): §1 (PI) · §2 (Staff vòng chấm/hội đồng/lịch họp) ·
+> §3 (chấm điểm & biên bản) · §4 (hợp đồng, giải ngân, báo cáo tiến độ) · 9 ràng buộc nghiệp vụ ·
+> trần kinh phí Điều 14 · tỷ lệ hạng mục Điều 15 · nhãn vai hội đồng.
+> Mỗi lần chạy có bắt console error + mọi phản hồi API ≥ 400.
+>
+> **Chưa chạy trên trình duyệt:** §5 (nghiệm thu — đã kiểm ở tầng API) · §6 (Admin master data) ·
+> §7 (đa vai).
 
 ---
 
@@ -185,7 +192,8 @@ Ghi ra để cậu test kỹ hơn ở đây, hoặc chấp nhận rủi ro có �
 
 | Chỗ | Vì sao mỏng |
 |---|---|
-| **Toàn bộ giao diện** | Mọi thứ hôm nay kiểm ở tầng API. Chưa ai bấm thử trên trình duyệt |
+| ~~Toàn bộ giao diện~~ | **Đã bấm thử 09–12/08** — xem ghi chú ở §A. Còn lại: §5 nghiệm thu · §6 Admin · §7 đa vai |
+| **Đề cương lưu trước 12/08** | Dự toán cũ có thể còn tiền ở hạng mục ngoài QĐ543 Điều 15. Form **có hiện** dòng đó kèm nhãn "hạng mục cũ" (sửa 12/08 sau khi test thấy nó vô hình mà vẫn cộng vào tổng), nhưng đề cương như vậy **không nộp được** cho tới khi chuyển tiền sang 06 hạng mục hiện hành |
 | Luồng AI (B1–B5) | Phụ thuộc mạng + Gemini; chưa test bằng dữ liệu thật quy mô |
 | COI · trùng lịch giảng viên | Có code, **chưa có test tự động** |
 | Sinh Word hợp đồng/phụ lục | Đã kiểm bằng file thật nhưng **chưa có test tự động** cho hợp đồng gốc |
