@@ -118,11 +118,26 @@ chấm chỉ việc đọc. Gộp một nút là bước đệm; sinh sẵn mớ
 
 ---
 
-## 7. AI bên PI chạy lỗi
+## 7. AI bên PI chạy lỗi ✅ XONG 14/08 — tìm ra nguyên nhân thật
 
 **Anh quan sát:** *"AI lúc ở PI chạy lỗi thì phải."*
 
-**Việc:** dựng lại lỗi, đọc log, sửa. (Chưa rõ lỗi gì — phải tự dò.)
+**Nguyên nhân:** `axiosClient` đặt hạn chờ **15 giây**, trong khi đo thẳng vào máy chủ:
+
+| Lời gọi | Thời gian thật |
+|---|---|
+| `POST /proposals/{id}/generate-summary` | **36.5 giây** |
+| `POST /ai/proposals/{id}/feedback` | **54.2 giây** |
+| `POST /ai/councils/.../review-kit` | 10.9 giây |
+
+⇒ **Mọi** lời gọi AI đều bị trình duyệt huỷ giữa chừng rồi báo lỗi, trong khi máy chủ vẫn chạy
+xong bình thường và lưu kết quả vào `llm_outputs`. Nhìn từ ngoài y như "AI hỏng".
+
+Cũng giải thích hiện tượng *bấm lại thì thấy kết quả*: lần trước đã sinh xong và nằm sẵn trong
+cache, chỉ là lần đó bị báo lỗi.
+
+**Đã sửa:** thêm `AI_TIMEOUT_MS = 180s`, áp cho **9 đường** thật sự gọi mô hình. Không nâng hạn
+mặc định cho mọi lời gọi — màn hình bình thường mà treo một phút thì tệ hơn là báo lỗi sớm.
 
 ---
 
