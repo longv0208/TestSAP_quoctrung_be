@@ -23,6 +23,7 @@ public class ProposalService : IProposalService
     private readonly IReviewRoundService _reviewRounds;
     private readonly IReviewRepository _review;
     private readonly IBudgetPolicyService _budgetPolicy;
+    private readonly INotifier _notifier;
 
     public ProposalService(
         IProposalRepository proposals,
@@ -32,9 +33,11 @@ public class ProposalService : IProposalService
         IClock clock,
         IReviewRoundService reviewRounds,
         IReviewRepository review,
-        IBudgetPolicyService budgetPolicy)
+        IBudgetPolicyService budgetPolicy,
+        INotifier notifier)
     {
         _budgetPolicy = budgetPolicy;
+        _notifier = notifier;
         _proposals = proposals;
         _cycles = cycles;
         _masterData = masterData;
@@ -586,6 +589,25 @@ public class ProposalService : IProposalService
         project.Status = ProjectStatus.UnderReview;
         project.UpdatedAt = DateTime.UtcNow;
         await _proposals.SaveChangesAsync();
+
+        // Báo Phòng QLKH có đề cương mới cần xử lý. Trước đây nộp xong hệ thống im lặng — chuyên
+        // viên phải tự nhớ vào màn danh sách rà xem có gì mới, quá hạn mở vòng chấm cũng không ai
+        // nhắc. Đây là mắt xích đầu tiên của quy trình nên im lặng ở đây là kẹt cả dây.
+        var piName = await _users.Query()
+            .Where(u => u.Id == userId)
+            .Select(u => u.FullName)
+            .FirstOrDefaultAsync() ?? "Chủ nhiệm";
+        var isRevision = proposal.VersionNo > 1;
+        await _notifier.NotifyRoleAsync(
+            "Staff",
+            isRevision ? "PROPOSAL_RESUBMITTED" : "PROPOSAL_SUBMITTED",
+            isRevision ? "Đề cương nộp lại sau chỉnh sửa" : "Có đề cương mới được nộp",
+            isRevision
+                ? $"{piName} đã nộp lại đề cương \"{proposal.TitleVi}\" (bản {proposal.VersionNo}) sau khi chỉnh sửa."
+                : $"{piName} vừa nộp đề cương \"{proposal.TitleVi}\". Vui lòng xếp vào vòng xét duyệt.",
+            actionUrl: "/proposal-reviews",
+            entityType: "Proposal",
+            entityId: proposal.Id.ToString());
 
         // Rule #1: nộp lại bản REVISION (v2+) → mở lại hội đồng đã chốt "cần chỉnh sửa" để chấm lại
         // (giữ điểm cũ). No-op nếu không có biên bản REVISION nào.

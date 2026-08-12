@@ -35,6 +35,27 @@ public class Notifier : INotifier
         => NotifyManyAsync(
             new[] { userId }, type, title, body, actionUrl, entityType, entityId, priority, alsoEmail);
 
+    public async Task NotifyRoleAsync(
+        string roleName,
+        string type,
+        string title,
+        string body,
+        string? actionUrl = null,
+        string? entityType = null,
+        string? entityId = null,
+        string priority = "NORMAL",
+        bool alsoEmail = true)
+    {
+        var userIds = await _users.UserRoles
+            .Include(ur => ur.Role)
+            .Where(ur => ur.Role.Name == roleName)
+            .Select(ur => ur.UserId)
+            .Distinct()
+            .ToListAsync();
+
+        await NotifyManyAsync(userIds, type, title, body, actionUrl, entityType, entityId, priority, alsoEmail);
+    }
+
     public async Task NotifyManyAsync(
         IReadOnlyCollection<Guid> userIds,
         string type,
@@ -63,6 +84,14 @@ public class Notifier : INotifier
                 Priority = priority
             });
         }
+
+        // Notifier phải TỰ LƯU. Trước đây chỉ `AddAsync` rồi để nơi gọi tự nhớ
+        // `SaveChangesAsync()` — thêm chỗ báo mới mà quên dòng đó thì thông báo lặng lẽ biến mất,
+        // không lỗi, không dấu vết. Chính bẫy này nuốt 4 thông báo vừa thêm hôm 12/08.
+        //
+        // Gọi ở đây an toàn vì mọi nơi báo đều báo SAU khi đã lưu nghiệp vụ của mình — repository
+        // dùng chung một DbContext nên lưu sớm sẽ đẩy cả phần dở dang của nơi gọi.
+        await _notifications.SaveChangesAsync();
 
         if (!alsoEmail) return;
 

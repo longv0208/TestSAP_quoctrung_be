@@ -17,14 +17,18 @@ public class ContractService : IContractService
     private readonly IClock _clock;
     private readonly ISystemSettingService _settings;
 
+    private readonly INotifier _notifier;
+
     public ContractService(IContractRepository contracts, IProposalRepository proposals,
         IClock clock,
-        ISystemSettingService settings)
+        ISystemSettingService settings,
+        INotifier notifier)
     {
         _contracts = contracts;
         _proposals = proposals;
         _clock = clock;
         _settings = settings;
+        _notifier = notifier;
     }
 
     private IQueryable<Contract> QueryWithProject() => _contracts.Query()
@@ -244,6 +248,21 @@ public class ContractService : IContractService
         contract.Project.Status = ProjectStatus.InProgress;
         contract.Project.UpdatedAt = DateTime.UtcNow;
         await _contracts.SaveChangesAsync();
+
+        // Đây là lúc đề tài chính thức được thực hiện và đồng hồ tiến độ bắt đầu chạy — chủ nhiệm
+        // phải biết ngay. Trước đây ký xong hệ thống im lặng, chủ nhiệm chỉ phát hiện khi tự vào
+        // xem, mà hạn nộp báo cáo kỳ 1 thì đã tính từ ngày này.
+        await _notifier.NotifyAsync(
+            contract.Project.PiUserId,
+            "CONTRACT_SIGNED",
+            "Hợp đồng nghiên cứu đã được ký",
+            $"Hợp đồng {contract.ContractNumber ?? ""} cho đề tài \"{contract.Project.TitleVi}\" đã được ký. " +
+            $"Thời gian thực hiện {contract.StartDate:dd/MM/yyyy} – {contract.EndDate:dd/MM/yyyy}. " +
+            "Hãy theo dõi các mốc báo cáo tiến độ trong mục Tiến trình đề tài.",
+            actionUrl: "/my-timeline",
+            entityType: "Contract",
+            entityId: contract.Id.ToString(),
+            priority: "HIGH");
 
         return MapDetail(contract);
     }

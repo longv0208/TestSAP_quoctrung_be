@@ -30,6 +30,24 @@ public interface INotifier
         bool alsoEmail = true);
 
     /// <summary>
+    /// Thông báo cho <b>mọi người mang một vai</b> (vd toàn bộ Phòng QLKH).
+    /// <para>
+    /// Tra vai → danh sách người dùng gom về một chỗ; trước đây mỗi service tự viết lại truy vấn
+    /// <c>UserRoles.Where(Role.Name == "Staff")</c>, thêm một chỗ báo là chép lại một lần nữa.
+    /// </para>
+    /// </summary>
+    Task NotifyRoleAsync(
+        string roleName,
+        string type,
+        string title,
+        string body,
+        string? actionUrl = null,
+        string? entityType = null,
+        string? entityId = null,
+        string priority = "NORMAL",
+        bool alsoEmail = true);
+
+    /// <summary>
     /// Thông báo cho nhiều người cùng nội dung (vd toàn bộ Staff).
     /// Chỉ 1 query lấy email cho cả nhóm — tránh N+1.
     /// </summary>

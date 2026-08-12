@@ -39,13 +39,24 @@ NotifyAsync(...)  →  ① LUÔN tạo bản ghi `notifications` (chuông trong 
 | `DEADLINE_OVERDUE` | Sản phẩm **quá hạn** | Chủ nhiệm | ✅ | ✅ | HIGH |
 | `REPORT_REMINDER_T{n}` | Báo cáo tiến độ còn **n ngày** tới hạn | Chủ nhiệm | ✅ | ✅ | NORMAL |
 | `REPORT_OVERDUE` | Báo cáo tiến độ **quá hạn** | Chủ nhiệm | ✅ | ✅ | HIGH |
+| `PROPOSAL_SUBMITTED` | Chủ nhiệm **nộp đề cương** | Toàn bộ Phòng QLKH | ✅ | ✅ | NORMAL |
+| `PROPOSAL_RESUBMITTED` | Chủ nhiệm **nộp lại** sau khi chỉnh sửa (bản v2+) | Toàn bộ Phòng QLKH | ✅ | ✅ | NORMAL |
+| `CONTRACT_SIGNED` | Hợp đồng được **ký** | Chủ nhiệm | ✅ | ✅ | HIGH |
+| `MINUTES_FINALIZED` | Chủ tịch **duyệt & khoá biên bản** | **Toàn bộ thành viên hội đồng** | ✅ | ✅ | NORMAL |
+| `ACCEPTANCE_FINALIZED` | Khoá biên bản của vòng **nghiệm thu** | Chủ nhiệm | ✅ | ✅ | HIGH |
+| `CYCLE_DEADLINE_EXTENDED` | **Gia hạn hạn nộp** của đợt | Mọi chủ nhiệm **có đề tài trong đợt đó** | ✅ | ✅ | HIGH |
 
-**8 loại**, chia hai nhóm:
+**14 loại**, chia hai nhóm:
 
-- **Theo sự kiện** (4 loại đầu) — bắn ngay lúc ai đó bấm nút.
-- **Theo lịch quét** (4 loại sau) — `DeadlineReminderService` là background service, **chạy mỗi 24
-  giờ**, và **chống gửi trùng**: đã bắn `DEADLINE_REMINDER_T3` cho sản phẩm đó rồi thì lần quét sau
-  không bắn lại. Admin có nút chạy tay để demo (không phải đợi 24h).
+- **Theo sự kiện** (10 loại) — bắn ngay lúc ai đó bấm nút.
+- **Theo lịch quét** (4 loại nhắc hạn/quá hạn) — `DeadlineReminderService` là background service,
+  **chạy mỗi 24 giờ**, và **chống gửi trùng**: đã bắn `DEADLINE_REMINDER_T3` cho sản phẩm đó rồi thì
+  lần quét sau không bắn lại. Admin có nút chạy tay để demo (không phải đợi 24h).
+
+> **Vì sao vòng xét duyệt có `REVIEW_ROUND_CLOSED` mà không có `ACCEPTANCE_FINALIZED`, còn vòng
+> nghiệm thu thì ngược lại?** Chủ nhiệm chỉ nên nhận **một** tin cho một kết quả. Vòng xét duyệt báo
+> lúc *đóng vòng*; vòng nghiệm thu không đi qua bước đó nên báo lúc *khoá biên bản*. Thành viên hội
+> đồng thì luôn nhận `MINUTES_FINALIZED` ở cả hai loại vòng.
 
 ### Muốn demo thông báo ngay lập tức
 Đăng nhập Admin → **Dev-tools** → chạy tay bộ quét hạn (`AdminController` gọi
@@ -59,14 +70,15 @@ NotifyAsync(...)  →  ① LUÔN tạo bản ghi `notifications` (chuông trong 
 |---|---|---|
 | **Quên mật khẩu qua email** | Người dùng mất mật khẩu phải nhờ Admin đặt lại | `AuthController` hiện chỉ có `login`, `me`, `change-password`. **Không có** `forgot-password`/`reset-password`; giao diện đăng nhập cũng không có liên kết "Quên mật khẩu". Admin có `POST /users/{id}/reset-password`. |
 | **Chuông không tự cập nhật** | Phải tải lại trang mới thấy thông báo mới | Chưa có polling / SignalR |
-| Thông báo khi **nộp đề cương** | Chuyên viên không được báo có đề cương mới | Phải tự vào màn danh sách xem |
-| Thông báo khi **hợp đồng được ký** / **giải ngân được xác nhận** | Chủ nhiệm không biết | Phải tự vào xem |
-| Thông báo khi **biên bản được Chủ tịch khoá** | Thành viên hội đồng không biết đã chốt | |
-| Thông báo **gia hạn deadline của đợt** | Chủ nhiệm không biết hạn đã đổi | |
+| Thông báo khi **giải ngân được xác nhận** | Chủ nhiệm không biết đợt nào đã chi | Phải tự vào xem tiến trình |
+| Thông báo khi **báo cáo tiến độ được duyệt** | Chủ nhiệm không biết kỳ báo cáo đã qua | |
 | Quản lý **token/chi phí AI** và **đo chất lượng đầu ra AI** | — | Cẩm nang capstone có nêu; chưa làm |
 
-> Bốn dòng giữa (nộp đề cương · ký hợp đồng · khoá biên bản · gia hạn) đều là **thêm một lời gọi
-> `NotifyAsync` vào chỗ đã có sẵn**, không phải hạ tầng mới. Rẻ, nhưng chưa làm.
+> ✅ **Đã bổ sung 12/08:** nộp đề cương · ký hợp đồng · khoá biên bản · gia hạn đợt — 6 loại mới,
+> đã kiểm end-to-end trên hệ thống thật (xem §4).
+>
+> Hai dòng còn lại cũng chỉ là **thêm một lời gọi `NotifyAsync` vào chỗ đã có sẵn**, không phải hạ
+> tầng mới.
 
 ---
 
@@ -84,6 +96,16 @@ SELECT [key], value FROM system_settings WHERE [key] = 'EMAIL_ENABLED';
 ```
 
 Trên giao diện: biểu tượng **chuông** ở thanh trên cùng (mọi vai) → mở màn **Thông báo**.
+
+### Đã kiểm end-to-end 12/08 (tắt `EMAIL_ENABLED` để không gửi mail thật)
+
+| Thao tác | Kết quả đo được |
+|---|---|
+| Chủ nhiệm nộp đề cương | `PROPOSAL_SUBMITTED` → Chuyên viên, nội dung nêu **tên người nộp + tên đề tài** |
+| Ký hợp đồng | `CONTRACT_SIGNED` → đúng chủ nhiệm của đề tài đó, kèm thời gian thực hiện |
+| Chủ tịch khoá biên bản nghiệm thu | `MINUTES_FINALIZED` → **cả 5 thành viên hội đồng**, kèm kết luận; `ACCEPTANCE_FINALIZED` → chủ nhiệm |
+| Gia hạn hạn nộp của đợt | `CYCLE_DEADLINE_EXTENDED` → **2 chủ nhiệm trong đợt đó**, nêu hạn cũ → hạn mới + lý do; chủ nhiệm đợt khác **không** nhận |
+| `EMAIL_ENABLED = false` | `email_logs` ghi `SKIPPED`, chuông vẫn đủ — đúng thiết kế |
 
 > ⚠️ **Khi test đừng để `EMAIL_ENABLED` bật với địa chỉ thật** — hệ thống gửi mail thật ra ngoài.
 

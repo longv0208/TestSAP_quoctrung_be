@@ -292,20 +292,14 @@ public class DeliverableService : IDeliverableService
         return Map(deliverable);
     }
 
-    private async Task NotifyStaffAsync(
+    /// <summary>Báo cho toàn bộ Phòng QLKH về một mốc của hợp đồng.</summary>
+    private Task NotifyStaffAsync(
         Domain.Entities.Contracts.Contract contract,
         string notificationType,
         string body,
         string actionUrl)
-    {
-        var staffUserIds = await _users.UserRoles
-            .Include(ur => ur.Role)
-            .Where(ur => ur.Role.Name == "Staff")
-            .Select(ur => ur.UserId)
-            .ToListAsync();
-
-        await _notifier.NotifyManyAsync(
-            staffUserIds,
+        => _notifier.NotifyRoleAsync(
+            "Staff",
             notificationType,
             notificationType == "DELIVERABLE_PASSED"
                 ? "Điều kiện giải ngân đã đáp ứng"
@@ -315,7 +309,6 @@ public class DeliverableService : IDeliverableService
             entityType: "Contract",
             entityId: contract.Id.ToString(),
             priority: "HIGH");
-    }
 
     private static DeliverableResponse Map(Domain.Entities.Projects.ProjectDeliverable d) => new()
     {

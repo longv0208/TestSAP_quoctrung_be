@@ -18,18 +18,22 @@ public class ReviewScoringService : IReviewScoringService
     // Bước nhảy điểm chấm là tham số nghiệp vụ Admin chỉnh được, không hardcode.
     private readonly ISystemSettingService _settings;
 
+    private readonly INotifier _notifier;
+
     public ReviewScoringService(
         IReviewRepository review,
         IMasterDataRepository masterData,
         IProposalRepository proposals,
         IClock clock,
-        ISystemSettingService settings)
+        ISystemSettingService settings,
+        INotifier notifier)
     {
         _review = review;
         _masterData = masterData;
         _proposals = proposals;
         _clock = clock;
         _settings = settings;
+        _notifier = notifier;
     }
 
     // Phase B: council chấm NHÓM đề tài — suy ra project từ assignment
@@ -443,6 +447,47 @@ public class ReviewScoringService : IReviewScoringService
             ReviewRoundFinalizer.ApplyProjectResult(round, projectRound, decision.Result, _clock.UtcNow);
 
         await _review.SaveChangesAsync();
+
+        // Biên bản khoá = kết quả CHÍNH THỨC (rule #12). Hai nhóm cần biết ngay:
+        //  · thành viên hội đồng — để thôi chờ, và biết bản mình góp ý đã chốt;
+        //  · chủ nhiệm — nhưng CHỈ ở vòng nghiệm thu. Vòng xét duyệt đã có
+        //    `REVIEW_ROUND_CLOSED` bắn lúc đóng vòng; báo cả hai chỗ là chủ nhiệm nhận trùng.
+        var resultText = decision.Result switch
+        {
+            ReviewResult.Approved => isAcceptance ? "ĐẠT" : "ĐƯỢC DUYỆT",
+            ReviewResult.Rejected => isAcceptance ? "KHÔNG ĐẠT" : "KHÔNG DUYỆT",
+            ReviewResult.RevisionRequired => "CẦN CHỈNH SỬA",
+            _ => "đã chốt"
+        };
+        var stageText = isAcceptance ? "nghiệm thu" : "xét duyệt đề cương";
+        var projectTitle = proposal?.Project.TitleVi ?? proposal?.TitleVi ?? "đề tài";
+
+        var memberUserIds = council.Members
+            .Where(m => m.UserId != Guid.Empty)
+            .Select(m => m.UserId)
+            .ToList();
+        await _notifier.NotifyManyAsync(
+            memberUserIds,
+            "MINUTES_FINALIZED",
+            "Biên bản đã được Chủ tịch chốt",
+            $"Biên bản {stageText} đề tài \"{projectTitle}\" đã được Chủ tịch duyệt và khoá. Kết luận: {resultText}.",
+            actionUrl: "/council-memberships",
+            entityType: "ReviewCouncil",
+            entityId: council.Id.ToString());
+
+        if (isAcceptance && proposal != null)
+        {
+            await _notifier.NotifyAsync(
+                proposal.Project.PiUserId,
+                "ACCEPTANCE_FINALIZED",
+                "Kết quả nghiệm thu đề tài",
+                $"Hội đồng nghiệm thu đã kết luận đề tài \"{projectTitle}\": {resultText}.",
+                actionUrl: "/my-timeline",
+                entityType: "ReviewCouncil",
+                entityId: council.Id.ToString(),
+                priority: "HIGH");
+        }
+
         return MapDecision(decision);
     }
 

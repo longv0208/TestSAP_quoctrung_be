@@ -17,13 +17,17 @@ public class CycleService : ICycleService
     // Chỉ dùng để kiểm "đợt đã có vòng chấm chưa" trước khi cho xoá.
     private readonly IReviewRepository _review;
 
+    private readonly INotifier _notifier;
+
     public CycleService(ICycleRepository cycles, IMasterDataRepository masterData,
-        IProposalRepository proposals, IReviewRepository review)
+        IProposalRepository proposals, IReviewRepository review,
+        INotifier notifier)
     {
         _cycles = cycles;
         _masterData = masterData;
         _proposals = proposals;
         _review = review;
+        _notifier = notifier;
     }
 
     public async Task<IEnumerable<CycleDto>> GetCyclesAsync()
@@ -498,6 +502,27 @@ public class CycleService : ICycleService
         };
         await _cycles.AddDeadlineExtensionAsync(ext);
         await _cycles.SaveChangesAsync();
+
+        // Gia hạn mà không báo thì vô nghĩa: người cần biết nhất là chủ nhiệm đang chạy đua với hạn
+        // cũ. Gửi cho mọi chủ nhiệm có đề tài trong đợt này — kể cả người đã nộp, vì rút lại để sửa
+        // rồi nộp lại vẫn còn kịp trong thời gian gia hạn.
+        var piUserIds = await _proposals.Query().IgnoreQueryFilters()
+            .Where(p => p.Project.CycleTrack.CycleId == cycleId)
+            .Select(p => p.Project.PiUserId)
+            .Distinct()
+            .ToListAsync();
+
+        await _notifier.NotifyManyAsync(
+            piUserIds,
+            "CYCLE_DEADLINE_EXTENDED",
+            "Hạn nộp của đợt đã được gia hạn",
+            $"Đợt \"{cycle.SemesterCode ?? cycle.CycleYear.ToString()}\" gia hạn nộp đề cương " +
+            $"từ {current:dd/MM/yyyy} sang {newDeadline:dd/MM/yyyy}." +
+            (string.IsNullOrWhiteSpace(request.Reason) ? "" : $" Lý do: {request.Reason}"),
+            actionUrl: "/my-proposals",
+            entityType: "ResearchCycle",
+            entityId: cycleId.ToString(),
+            priority: "HIGH");
 
         return new DeadlineExtensionDto
         {
