@@ -90,6 +90,11 @@
 
 ### Ký hợp đồng — ba cách người ta hay làm
 
+> ✅ **QĐ543 đã chốt sẵn cách ký, không phải chọn:** BM05 **Điều 7.2–7.3** ghi rõ hợp đồng
+> *"được thực hiện qua phương thức **ký điện tử trên phần mềm Econtract**"*, cấp *"chứng thư số 1
+> lần (OTP)"*, và *"các bên **tự bảo quản và lưu trữ**"*. Tức là **ký ở phần mềm ngoài** — hệ thống
+> này chỉ sinh biểu mẫu và giữ bản đã ký. Đúng cách 2 dưới đây, và có căn cứ để trả lời hội đồng.
+
 | Cách | Mô tả | Hợp với mình không |
 |---|---|---|
 | **1. Tích hợp nhà cung cấp chữ ký số** (FPT.eContract, VNPT-CA, Viettel-CA, DocuSign) | Hệ thống đẩy file lên, hai bên ký bằng USB token/OTP, nhận về file đã ký + dấu thời gian có giá trị pháp lý | ❌ Cần hợp đồng thương mại + tài khoản CA thật. Không khả thi cho capstone, và **thầy cũng không đòi** |
@@ -122,12 +127,12 @@ giữ bản đã ký làm bằng chứng, và từ lúc ký thì khoá lại —
 
 | Mã | Việc | Ưu tiên | Cần anh chốt? |
 |---|---|---|---|
-| HD-1 | Nút "Ghi nhận đã ký" + **bắt buộc có bản ký** mới cho ghi nhận | P1 | ✅ **có** — hay vẫn cho ghi nhận không cần bằng chứng? |
-| HD-2 | **Khoá sửa sau khi ký** (`PUT` trả 409, chỉ đường sang phụ lục) | P1 | không |
-| HD-3 | Ô **"Ngày ký thực tế"** tách khỏi ngày bấm nút | P1 | không |
-| HD-4 | **Quyết toán**: xác nhận trước khi đánh dấu · bỏ đánh dấu được | P1 | không |
-| HD-5 | **Biên bản thanh lý hợp đồng BM13** (Điều 13.2) | P1 | không |
-| HD-6 | Đối chiếu **BM05 gốc** từng trường, liệt kê cái còn thiếu | P1 | cần file biểu mẫu gốc |
+| ✅ HD-1 | Nút "Ghi nhận đã ký" + **bắt buộc có bản ký** mới cho ghi nhận | — | **XONG 12/08** (anh chọn phương án chặt) |
+| ✅ HD-2 | **Khoá sửa sau khi ký** (`PUT` trả 409, chỉ đường sang phụ lục) | — | **XONG 12/08** |
+| ✅ HD-3 | Ô **"Ngày ký thực tế"** tách khỏi ngày bấm nút | — | **XONG 12/08** — chặn cả ngày tương lai |
+| ✅ HD-4 | **Quyết toán**: bỏ đánh dấu được · khoá sau khi ký biên bản thanh lý | — | **XONG 12/08** |
+| ✅ HD-5 | **Biên bản thanh lý hợp đồng BM13** (Điều 13.2) | — | **XONG 12/08** — `GET /contracts/{id}/export-settlement-word` |
+| HD-6 | Đối chiếu **BM05 gốc** từng trường, liệt kê cái còn thiếu | P1 | ✅ **Biểu mẫu CÓ trong file quy định** (BM01–BM13, từ dòng 159). Tôi tra hụt lần trước. Việc còn lại: soi từng trường BM05 với bản Word hệ thống sinh |
 | HD-7 | Lưu **hash file bản ký** để chống tráo file | P2 | không |
 | HD-8 | Bố cục file Word xuất ra cho giống hợp đồng thật | P3 | không |
 | HD-9 | Làm lại giao diện màn hợp đồng | P3 | không |

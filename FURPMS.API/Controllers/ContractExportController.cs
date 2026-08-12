@@ -21,4 +21,15 @@ public class ContractExportController : ControllerBase
         var (content, fileName) = await _export.ExportContractDocAsync(contractId);
         return File(content, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
     }
+
+    /// <summary>
+    /// BM13 — Biên bản nghiệm thu &amp; thanh lý hợp đồng (QĐ543 Điều 13.2). Xuất Word để ký ngoài
+    /// rồi tải bản đã ký lên như hợp đồng gốc.
+    /// </summary>
+    [HttpGet("export-settlement-word")]
+    public async Task<IActionResult> ExportSettlementWord(Guid contractId)
+    {
+        var (content, fileName) = await _export.ExportSettlementDocAsync(contractId);
+        return File(content, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", fileName);
+    }
 }

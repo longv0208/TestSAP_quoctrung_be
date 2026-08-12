@@ -91,13 +91,18 @@ public class ContractsController : ControllerBase
     }
 
     [ProducesResponseType(typeof(ApiResponse<ContractDetailResponse>), StatusCodes.Status200OK)]
+    /// <summary>
+    /// <b>Ghi nhận đã ký</b> — hệ thống không ký thay ai (QĐ543 BM05 Điều 7.2: ký điện tử ở phần
+    /// mềm ngoài). Bắt buộc đã tải bản đã ký lên trước, ngược lại trả <b>409</b>.
+    /// </summary>
+    /// <param name="signedOn">Ngày ký ghi trên giấy (yyyy-MM-dd). Bỏ trống thì lấy ngày hôm nay.</param>
     [HttpPost("{id:guid}/sign")]
     [Authorize(Roles = "Admin,Staff")]
-    public async Task<IActionResult> Sign(Guid id)
+    public async Task<IActionResult> Sign(Guid id, [FromQuery] DateOnly? signedOn)
     {
         var (userId, _) = GetCaller();
-        var result = await _contracts.SignAsync(id, userId!.Value);
-        return Ok(ApiResponse<ContractDetailResponse>.Ok(result));
+        var result = await _contracts.SignAsync(id, userId!.Value, signedOn);
+        return Ok(ApiResponse<ContractDetailResponse>.Ok(result, "Đã ghi nhận hợp đồng đã ký."));
     }
 
     // ── Disbursements ─────────────────────────────────────────────────────────

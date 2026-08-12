@@ -96,26 +96,51 @@ public class ContractSettlementService : IContractSettlementService
         return ToDto(settlement);
     }
 
-    public async Task<SettlementDto> MarkAccountingClearedAsync(int settlementId, DateOnly? clearedDate)
+    /// <summary>
+    /// Đánh dấu kế toán đã tất toán — QĐ543 <b>Điều 13.1.e</b> (*"Xác nhận của Ban kế toán về việc
+    /// đề tài đã quyết toán kinh phí và đã xử lý tài sản"*).
+    /// <para>
+    /// <paramref name="clear"/> = <c>false</c> để <b>BỎ đánh dấu</b>: trước đây bấm nhầm là chịu,
+    /// không có đường lui, mà đây là mốc đóng hồ sơ tài chính của cả đề tài.
+    /// </para>
+    /// </summary>
+    public async Task<SettlementDto> MarkAccountingClearedAsync(
+        int settlementId, DateOnly? clearedDate, bool clear = true)
     {
         var settlement = await _contracts.Settlements
             .FirstOrDefaultAsync(s => s.Id == settlementId)
             ?? throw new KeyNotFoundException("Settlement not found.");
 
-        settlement.AccountingClearedAt = clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow);
+        AssertUnlocked(settlement);
+        settlement.AccountingClearedAt = clear ? clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow) : null;
         await _contracts.SaveChangesAsync();
         return ToDto(settlement);
     }
 
-    public async Task<SettlementDto> MarkAssetsClearedAsync(int settlementId, DateOnly? clearedDate)
+    /// <summary>Đánh dấu (hoặc bỏ đánh dấu) đã xử lý tài sản — cùng căn cứ Điều 13.1.e.</summary>
+    public async Task<SettlementDto> MarkAssetsClearedAsync(
+        int settlementId, DateOnly? clearedDate, bool clear = true)
     {
         var settlement = await _contracts.Settlements
             .FirstOrDefaultAsync(s => s.Id == settlementId)
             ?? throw new KeyNotFoundException("Settlement not found.");
 
-        settlement.AssetsClearedAt = clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow);
+        AssertUnlocked(settlement);
+        settlement.AssetsClearedAt = clear ? clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow) : null;
         await _contracts.SaveChangesAsync();
         return ToDto(settlement);
+    }
+
+    /// <summary>
+    /// Biên bản thanh lý đã ký rồi thì <b>khoá</b> hai mốc trên — Điều 13.2 coi việc ký biên bản
+    /// thanh lý là chốt sổ; sửa sau đó là làm lệch với văn bản đã ký.
+    /// </summary>
+    private static void AssertUnlocked(ContractSettlement settlement)
+    {
+        if (settlement.SettlementSignedAt != null)
+            throw new InvalidOperationException(
+                "Biên bản thanh lý đã ký — không đổi được mốc quyết toán nữa. " +
+                "Muốn sửa phải huỷ chữ ký biên bản thanh lý trước.");
     }
 
     private static SettlementDto ToDto(ContractSettlement s) => new()

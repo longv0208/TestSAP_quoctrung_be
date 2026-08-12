@@ -7,6 +7,9 @@ public interface IDocumentExportService
     // BM05 — sinh Word hợp đồng (rule tuần 10): bốc dữ liệu điền mẫu → xuất .docx để ký ngoài.
     Task<(byte[] Content, string FileName)> ExportContractDocAsync(Guid contractId);
 
+    /// <summary>Biên bản nghiệm thu &amp; thanh lý hợp đồng — BM13 (QĐ543 Điều 13.2).</summary>
+    Task<(byte[] Content, string FileName)> ExportSettlementDocAsync(Guid contractId);
+
     /// <summary>
     /// **Phụ lục hợp đồng** cho một đề nghị điều chỉnh đã được duyệt (F4).
     /// Hợp đồng đã ký thì không sửa đè lên bản gốc — mỗi thay đổi (gia hạn, đổi nội dung, đổi

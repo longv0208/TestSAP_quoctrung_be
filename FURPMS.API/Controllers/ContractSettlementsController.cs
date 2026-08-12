@@ -46,7 +46,7 @@ public class ContractSettlementsController : ControllerBase
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> MarkAccountingCleared(int id, [FromBody] MarkClearedRequest request)
     {
-        var dto = await _service.MarkAccountingClearedAsync(id, request.ClearedDate);
+        var dto = await _service.MarkAccountingClearedAsync(id, request.ClearedDate, request.Clear);
         return Ok(ApiResponse<SettlementDto>.Ok(dto));
     }
 
@@ -55,7 +55,7 @@ public class ContractSettlementsController : ControllerBase
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> MarkAssetsCleared(int id, [FromBody] MarkClearedRequest request)
     {
-        var dto = await _service.MarkAssetsClearedAsync(id, request.ClearedDate);
+        var dto = await _service.MarkAssetsClearedAsync(id, request.ClearedDate, request.Clear);
         return Ok(ApiResponse<SettlementDto>.Ok(dto));
     }
 }

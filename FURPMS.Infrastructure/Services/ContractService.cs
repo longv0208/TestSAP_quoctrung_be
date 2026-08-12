@@ -18,12 +18,15 @@ public class ContractService : IContractService
     private readonly ISystemSettingService _settings;
 
     private readonly INotifier _notifier;
+    private readonly IDocumentRepository _documents;
 
     public ContractService(IContractRepository contracts, IProposalRepository proposals,
         IClock clock,
         ISystemSettingService settings,
-        INotifier notifier)
+        INotifier notifier,
+        IDocumentRepository documents)
     {
+        _documents = documents;
         _contracts = contracts;
         _proposals = proposals;
         _clock = clock;
@@ -142,6 +145,15 @@ public class ContractService : IContractService
             .FirstOrDefaultAsync(c => c.Id == contractId)
             ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
 
+        // QĐ543 BM05 Điều 6.1: *"Các sửa đổi, bổ sung phải lập thành văn bản PHỤ LỤC có đầy đủ chữ
+        // ký của các bên"* — và phải báo trước 15 ngày làm việc. Sửa đè bản đã ký là làm sai lệch
+        // văn bản hai bên đã ký, còn tệ hơn không cho sửa (rule #21).
+        if (contract.Status != ContractStatus.PendingSignature)
+            throw new InvalidOperationException(
+                $"Hợp đồng đã ký (trạng thái {StatusText.Vi(contract.Status)}) — không sửa đè được. " +
+                "Theo QĐ543 (BM05 Điều 6.1), mọi thay đổi sau khi ký phải lập thành PHỤ LỤC có chữ ký " +
+                "hai bên. Hãy dùng mục \"Điều chỉnh\" để tạo đơn điều chỉnh.");
+
         if (string.IsNullOrWhiteSpace(request.ContractNumber))
             throw new ArgumentException("Số hợp đồng không được để trống.");
         if (request.EndDate <= request.StartDate)
@@ -230,7 +242,25 @@ public class ContractService : IContractService
         await _contracts.SaveChangesAsync();
     }
 
-    public async Task<ContractDetailResponse> SignAsync(Guid contractId, Guid signedBy)
+    /// <summary>
+    /// <b>Ghi nhận đã ký</b> — hệ thống KHÔNG ký thay ai.
+    /// <para>
+    /// QĐ543 <b>BM05 Điều 7.2–7.3</b>: hợp đồng *"được thực hiện qua phương thức **ký điện tử trên
+    /// phần mềm Econtract**"* và *"các bên tự bảo quản và lưu trữ"*. Việc ký diễn ra ở phần mềm
+    /// NGOÀI; phần của hệ thống này là sinh đúng biểu mẫu rồi <b>giữ bản đã ký làm bằng chứng</b>
+    /// (rule #21).
+    /// </para>
+    /// <para>
+    /// Vì vậy bắt buộc phải có <b>ít nhất một tài liệu đính kèm</b> trước khi ghi nhận. Trước đây
+    /// bấm một nút là hợp đồng thành "Đang hiệu lực" dù chưa ai ký gì — hỏi "bằng chứng ký đâu" là
+    /// không có gì đưa ra.
+    /// </para>
+    /// </summary>
+    /// <param name="signedOn">
+    /// Ngày ký GHI TRÊN GIẤY. Khác ngày bấm nút (có thể ký hôm trước, nhập hôm sau) và mọi mốc hợp
+    /// đồng phải tính theo ngày này. Bỏ trống thì lấy ngày hệ thống.
+    /// </param>
+    public async Task<ContractDetailResponse> SignAsync(Guid contractId, Guid signedBy, DateOnly? signedOn = null)
     {
         var contract = await QueryWithProject()
             .FirstOrDefaultAsync(c => c.Id == contractId)
@@ -240,8 +270,20 @@ public class ContractService : IContractService
             throw new InvalidOperationException(
                 $"Hợp đồng đang ở trạng thái {StatusText.Vi(contract.Status)} — chỉ ký được hợp đồng đang chờ ký.");
 
+        var hasSignedCopy = await _documents.Query()
+            .AnyAsync(d => d.EntityType == "Contract" && d.EntityId == contractId.ToString() && !d.IsDeleted);
+        if (!hasSignedCopy)
+            throw new InvalidOperationException(
+                "Chưa có bản hợp đồng đã ký. Theo QĐ543 (BM05 Điều 7.2) hợp đồng được ký điện tử ở " +
+                "phần mềm ngoài, hệ thống chỉ lưu bản đã ký làm minh chứng. " +
+                "Hãy: Xuất hợp đồng (Word) → ký ngoài → tải bản đã ký lên mục \"Hồ sơ hợp đồng đã ký\" rồi ghi nhận lại.");
+
+        var signDate = signedOn ?? DateOnly.FromDateTime(_clock.UtcNow);
+        if (signDate > DateOnly.FromDateTime(_clock.UtcNow))
+            throw new ArgumentException("Ngày ký không được ở tương lai.");
+
         contract.Status = ContractStatus.Active;
-        contract.SignedAt = _clock.UtcNow;
+        contract.SignedAt = new DateTime(signDate.Year, signDate.Month, signDate.Day, 0, 0, 0, DateTimeKind.Utc);
         contract.UpdatedAt = DateTime.UtcNow;
 
         // Ký hợp đồng → project sang giai đoạn thực hiện.

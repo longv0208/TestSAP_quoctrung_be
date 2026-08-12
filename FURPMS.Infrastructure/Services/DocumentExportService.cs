@@ -636,6 +636,148 @@ public class DocumentExportService : IDocumentExportService
         return (ms.ToArray(), $"HopDong_{code}.docx");
     }
 
+    // ── Biên bản nghiệm thu & thanh lý hợp đồng — BM13 ──────────────────────
+
+    /// <summary>
+    /// Sinh <b>Biên bản nghiệm thu &amp; thanh lý hợp đồng (BM13)</b> — QĐ543 <b>Điều 13.2</b>:
+    /// <i>"Phòng QLKH … tổ chức ký kết Biên bản thanh lý hợp đồng thực hiện đề tài NCKH (Biểu mẫu 13)"</i>.
+    /// <para>
+    /// Trước đây quyết toán chỉ có hai nút đánh dấu, <b>không có văn bản nào để ký</b> — mà Điều 13.2
+    /// coi việc ký biên bản này mới là chốt sổ đề tài. Giữ nguyên văn chữ của mẫu, điền dữ liệu thật
+    /// vào chỗ trống; chỗ nào hệ thống chưa có thì để dấu chấm lửng như bản giấy để điền tay.
+    /// </para>
+    /// </summary>
+    public async Task<(byte[] Content, string FileName)> ExportSettlementDocAsync(Guid contractId)
+    {
+        var c = await _contracts.Query()
+            .Include(x => x.Project).ThenInclude(p => p.PiUser)
+            .Include(x => x.Project).ThenInclude(p => p.HostingUnit)
+            .FirstOrDefaultAsync(x => x.Id == contractId)
+            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+
+        var settlement = await _contracts.Settlements
+            .FirstOrDefaultAsync(x => x.ContractId == contractId);
+
+        var deliverables = await _contracts.Deliverables
+            .Where(d => d.ContractId == contractId)
+            .OrderBy(d => d.Sequence).ToListAsync();
+
+        var disbursed = await _contracts.Disbursements
+            .Where(d => d.ContractId == contractId && d.Status == "DISBURSED")
+            .SumAsync(d => (decimal?)(d.ActualAmount ?? d.PlannedAmount)) ?? 0m;
+
+        using var ms = new MemoryStream();
+        using (var docx = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document))
+        {
+            var mainPart = docx.AddMainDocumentPart();
+            mainPart.Document = new Document(new Body());
+            var body = mainPart.Document.Body!;
+
+            var pi = c.Project?.PiUser;
+            const string Blank = "……………………………";
+            var today = DateTime.UtcNow;
+            var signedOn = c.SignedAt ?? today;
+
+            AppendParagraph(body, "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
+            AppendParagraph(body, "Độc Lập – Tự Do – Hạnh Phúc");
+            AppendParagraph(body, "***");
+            AppendParagraph(body, "");
+            AppendHeading(body, "BIÊN BẢN NGHIỆM THU & THANH LÝ HỢP ĐỒNG", 16, bold: true,
+                justify: JustificationValues.Center);
+            AppendHeading(body, $"NGHIÊN CỨU KHOA HỌC CẤP TRƯỜNG NĂM {c.EndDate.Year}", 14, bold: true,
+                justify: JustificationValues.Center);
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "Căn cứ Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015;");
+            AppendParagraph(body, "Căn cứ Luật Khoa học và Công nghệ số 29/2013/QH13 ngày 18/6/2013;");
+            AppendParagraph(body,
+                $"Căn cứ Hợp đồng NCKH số: {c.ContractNumber}/QLKH-FEHO giữa Trường Đại học FPT với " +
+                $"Chủ nhiệm đề tài ký ngày {signedOn:dd} tháng {signedOn:MM} năm {signedOn:yyyy}.");
+            AppendParagraph(body, "");
+            AppendParagraph(body,
+                $"Hôm nay, ngày {today:dd} tháng {today:MM} năm {today:yyyy}, tại Trường Đại học FPT, chúng tôi gồm:");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "BÊN GIAO THỰC HIỆN ĐỀ TÀI (BÊN A): TRƯỜNG ĐẠI HỌC FPT", bold: true);
+            AppendParagraph(body, $"Đại diện là: {c.SideARepresentative ?? Blank}");
+            AppendParagraph(body, "Chức vụ: Trưởng ban Nghiên cứu và Phát triển    Mã số thuế: 0102100740");
+            AppendParagraph(body,
+                "Địa chỉ: Khu Giáo dục và Đào tạo, Khu Công nghệ cao Hoà Lạc, Km29 Đại lộ Thăng Long, huyện Thạch Thất, Hà Nội.");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "BÊN NHẬN TỔ CHỨC CHỦ TRÌ THỰC HIỆN ĐỀ TÀI (BÊN B):", bold: true);
+            AppendParagraph(body, $"Chủ nhiệm đề tài: {pi?.FullName ?? Blank}");
+            AppendParagraph(body, $"Đơn vị công tác: {c.Project?.HostingUnit?.Name ?? Blank}");
+            AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? Blank}    Email: {pi?.Email ?? Blank}");
+            AppendParagraph(body, $"Số tài khoản: {Blank} tại Ngân hàng {Blank}");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body,
+                "Cùng thỏa thuận và thống nhất ký kết Biên bản thanh lý Hợp đồng nghiên cứu khoa học cấp trường " +
+                $"số {c.ContractNumber} ký ngày {signedOn:dd} tháng {signedOn:MM} năm {signedOn:yyyy} với những điều khoản như sau:");
+            AppendParagraph(body, $"Đề tài: {c.Project?.TitleVi ?? c.ScopeTitle ?? Blank}");
+            AppendParagraph(body, $"Mã số đề tài: {c.Project?.ProjectCode ?? Blank}");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "ĐIỀU 1.", bold: true);
+            AppendParagraph(body,
+                "Bên A xác nhận Bên B đã giao nộp sản phẩm NCKH được hoàn thiện theo ý kiến đánh giá và yêu cầu " +
+                "của Hội đồng nghiệm thu.");
+            AppendParagraph(body,
+                "Toàn văn báo cáo tổng kết đề tài và các tài liệu, minh chứng Bên B giao nộp là bộ phận không tách rời " +
+                "của Biên bản thanh lý này.");
+            AppendParagraph(body, "- Sản phẩm giao nộp:");
+            if (deliverables.Count == 0)
+            {
+                AppendParagraph(body, $"   {Blank}");
+            }
+            else
+            {
+                foreach (var d in deliverables)
+                    AppendParagraph(body, $"   • {d.ProductName} — {FURPMS.Application.Constants.StatusText.Vi(d.AcceptanceStatus)}");
+            }
+            AppendParagraph(body,
+                $"- Đề tài được đánh giá và xếp loại: {(c.Project?.Status == "COMPLETED" ? "Đạt" : Blank)}");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "ĐIỀU 2.", bold: true);
+            AppendParagraph(body,
+                $"Tổng giá trị Hợp đồng là {c.TotalAmount:N0} đồng. Bên B đã được nhận số tiền là {disbursed:N0} đồng. " +
+                "Bên B có trách nhiệm quyết toán kinh phí thực hiện Đề tài với Ban Kế toán trong vòng 07 ngày làm việc " +
+                "kể từ ngày ký Biên bản nghiệm thu và thanh lý Hợp đồng.");
+            if (settlement != null)
+            {
+                var acc = settlement.AccountingClearedAt.HasValue
+                    ? settlement.AccountingClearedAt.Value.ToString("dd/MM/yyyy") : "chưa xác nhận";
+                var ast = settlement.AssetsClearedAt.HasValue
+                    ? settlement.AssetsClearedAt.Value.ToString("dd/MM/yyyy") : "chưa xác nhận";
+                AppendParagraph(body, $"Kế toán xác nhận đã quyết toán kinh phí: {acc}.");
+                AppendParagraph(body, $"Xác nhận đã xử lý tài sản: {ast}.");
+            }
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "ĐIỀU 3.", bold: true);
+            AppendParagraph(body,
+                $"Biên bản này nghiệm thu và thanh lý Hợp đồng nghiên cứu khoa học cấp trường số {c.ContractNumber} " +
+                $"ký ngày {signedOn:dd} tháng {signedOn:MM} năm {signedOn:yyyy}.");
+            AppendParagraph(body, "");
+
+            AppendParagraph(body, "ĐIỀU 4.", bold: true);
+            AppendParagraph(body,
+                "Biên bản nghiệm thu và thanh lý Hợp đồng này được thực hiện qua phương thức ký điện tử trên phần mềm " +
+                "Econtract; các bên tự bảo quản và lưu trữ trên thiết bị điện tử của từng Bên./.");
+            AppendParagraph(body, "");
+            AppendParagraph(body, "");
+
+            var sign = CreateTable(body, new[] { "ĐẠI DIỆN BÊN A (Bên giao)", "BÊN B (Bên nhận)" }, new[] { 4500, 4500 });
+            AddTableRow(sign, "(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)");
+            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (pi?.FullName ?? ""));
+        }
+
+        var code = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
+        return (ms.ToArray(), $"BienBanThanhLy_{code}.docx");
+    }
+
     // ── Phụ lục hợp đồng (F4) ───────────────────────────────────────────────
 
     /// <summary>

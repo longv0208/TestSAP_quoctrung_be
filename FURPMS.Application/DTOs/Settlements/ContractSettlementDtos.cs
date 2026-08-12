@@ -37,4 +37,7 @@ public class MarkClearedRequest
 {
     /// <summary>Bỏ trống = lấy ngày hiện tại của SERVER (tôn trọng đồng hồ test), không lấy ngày máy người dùng.</summary>
     public DateOnly? ClearedDate { get; set; }
+
+    /// <summary><c>false</c> = <b>BỎ đánh dấu</b> (đường lui khi bấm nhầm). Mặc định <c>true</c>.</summary>
+    public bool Clear { get; set; } = true;
 }

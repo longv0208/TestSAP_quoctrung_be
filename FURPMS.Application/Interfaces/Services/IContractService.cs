@@ -9,5 +9,5 @@ public interface IContractService
     Task<ContractDetailResponse> CreateAsync(CreateContractRequest request, Guid createdBy);
     Task<ContractDetailResponse> UpdateAsync(Guid contractId, UpdateContractRequest request);
     Task DeleteAsync(Guid contractId);
-    Task<ContractDetailResponse> SignAsync(Guid contractId, Guid signedBy);
+    Task<ContractDetailResponse> SignAsync(Guid contractId, Guid signedBy, DateOnly? signedOn = null);
 }
