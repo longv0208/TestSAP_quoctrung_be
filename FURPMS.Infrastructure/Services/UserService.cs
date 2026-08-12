@@ -21,20 +21,33 @@ public class UserService : IUserService
         var users = await _users.Query()
             .Where(u => !u.IsDeleted)
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Include(u => u.Unit)
             .OrderBy(u => u.FullName)
             .ToListAsync();
 
-        return users.Select(Map);
+        // Học vị nằm ở hồ sơ khoa học — lấy một lượt cho cả danh sách, tránh N+1.
+        var ids = users.Select(u => u.Id).ToList();
+        var degrees = await _users.AcademicProfiles
+            .Where(a => ids.Contains(a.UserId) && a.DegreeLevel != null)
+            .ToDictionaryAsync(a => a.UserId, a => a.DegreeLevel!);
+
+        return users.Select(u => Map(u, degrees.GetValueOrDefault(u.Id)));
     }
 
     public async Task<UserDto> GetUserByIdAsync(Guid userId)
     {
         var user = await _users.Query()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .Include(u => u.Unit)
             .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted)
             ?? throw new KeyNotFoundException($"User {userId} not found.");
 
-        return Map(user);
+        var degree = await _users.AcademicProfiles
+            .Where(a => a.UserId == userId)
+            .Select(a => a.DegreeLevel)
+            .FirstOrDefaultAsync();
+
+        return Map(user, degree);
     }
 
     public async Task<UserDto> CreateUserAsync(CreateUserRequest request, Guid createdBy)
@@ -104,6 +117,10 @@ public class UserService : IUserService
         user.Phone = request.PhoneNumber;
         user.UpdatedAt = DateTime.UtcNow;
 
+        // Đơn vị + học vị trước đây NHẬN vào rồi bỏ đi: form sửa xong bấm Lưu, đóng lại mở ra là
+        // trắng. `UserDto` cũng khai hai trường này mà không ai gán, nên giao diện luôn thấy rỗng.
+        await ApplyUnitAndDegreeAsync(user, request.Department, request.AcademicDegree);
+
         var existingRoles = user.UserRoles.ToList();
         _users.RemoveUserRoles(existingRoles);
 
@@ -146,12 +163,60 @@ public class UserService : IUserService
         await _users.SaveChangesAsync();
     }
 
-    private static UserDto Map(User u) => new()
+    /// <summary>
+    /// Ghi <b>đơn vị</b> (khớp theo tên hoặc mã trong danh mục <c>organizational_units</c>) và
+    /// <b>học vị</b> (lưu ở <c>academic_profiles.DegreeLevel</c> — hồ sơ khoa học, không phải cột
+    /// của bảng người dùng).
+    /// <para>
+    /// Không khớp được đơn vị thì <b>bỏ qua</b> chứ không ném lỗi: đây là thông tin phụ, chặn cả
+    /// thao tác sửa tên chỉ vì gõ sai tên khoa là quá tay.
+    /// </para>
+    /// </summary>
+    private async Task ApplyUnitAndDegreeAsync(User user, string? department, int? academicDegree)
+    {
+        if (!string.IsNullOrWhiteSpace(department))
+        {
+            var name = department.Trim();
+            var unit = await _users.OrganizationalUnits
+                .FirstOrDefaultAsync(x => x.Name == name || x.Code == name);
+            if (unit != null) user.UnitId = unit.Id;
+        }
+
+        if (academicDegree is not { } degree) return;
+
+        var level = degree switch
+        {
+            0 => "Cử nhân",
+            1 => "Thạc sĩ",
+            2 => "Tiến sĩ",
+            3 => "Giáo sư",
+            _ => null
+        };
+        if (level == null) return;
+
+        var profile = await _users.AcademicProfiles.FirstOrDefaultAsync(a => a.UserId == user.Id);
+        if (profile == null)
+        {
+            _users.AddAcademicProfile(new AcademicProfile
+            {
+                UserId = user.Id, DegreeLevel = level, UpdatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            profile.DegreeLevel = level;
+            profile.UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    private static UserDto Map(User u, string? degreeLevel = null) => new()
     {
         Id = u.Id,
         Email = u.Email,
         FullName = u.FullName,
         PhoneNumber = u.Phone,
+        Department = u.Unit?.Name,
+        AcademicDegree = degreeLevel,
         AccountType = u.UserRoles.FirstOrDefault()?.Role.Name ?? "—",
         Roles = u.UserRoles.Select(ur => ur.Role.Name).ToList(),
         IsActive = u.Status == UserStatus.Active,

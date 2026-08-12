@@ -132,19 +132,27 @@ public class DatabaseSeeder
         // (QĐ543 Điều 8.2 / 12.2) và phải LẺ để có chênh lệch phiếu.
         var accounts = new[]
         {
-            (Email: "staff.demo@furpms.edu.vn",     Name: "Trần Thị Mai Lan",      Role: "Staff"),
-            (Email: "reviewer1.demo@furpms.edu.vn", Name: "PGS.TS. Lê Quang Minh", Role: "ReviewCommittee"),
-            (Email: "reviewer2.demo@furpms.edu.vn", Name: "TS. Phạm Thu Hương",    Role: "ReviewCommittee"),
-            (Email: "reviewer3.demo@furpms.edu.vn", Name: "TS. Vũ Đình Nam",       Role: "ReviewCommittee"),
-            (Email: "reviewer4.demo@furpms.edu.vn", Name: "TS. Đặng Hoài Anh",     Role: "ReviewCommittee"),
-            (Email: "reviewer5.demo@furpms.edu.vn", Name: "ThS. Bùi Thanh Hà",     Role: "ReviewCommittee"),
-            (Email: "pi2.demo@furpms.edu.vn",       Name: "Hoàng Văn Bình",        Role: "Faculty"),
+            (Email: "staff.demo@furpms.edu.vn",     Name: "Trần Thị Mai Lan (staff)",      Role: "Staff"),
+            (Email: "reviewer1.demo@furpms.edu.vn", Name: "PGS.TS. Lê Quang Minh (rv1)", Role: "ReviewCommittee"),
+            (Email: "reviewer2.demo@furpms.edu.vn", Name: "TS. Phạm Thu Hương (rv2)",    Role: "ReviewCommittee"),
+            (Email: "reviewer3.demo@furpms.edu.vn", Name: "TS. Vũ Đình Nam (rv3)",       Role: "ReviewCommittee"),
+            (Email: "reviewer4.demo@furpms.edu.vn", Name: "TS. Đặng Hoài Anh (rv4)",     Role: "ReviewCommittee"),
+            (Email: "reviewer5.demo@furpms.edu.vn", Name: "ThS. Bùi Thanh Hà (rv5)",     Role: "ReviewCommittee"),
+            (Email: "pi2.demo@furpms.edu.vn",       Name: "Hoàng Văn Bình (pi2)",        Role: "Faculty"),
         };
 
         // DB cũ đã có tài khoản với tên placeholder → đổi tên, không tạo trùng.
+        // Tên demo nay kèm mã vai trong ngoặc — nhìn danh sách là biết đang đóng ai, khỏi phải nhớ
+        // "PGS.TS. Lê Quang Minh" là rv mấy. Tên cũ liệt ở đây để DB đã triển khai tự đổi theo.
         var placeholders = new Dictionary<string, string>
         {
-            ["staff.demo@furpms.edu.vn"] = "Trần Thị Quản Lý",
+            ["staff.demo@furpms.edu.vn"] = "Trần Thị Mai Lan",
+            ["reviewer1.demo@furpms.edu.vn"] = "PGS.TS. Lê Quang Minh",
+            ["reviewer2.demo@furpms.edu.vn"] = "TS. Phạm Thu Hương",
+            ["reviewer3.demo@furpms.edu.vn"] = "TS. Vũ Đình Nam",
+            ["reviewer4.demo@furpms.edu.vn"] = "TS. Đặng Hoài Anh",
+            ["reviewer5.demo@furpms.edu.vn"] = "ThS. Bùi Thanh Hà",
+            ["pi2.demo@furpms.edu.vn"] = "Hoàng Văn Bình",
             ["reviewer1.demo@furpms.edu.vn"] = "PGS.TS Lê Phản Biện",
             ["reviewer2.demo@furpms.edu.vn"] = "TS. Phạm Hội Đồng",
             ["reviewer3.demo@furpms.edu.vn"] = "TS. Vũ Thẩm Định"
@@ -185,6 +193,7 @@ public class DatabaseSeeder
         }
 
         await SeedMultiRoleAccountAsync();
+        await RenameDemoAccountsAsync();
     }
 
     /// <summary>
@@ -196,6 +205,31 @@ public class DatabaseSeeder
     /// <c>/contracts</c> phải bị chặn, dù người đó thật sự có vai Phòng QLKH.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// Đổi tên tài khoản demo sang dạng có <b>mã vai trong ngoặc</b> — "…(pi1)", "…(rv3)" — để nhìn
+    /// một danh sách người dùng là biết ai đóng vai gì mà không phải tra lại bảng tài khoản.
+    /// Chỉ đụng đúng tên cũ đã biết, người dùng thật do Admin tạo không bị ảnh hưởng.
+    /// </summary>
+    private async Task RenameDemoAccountsAsync()
+    {
+        var renames = new Dictionary<string, string>
+        {
+            ["admin@furpms.edu.vn"] = "System Administrator (admin)",
+            ["pi.demo@furpms.edu.vn"] = "Nguyễn Văn An (pi1)",
+        };
+
+        var changed = false;
+        foreach (var (email, newName) in renames)
+        {
+            var u = await _db.Users.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Email == email);
+            if (u == null || u.FullName == newName) continue;
+            u.FullName = newName;
+            u.UpdatedAt = DateTime.UtcNow;
+            changed = true;
+        }
+        if (changed) await _db.SaveChangesAsync();
+    }
+
     private async Task SeedMultiRoleAccountAsync()
     {
         var staff = await _db.Users.IgnoreQueryFilters()
@@ -396,7 +430,7 @@ public class DatabaseSeeder
         {
             Id = Guid.NewGuid(),
             Email = adminEmail,
-            FullName = "System Administrator",
+            FullName = "System Administrator (admin)",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 12),
             Status = UserStatus.Active,
             IsExternal = false,
@@ -851,7 +885,7 @@ public class DatabaseSeeder
             {
                 Id = Guid.NewGuid(),
                 Email = piEmail,
-                FullName = "Nguyễn Văn An",
+                FullName = "Nguyễn Văn An (pi1)",
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 12),
                 Status = UserStatus.Active,
                 UnitId = unit.Id,
@@ -928,7 +962,7 @@ public class DatabaseSeeder
         {
             ProjectId = project.Id,
             UserId = piUser.Id,
-            FullName = "Nguyễn Văn An",
+            FullName = "Nguyễn Văn An (pi1)",
             AcademicTitle = "TS",
             UnitName = "Khoa CNTT",
             WorkContent = "Chủ nhiệm đề tài, xây dựng mô hình học máy, viết báo cáo",

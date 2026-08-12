@@ -12,6 +12,10 @@ public class UserRepository : Repository<User>, IUserRepository
     public IQueryable<UserRole> UserRoles => _db.UserRoles;
     public IQueryable<AcademicProfile> AcademicProfiles => _db.AcademicProfiles;
 
+    public IQueryable<OrganizationalUnit> OrganizationalUnits => _db.OrganizationalUnits.AsQueryable();
+
+    public void AddAcademicProfile(AcademicProfile profile) => _db.AcademicProfiles.Add(profile);
+
     public void AddUserRole(UserRole userRole) => _db.UserRoles.Add(userRole);
     public void RemoveUserRoles(IEnumerable<UserRole> userRoles) => _db.UserRoles.RemoveRange(userRoles);
 }
