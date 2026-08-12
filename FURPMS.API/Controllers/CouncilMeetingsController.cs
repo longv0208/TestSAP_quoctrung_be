@@ -83,6 +83,15 @@ public class CouncilMeetingsController : ControllerBase
         return Ok(ApiResponse<MeetingDto>.Ok(result));
     }
 
+    /// <summary>Hoàn tác "Bắt đầu" — đường lui khi bấm nhầm (chỉ khi chưa ai điểm danh).</summary>
+    [HttpPost("api/meetings/{id:guid}/undo-start")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> UndoStart(Guid id)
+    {
+        var result = await _service.UndoStartAsync(id);
+        return Ok(ApiResponse<MeetingDto>.Ok(result, "Đã đưa buổi họp về trạng thái đã lên lịch."));
+    }
+
     // POST /api/meetings/{id}/end
     [HttpPost("api/meetings/{id:guid}/end")]
     [Authorize(Roles = "Admin,Staff")]

@@ -227,6 +227,41 @@ public class CouncilMeetingService : ICouncilMeetingService
         return Map(meeting);
     }
 
+    /// <summary>
+    /// <b>Hoàn tác "Bắt đầu"</b> — đưa buổi họp về trạng thái đã lên lịch.
+    /// <para>
+    /// Trước đây bấm nhầm "Bắt đầu" là buổi họp kẹt vĩnh viễn: <c>DeleteAsync</c> chỉ xoá được buổi
+    /// <i>chưa diễn ra</i>, mà không có đường nào quay lại trạng thái đó — chỉ đi tiếp sang "Hoàn
+    /// thành" được. Một cú bấm nhầm làm bẩn lịch họp mà không sửa được.
+    /// </para>
+    /// <para>
+    /// Chỉ cho lùi khi <b>chưa ai điểm danh</b>: đã có điểm danh nghĩa là buổi họp diễn ra thật,
+    /// lùi lại là xoá dấu vết của việc đã xảy ra.
+    /// </para>
+    /// </summary>
+    public async Task<MeetingDto> UndoStartAsync(Guid meetingId)
+    {
+        var meeting = await _review.Meetings
+            .FirstOrDefaultAsync(m => m.Id == meetingId)
+            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+
+        if (meeting.Status != MeetingStatus.InProgress)
+            throw new InvalidOperationException(
+                $"Buổi họp đang ở trạng thái {StatusText.Vi(meeting.Status)} — chỉ hoàn tác được buổi ĐANG DIỄN RA.");
+
+        var hasAttendance = await _review.MeetingAttendances
+            .AnyAsync(a => a.MeetingId == meetingId && a.ActuallyAttended != null);
+        if (hasAttendance)
+            throw new InvalidOperationException(
+                "Buổi họp đã có điểm danh — không hoàn tác được. Nếu buổi họp thực sự chưa diễn ra, " +
+                "hãy xoá các dòng điểm danh trước.");
+
+        meeting.ActualStartAt = null;
+        meeting.Status = MeetingStatus.Scheduled;
+        await _review.SaveChangesAsync();
+        return Map(meeting);
+    }
+
     public async Task<MeetingDto> EndAsync(Guid meetingId)
     {
         var meeting = await _review.Meetings

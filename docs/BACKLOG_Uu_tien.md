@@ -27,11 +27,11 @@
 |---|---|---|---|
 | P0-1 | **Tóm tắt AI phải sinh SẴN lúc PI nộp, không bắt người chấm ngồi chờ** | ❓ | Thầy đã góp ý. Hiện phản biện mở ra mới bấm "Tạo" rồi chờ — đúng lúc đang có hội đồng ngồi nhìn. Cần: nộp xong chạy nền, lưu lại, người chấm chỉ việc đọc. |
 | ~~P0-2~~ | ~~Tóm tắt AI không đọc file đính kèm~~ | — | ❌ **BÁO ĐỘNG NHẦM — tôi ghi sai.** `AiSummaryService` **CÓ** đọc file (`GetLatestProposalFileAsync`; PDF gửi thẳng bytes, .docx bóc text). Chính bản tóm tắt anh chụp cũng ghi *"AI đã đọc file đề cương: Report3_SRS_FURPMS_v0.9.docx"* và chỉ ra file không khớp đề tài — đó là **AI làm đúng việc**, không phải nó không đọc. |
-| P0-3 | **Bấm "Duyệt & khoá" biên bản không có xác nhận** | ⚠️ | Khoá là **không sửa lại được** (rule #12). Bấm nhầm là hỏng cả vòng. Cần hộp thoại xác nhận nêu rõ hậu quả. |
-| P0-4 | **Tạo vòng NGHIỆM THU khi chưa có vòng xét duyệt nào vẫn được** | ✅ | QĐ543 Điều 11.2.c: hội đồng nghiệm thu lập **dựa trên hồ sơ nghiệm thu**, mà hồ sơ đó chỉ có sau khi đề tài được duyệt và ký hợp đồng. Cần chặn: chưa có vòng REVIEW đạt thì không mở được ACCEPTANCE. |
-| P0-5 | **Lịch họp bấm "Bắt đầu" là kẹt vĩnh viễn, không xoá/không lùi được** | ⚠️ | Anh đã dính. Cần: xoá được buổi họp chưa diễn ra · hoàn tác "Bắt đầu" · hoặc ít nhất xác nhận trước khi bấm. |
-| P0-6 | **Phần "Sửa đề cương" không thấy nội dung đã nộp** (bước 2 trống, mất file đính kèm) | — | Màn Xem thì có, màn Sửa thì không ⇒ PI tưởng mất bài. Nghi nạp lại form thiếu dữ liệu. **Phải dựng lại được lỗi trước khi sửa.** |
-| P0-7 | **Nút "Đối chiếu với file đề cương" không chạy** | — | Anh thử thấy không hoạt động. Hỏng hoặc chưa nối BE. |
+| ✅ P0-3 | Bấm "Duyệt & khoá" biên bản không có xác nhận | — | **XONG 12/08** — hộp thoại nêu rõ: khoá xong không sửa điểm, không sửa biên bản, trạng thái đề tài đổi theo |
+| ✅ P0-4 | Tạo vòng NGHIỆM THU khi chưa có đề tài nào được duyệt | — | **XONG 12/08** — 409 kèm căn cứ Điều 11.2.c và chỉ đường mở vòng xét duyệt trước. Đo thật: ACCEPTANCE → 409, REVIEW → 200 |
+| ✅ P0-5 | Lịch họp bấm "Bắt đầu" là kẹt vĩnh viễn | — | **XONG 12/08** — thêm `POST /meetings/{id}/undo-start` (chỉ khi chưa ai điểm danh) + nút "Hoàn tác bắt đầu". Danh sách nay chỉ hiện nút HỢP LỆ với trạng thái, không còn bấm sai ăn 409 |
+| ✅ P0-6 | "Sửa đề cương" không thấy file đã đính kèm | — | **XONG 12/08** — bước 2 chỉ biết tệp vừa chọn trong phiên, chưa bao giờ hỏi máy chủ. Nay liệt kê đủ tệp đã đính kèm |
+| ✅ P0-7 | Nút AI ở wizard không chạy | — | **XONG 12/08** — "Kiểm tra trùng lặp" gọi `/ai/similarity-check` mà BE KHÔNG có ⇒ gỡ. Đồng thời phát hiện AI-điền-hộ bị khoá sau nhánh `isApplied` nên đề tài ứng dụng không dùng được ⇒ mở cho cả hai loại |
 
 ---
 

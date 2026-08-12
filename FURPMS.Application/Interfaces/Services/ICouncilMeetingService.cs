@@ -12,6 +12,9 @@ public interface ICouncilMeetingService
     Task<MeetingDto> UpdateAsync(Guid meetingId, UpdateMeetingRequest request);
     Task DeleteAsync(Guid meetingId);
     Task<MeetingDto> StartAsync(Guid meetingId);
+    /// <summary>Hoàn tác "Bắt đầu" — về lại trạng thái đã lên lịch (chỉ khi chưa ai điểm danh).</summary>
+    Task<MeetingDto> UndoStartAsync(Guid meetingId);
+
     Task<MeetingDto> EndAsync(Guid meetingId);
 
     // Điểm danh (rule tuần 10): list theo DS hội đồng; Thư ký/Admin/Staff lưu.

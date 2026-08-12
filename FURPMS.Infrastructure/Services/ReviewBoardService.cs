@@ -118,6 +118,35 @@ public class ReviewBoardService : IReviewBoardService
         };
     }
 
+    /// <summary>
+    /// Vòng <b>NGHIỆM THU</b> chỉ mở được khi lĩnh vực đã có ít nhất một đề tài <b>qua vòng xét
+    /// duyệt</b>.
+    /// <para>
+    /// QĐ543 <b>Điều 11.2.c</b>: Phòng QLKH đề xuất lập Hội đồng nghiệm thu *"dựa trên hồ sơ"* —
+    /// mà hồ sơ nghiệm thu (Điều 11.1) gồm báo cáo tổng kết và sản phẩm cam kết *"theo Đề
+    /// cương/Hợp đồng được phê duyệt/ký kết"*. Chưa có đề tài nào được duyệt thì chưa có gì để
+    /// nghiệm thu, mở hội đồng ra là hội đồng ngồi không.
+    /// </para>
+    /// </summary>
+    private async Task AssertAcceptanceComesAfterReviewAsync(int cycleTrackId, string? roundType)
+    {
+        if (!string.Equals(roundType, "ACCEPTANCE", StringComparison.OrdinalIgnoreCase)) return;
+
+        var hasApprovedProject = await _proposals.Query().IgnoreQueryFilters()
+            .AnyAsync(p => p.IsCurrent
+                           && p.Project.CycleTrackId == cycleTrackId
+                           && (p.Status == ProposalStatus.Approved
+                               || p.Project.Status == ProjectStatus.InProgress
+                               || p.Project.Status == ProjectStatus.Acceptance
+                               || p.Project.Status == ProjectStatus.Completed));
+
+        if (!hasApprovedProject)
+            throw new InvalidOperationException(
+                "Lĩnh vực này chưa có đề tài nào qua vòng xét duyệt đề cương — chưa mở được vòng NGHIỆM THU. " +
+                "Theo QĐ543 (Điều 11.2.c), hội đồng nghiệm thu lập dựa trên hồ sơ nghiệm thu, mà hồ sơ đó chỉ có " +
+                "sau khi đề tài được duyệt và ký hợp đồng. Hãy mở vòng XÉT DUYỆT ĐỀ CƯƠNG trước.");
+    }
+
     public async Task<ReviewRoundResponse> CreateRoundForTrackAsync(int cycleId, int trackId, CreateTrackRoundRequest request)
     {
         // Rule #16 (thầy chốt tuần 10): bỏ hẳn phương diện TÀI CHÍNH — chỉ còn 2 hội đồng
@@ -134,6 +163,8 @@ public class ReviewBoardService : IReviewBoardService
         var cycleTrack = await _cycles.CycleTracks
             .FirstOrDefaultAsync(ct => ct.CycleId == cycleId && ct.TrackId == trackId)
             ?? throw new KeyNotFoundException("Lĩnh vực chưa được gắn vào đợt này.");
+
+        await AssertAcceptanceComesAfterReviewAsync(cycleTrack.Id, request.RoundType);
 
         if (request.PrerequisiteRoundId.HasValue)
         {
