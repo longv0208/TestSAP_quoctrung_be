@@ -97,7 +97,7 @@ thẳng. **Còn tồn:** thư vẫn dễ vào Spam vì `FromEmail` là `@gmail.c
 
 ---
 
-## 6. Người chấm phải chờ AI **hai lần**
+## 6. Người chấm phải chờ AI **hai lần** ✅ XONG 14/08
 
 **Anh quan sát:** *"tóm tắt xong bấm gợi ý cho chấm thì lại phải chờ tiếp. Hay là cho 1 nút bấm
 thôi nhỉ, nó sẽ tóm tắt và gợi ý luôn."*
@@ -106,8 +106,12 @@ thôi nhỉ, nó sẽ tóm tắt và gợi ý luôn."*
 nữa. Hai lần chờ ngay lúc hội đồng đang ngồi nhìn. Chưa kể gói Gemini miễn phí **giới hạn số
 request mỗi phút** ⇒ bấm hai lần liên tiếp dễ bị chặn.
 
-**Việc:** gộp thành **một lần gọi** trả về cả tóm tắt lẫn gợi ý điểm. Vừa bớt một lượt chờ, vừa
-bớt một request.
+**Đã làm:** endpoint `POST /ai/councils/{councilId}/proposals/{proposalId}/review-kit` trả cả hai.
+Hai phần chạy **song song** nên tổng chờ xấp xỉ một lần gọi — đo thật **10.9 giây**. Giao diện còn
+**một nút** *"Tóm tắt & gợi ý điểm"*, form chấm điểm chỉ đọc kết quả.
+
+Một phần hỏng **không kéo đổ phần kia**: đo trên hội đồng chưa gắn bộ tiêu chí thì tóm tắt vẫn về
+bình thường, phần gợi ý báo rõ *"chưa có bộ tiêu chí nào áp dụng cho hội đồng này"*.
 
 **Liên quan P0-1** (`BACKLOG_Uu_tien.md`): thầy đã góp ý từ trước là **sinh sẵn lúc PI nộp**, người
 chấm chỉ việc đọc. Gộp một nút là bước đệm; sinh sẵn mới là đích.
@@ -122,20 +126,39 @@ chấm chỉ việc đọc. Gộp một nút là bước đệm; sinh sẵn mớ
 
 ---
 
-## 8. Không biết đọc kịch bản demo ở đâu
+## 8. Không biết đọc kịch bản demo ở đâu ✅ XONG 14/08
 
 **Anh nói:** *"kịch bản vốn tôi còn chả biết ở đâu mà đọc, làm khá cấn, lỗi lung tung."*
 
-**Việc:** một file kịch bản demo **duy nhất, dễ tìm** — mở ra là bấm theo được từng bước, kèm tài
-khoản + mật khẩu + thứ tự màn. Link từ `docs/00_INDEX.md` và README.
+**Đã làm:** `docs/KICH_BAN_DEMO.md` — chuẩn bị · tài khoản · luồng chính 12 phút có ghi sẵn *"nói
+gì"* ở mỗi bước · phần trình diễn thêm · **chỗ dễ vấp** · **câu hội đồng hay hỏi kèm câu trả lời
+sẵn**. Đã đưa lên đầu `00_INDEX.md` tầng 1.
 
 ---
 
-## 9. FE bật lỗi server dù BE đang chạy
+## 9. FE bật lỗi server dù BE đang chạy — 🔶 CHƯA DỰNG LẠI ĐƯỢC, nhưng vá 4 lỗ khác
 
 **Anh quan sát:** khi **tạo đợt từ đầu**, BE vẫn chạy mà FE báo lỗi server.
 
-**Việc:** dựng lại luồng tạo đợt, bắt lỗi thật (log BE + response), sửa.
+**Chưa dựng lại được.** Gọi thẳng API tạo đợt: sạch. Lái trình duyệt qua cả 7 màn Staff
+(`/cycles`, `/review-board`, `/councils`, `/meetings`, `/contracts`, `/proposal-reviews`,
+`/assignments`): không console error, không HTTP ≥ 400, không lỗi trên màn.
+
+**Nghi ngờ:** lúc đó giao diện trỏ vào **Render** — bản free ngủ sau ~15 phút không dùng, request
+đầu rất lâu rồi timeout, nhìn y như "lỗi máy chủ" dù máy chủ ở máy vẫn chạy tốt. Trùng khớp với
+mục 10 (anh định mua Railway vì "chạy cho mượt"). Đã ghi cách kiểm `.env` vào `KICH_BAN_DEMO.md`.
+
+**Nhưng dò ra 4 lỗ THẬT trong đúng luồng đó** — máy chủ không kiểm gì cả, chỉ form giao diện chặn:
+
+| Trường hợp | Trước | Nay |
+|---|---|---|
+| Hạn nộp **trước** ngày mở | 200 — đợt không ai nộp được | chặn |
+| Trùng năm + trùng loại đề tài | 200 — hai đợt song song, PI không biết nộp đâu (trái rule #7) | chặn |
+| Năm 1800 | 200 | chặn |
+| Tên rỗng | 200 | chặn |
+
+Kiểm ở **tầng dịch vụ** vì mọi đường ghi đều đi qua đó; đường **sửa** cũng kiểm, và kiểm sau khi
+gán để bắt trạng thái cuối cùng.
 
 ---
 
