@@ -48,7 +48,7 @@ public class AiSummaryService : IAiSummaryService
          * Ống dẫn file đã có sẵn (dùng cho /ai/consistency): PDF gửi thẳng bytes, .docx bóc text.
          */
         var file = await _documents.GetLatestProposalFileAsync(proposalId);
-        var prompt = BuildPrompt(p, hasFile: file != null);
+        var prompt = BuildPrompt(p, file?.FileName);
 
         var summary = file == null
             ? await _gemini.GenerateTextAsync(prompt)
@@ -180,12 +180,18 @@ public class AiSummaryService : IAiSummaryService
     /// tên đề tài, tóm tắt thông tin, ưu điểm, nhược điểm"*. Trả JSON để FE render thành mục,
     /// thay vì một khối văn xuôi 5–7 câu như v1.
     /// </summary>
-    private static string BuildPrompt(ProposalDto p, bool hasFile)
+    private static string BuildPrompt(ProposalDto p, string? fileName)
     {
         var members = string.Join(", ", p.Members.Select(m => $"{m.FullName} ({m.Role})"));
-        var fileNote = hasFile
-            ? @"Kèm theo là FILE đề cương gốc. Hãy đọc file làm nguồn CHÍNH, và ĐỐI CHIẾU với phần biểu mẫu bên dưới —
-nếu hai bên lệch nhau, nêu điểm lệch đó trong ""weaknesses""."
+
+        // Nêu ĐÍCH DANH tên file trong prompt: chủ nhiệm thường đính kèm nhiều tệp (thuyết minh +
+        // lý lịch khoa học — QĐ543 Điều 6.4), nên bản tóm tắt phải nói rõ nó đọc tệp nào, và AI
+        // cũng cần biết để nếu tệp không phải đề cương thì nói thẳng ra.
+        var fileNote = fileName != null
+            ? $@"Kèm theo là FILE ""{fileName}"" — đây được coi là bản thuyết minh đề cương.
+Hãy đọc file làm nguồn CHÍNH, và ĐỐI CHIẾU với phần biểu mẫu bên dưới; nếu hai bên lệch nhau, nêu điểm lệch trong ""weaknesses"".
+Nếu nội dung file RÕ RÀNG KHÔNG PHẢI đề cương của đề tài này (ví dụ là tài liệu khác, lý lịch khoa học, hay đề tài khác hẳn),
+hãy nói thẳng điều đó ở ý ĐẦU TIÊN của ""weaknesses"" và vẫn tóm tắt dựa trên phần biểu mẫu."
             : @"KHÔNG có file đề cương đính kèm — chỉ dựa vào phần biểu mẫu bên dưới.";
 
         return

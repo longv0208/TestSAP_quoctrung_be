@@ -135,14 +135,32 @@ public class ProposalDocumentService : IProposalDocumentService
         return (stream, doc.MimeType, doc.OriginalFileName);
     }
 
+    /// <summary>
+    /// File để AI đọc — <b>ưu tiên bản THUYẾT MINH</b>, không phải file tải lên gần nhất.
+    /// <para>
+    /// QĐ543 <b>Điều 6.4</b>: hồ sơ gồm *(a) Đề cương nghiên cứu (BM01)* **và** *(b) Lý lịch khoa
+    /// học của chủ nhiệm và các thành viên (BM02)* — tức là bình thường có NHIỀU file. Trước đây
+    /// hàm này lấy bản mới nhất bất kể loại, nên chủ nhiệm tải lý lịch khoa học sau cùng là AI đi
+    /// tóm tắt cái lý lịch đó: nội dung tóm tắt chẳng liên quan gì tới đề tài.
+    /// </para>
+    /// <para>
+    /// Không có bản thuyết minh nào thì mới lùi về file mới nhất — thà đọc nhầm còn hơn không đọc
+    /// gì, và bản tóm tắt luôn ghi rõ tên file đã đọc để người dùng tự đối chiếu.
+    /// </para>
+    /// </summary>
     public async Task<(byte[] Content, string ContentType, string FileName)?> GetLatestProposalFileAsync(Guid proposalId)
     {
-        var doc = await _docs.Query()
+        var files = await _docs.Query()
             .Where(d => d.EntityType == EntityTypeProposal
                         && d.EntityId == proposalId.ToString()
                         && !d.IsDeleted)
             .OrderByDescending(d => d.UploadedAt)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        var doc = files.FirstOrDefault(d =>
+                      d.DocumentCategory != null
+                      && d.DocumentCategory.Contains("huyết minh", StringComparison.OrdinalIgnoreCase))
+                  ?? files.FirstOrDefault();
         if (doc == null) return null;
 
         var bytes = await _storage.ReadAllBytesAsync(doc.StorageBlobName, doc.StorageUrl);
