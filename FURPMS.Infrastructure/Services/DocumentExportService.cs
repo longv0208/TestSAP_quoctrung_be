@@ -920,7 +920,10 @@ AppendParagraph(body,
             throw new InvalidOperationException(
                 $"Đề nghị điều chỉnh đang ở trạng thái \"{FURPMS.Application.Constants.StatusText.Vi(a.Status)}\" — chỉ xuất phụ lục sau khi đã được duyệt.");
 
-        var c = a.Contract;
+        // Phụ lục luôn thuộc về một hợp đồng; thiếu hợp đồng là dữ liệu hỏng chứ không phải
+        // trường hợp bình thường — nói rõ bằng lỗi thay vì để nổ NullReference ở dòng sau.
+        var c = a.Contract
+            ?? throw new InvalidOperationException("Đơn điều chỉnh không gắn với hợp đồng nào — không xuất được phụ lục.");
         var pi = c.Project?.PiUser;
         const string Blank = "……………………………";
 

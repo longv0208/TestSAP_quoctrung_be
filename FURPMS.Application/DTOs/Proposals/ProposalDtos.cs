@@ -75,7 +75,8 @@ public class ProposalDto : ProposalSummaryDto
     public string CycleId { get; set; } = null!;
     public string TrackId { get; set; } = null!;
     public int ResearchTypeId { get; set; }
-    public int DurationMonths { get; set; }
+    // DurationMonths kế thừa từ ProposalSummaryDto — khai lại ở đây là CHE mất trường của lớp
+    // cha, hai bản cùng tên mà giá trị có thể lệch nhau tuỳ chỗ gán. Xoá đi, dùng của lớp cha.
     public string Objectives { get; set; } = null!;
     public string? Methodology { get; set; }
     public string? ExpectedOutput { get; set; }

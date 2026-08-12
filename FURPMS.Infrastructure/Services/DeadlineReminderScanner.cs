@@ -40,7 +40,9 @@ public class DeadlineReminderScanner : IDeadlineReminderScanner
                 .Split(',').Select(int.Parse).ToList());
 
         var deliverables = await _contracts.Deliverables
-            .Include(d => d.Contract)
+            // `Contract` là navigation CÓ THỂ NULL (sản phẩm gắn với đề tài trước, gắn hợp đồng
+            // sau) — dùng `!` để nói rõ EF chỉ dựng đường Include, không truy cập giá trị ở đây.
+            .Include(d => d.Contract!)
                 .ThenInclude(c => c.Project)
                     .ThenInclude(p => p.PiUser)
             .Where(d => d.DueDate.HasValue && d.AcceptanceStatus != AcceptanceStatus.Passed)
