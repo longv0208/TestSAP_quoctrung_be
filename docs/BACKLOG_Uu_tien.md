@@ -132,7 +132,7 @@ giữ bản đã ký làm bằng chứng, và từ lúc ký thì khoá lại —
 | ✅ HD-3 | Ô **"Ngày ký thực tế"** tách khỏi ngày bấm nút | — | **XONG 12/08** — chặn cả ngày tương lai |
 | ✅ HD-4 | **Quyết toán**: bỏ đánh dấu được · khoá sau khi ký biên bản thanh lý | — | **XONG 12/08** |
 | ✅ HD-5 | **Biên bản thanh lý hợp đồng BM13** (Điều 13.2) | — | **XONG 12/08** — `GET /contracts/{id}/export-settlement-word` |
-| HD-6 | Đối chiếu **BM05 gốc** từng trường, liệt kê cái còn thiếu | P1 | ✅ **Biểu mẫu CÓ trong file quy định** (BM01–BM13, từ dòng 159). Tôi tra hụt lần trước. Việc còn lại: soi từng trường BM05 với bản Word hệ thống sinh |
+| ✅ HD-6 | Đối chiếu **BM05 gốc** từng trường | — | **XONG 12/08.** Cấu trúc 7 Điều vốn đã khớp; bù **7 chỗ thiếu**: 3 căn cứ pháp lý · Địa chỉ Bên B · mục "Đại diện cho các thành viên" · **số tiền bằng chữ** · Điều 5 đầy đủ 15 mục a–h (trước gộp thành 2 câu) · Điều 6.1 vế phụ lục · Điều 6.3 vế Trọng tài/Toà án. Bản Word từ 74 → **95 dòng** |
 | HD-7 | Lưu **hash file bản ký** để chống tráo file | P2 | không |
 | HD-8 | Bố cục file Word xuất ra cho giống hợp đồng thật | P3 | không |
 | HD-9 | Làm lại giao diện màn hợp đồng | P3 | không |

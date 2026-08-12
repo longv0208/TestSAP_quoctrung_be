@@ -493,7 +493,10 @@ public class DocumentExportService : IDocumentExportService
              */
             var pi = c.Project?.PiUser;
             var titleVi = c.Project?.TitleVi ?? c.ScopeTitle ?? "…";
-            var money = c.TotalAmount > 0 ? $"{c.TotalAmount:N0}" : "…………";
+            // Định dạng vi-VN: 95.000.000 chứ không phải 95,000,000 — người Việt đọc dấu phẩy là
+            // phần thập phân, để mặc định là số tiền trên hợp đồng dễ bị hiểu sai.
+            var vi = new System.Globalization.CultureInfo("vi-VN");
+            var money = c.TotalAmount > 0 ? c.TotalAmount.ToString("N0", vi) : "…………";
             const string Blank = "……………………………";
 
             AppendParagraph(body, "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
@@ -511,7 +514,10 @@ public class DocumentExportService : IDocumentExportService
                 "Căn cứ Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015;",
                 "Căn cứ Luật Khoa học và Công nghệ số 29/2013/QH13 ngày 18/6/2013;",
                 "Căn cứ Luật Sở hữu trí tuệ số 50/2005/QH11 ngày 29/11/2005 và Luật Sửa đổi, bổ sung một số điều của Luật Sở hữu trí tuệ số 07/2022/QH15 ngày 16/6/2022;",
+                "Căn cứ Nghị định số 99/2019/NĐ-CP ngày 30/12/2019 quy định chi tiết và hướng dẫn thi hành một số điều của luật sửa đổi, bổ sung một số điều của luật giáo dục đại học;",
+                "Căn cứ Thông tư số 05/2014/TT-BKHCN ngày 10/4/2014 của Bộ trưởng Bộ Khoa học và Công nghệ ban hành \"Mẫu hợp đồng nghiên cứu khoa học và phát triển công nghệ\";",
                 "Căn cứ Quyết định số 543/QĐ-ĐHFPT của Hiệu trưởng Trường Đại học FPT về Quy định quản lý đề tài nghiên cứu khoa học cấp Trường;",
+                $"Căn cứ Quyết định của Hiệu trưởng Trường Đại học FPT về việc phê duyệt danh mục đề tài nghiên cứu khoa học cấp Trường năm {c.StartDate.Year};",
                 "Căn cứ thuyết minh đề cương nghiên cứu của đề tài đã được phê duyệt."
             })
                 AppendParagraph(body, can);
@@ -526,7 +532,9 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, "BÊN NHẬN TỔ CHỨC CHỦ TRÌ THỰC HIỆN ĐỀ TÀI (BÊN B):", bold: true);
             AppendParagraph(body, $"CHỦ NHIỆM ĐỀ TÀI: {pi?.FullName ?? Blank}");
             AppendParagraph(body, $"Đơn vị công tác: {c.Project?.HostingUnit?.Name ?? Blank}");
-            AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? "………………"}          Email: {pi?.Email ?? "………………"}");
+AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? "………………"}          Email: {pi?.Email ?? "………………"}");
+            // BM05 có mục "Địa chỉ" của Bên B — hệ thống chưa lưu địa chỉ cá nhân nên để trống điền tay.
+            AppendParagraph(body, $"Địa chỉ: {Blank}");
             // C3 — tài khoản ngân hàng & CCCD của Bên B do CHÍNH CHỦ tự khai trong hồ sơ cá nhân.
             // Đây là chỗ DUY NHẤT số đầy đủ rời khỏi hệ thống; mọi đường đọc qua API đều bị che.
             // Chưa khai thì để dấu chấm lửng đúng như bản giấy, ký ngoài điền tay — TUỲ CHỌN, không
@@ -547,6 +555,11 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, $"Số tài khoản: {bankNo} tại Ngân hàng {bankName}");
             AppendParagraph(body, $"Số CCCD: {idNo} {idDate} tại {idPlace}");
             AppendParagraph(body, "");
+            // BM05 có mục "ĐẠI DIỆN CHO CÁC THÀNH VIÊN" — chủ nhiệm ký thay cả nhóm.
+            AppendParagraph(body, "ĐẠI DIỆN CHO CÁC THÀNH VIÊN:", bold: true);
+            AppendParagraph(body, $"{pi?.FullName ?? Blank}");
+            AppendParagraph(body, "");
+
             AppendParagraph(body, "Cùng thỏa thuận và thống nhất ký kết hợp đồng thực hiện Đề tài nghiên cứu khoa học cấp Trường (sau đây gọi tắt là Hợp đồng) với những điều khoản như sau:");
             AppendParagraph(body, "");
 
@@ -587,7 +600,9 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, "");
 
             AppendHeading(body, "ĐIỀU 4. GIÁ TRỊ HỢP ĐỒNG VÀ PHƯƠNG THỨC THANH TOÁN", 13);
-            AppendParagraph(body, $"4.1. Tổng giá trị Hợp đồng: tổng kinh phí thực hiện đề tài là {money} đồng.");
+AppendParagraph(body,
+                $"4.1. Tổng giá trị Hợp đồng: tổng kinh phí thực hiện đề tài là {money} đồng " +
+                $"(bằng chữ: {DongBangChu(c.TotalAmount)}).");
             AppendParagraph(body, "4.2. Kinh phí này bao gồm các khoản đóng góp nghĩa vụ theo quy định hiện hành và được chia làm các đợt giải ngân:");
             if (disbursements.Count > 0)
             {
@@ -610,14 +625,45 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, "");
 
             AppendHeading(body, "ĐIỀU 5. TRÁCH NHIỆM CỦA MỖI BÊN", 13);
-            AppendParagraph(body, "5.1. Bên A: cung cấp thông tin cần thiết; cấp kinh phí theo tiến độ khi Bên B đáp ứng yêu cầu của Đề cương; kiểm tra định kỳ hoặc đột xuất; tổ chức đánh giá, nghiệm thu và thanh lý Hợp đồng theo quy định.");
-            AppendParagraph(body, "5.2. Bên B: tổ chức thực hiện đúng nội dung, tiến độ và kinh phí đã đăng ký; báo cáo tiến độ định kỳ; giao nộp sản phẩm đúng hạn; hoàn trả kinh phí chưa sử dụng nếu Đề tài bị đình chỉ hoặc Hợp đồng bị chấm dứt do lỗi của Bên B.");
+            AppendParagraph(body, "5.1. Quyền và nghĩa vụ của Bên A:", bold: true);
+            foreach (var muc in new[]
+            {
+                "a) Cung cấp thông tin cần thiết để Bên B triển khai Hợp đồng;",
+                "b) Cung cấp kinh phí theo tiến độ thực hiện Đề tài khi Bên B đáp ứng đầy đủ các yêu cầu của Đề cương phê duyệt;",
+                "c) Phê duyệt kế hoạch mua sắm máy móc, thiết bị, nguyên vật liệu và dịch vụ của Đề tài (nếu có);",
+                "d) Kiểm tra định kỳ hoặc đột xuất để đánh giá tình hình Bên B thực hiện Đề tài và kịp thời xem xét, giải quyết theo thẩm quyền các kiến nghị, đề xuất của Bên B về điều chỉnh nội dung chuyên môn, kinh phí và các vấn đề phát sinh khác;",
+                "e) Tổ chức đánh giá, nghiệm thu kết quả thực hiện Đề tài và cùng Bên B tiến hành thanh lý Hợp đồng theo quy định;",
+                "g) Đăng ký bảo hộ quyền sở hữu trí tuệ đối với kết quả là sản phẩm (nếu có) theo quy định hiện hành;",
+                "h) Đơn phương chấm dứt thực hiện Hợp đồng nếu Bên B vi phạm các điều kiện đã thỏa thuận.",
+            })
+                AppendParagraph(body, muc);
+
+            AppendParagraph(body, "5.2. Quyền và nghĩa vụ của Bên B:", bold: true);
+            foreach (var muc in new[]
+            {
+                "a) Yêu cầu Bên A cung cấp thông tin cần thiết để triển khai Hợp đồng;",
+                "b) Tổ chức thực hiện đúng nội dung, tiến độ và kinh phí đã đăng ký trong Đề cương được phê duyệt;",
+                "c) Điều phối thực hiện và chi trả công lao động cho từng thành viên theo thời gian làm việc thực tế; sử dụng kinh phí đúng mục đích, đúng chế độ và có hiệu quả;",
+                "d) Được bổ sung thành viên nghiên cứu sau khi Bên A phê duyệt. Trường hợp thay đổi thành viên nghiên cứu chủ chốt khi chưa quá 1/2 thời gian thực hiện, Bên B phải giải trình và chỉ được thay đổi sau khi có ý kiến của Bên A;",
+                "e) Kiến nghị, đề xuất điều chỉnh nội dung chuyên môn, kinh phí và thời hạn thực hiện khi cần thiết; báo cáo định kỳ tới Phòng QLKH và Đơn vị chủ trì theo các đợt giải ngân; báo cáo nghiệm thu khi kết thúc và cùng Bên A thanh lý Hợp đồng;",
+                "f) Quản lý tài sản được mua sắm bằng kinh phí do Bên A cấp hoặc tạo ra từ kết quả nghiên cứu, cho tới khi có quyết định xử lý tài sản theo quy trình hiện hành của Bên A;",
+                "g) Giữ quyền tác giả đối với sản phẩm được Bên A đăng ký bảo hộ quyền sở hữu trí tuệ (nếu có), nhưng không thụ hưởng quyền thương mại liên quan tới sản phẩm sau khi đã nghiệm thu và bàn giao lại cho Bên A;",
+                "h) Hoàn trả toàn bộ kinh phí đã được cấp nhưng chưa sử dụng trong trường hợp Đề tài bị đình chỉ hoặc Hợp đồng bị chấm dứt do Bên B không hoàn thiện hồ sơ đánh giá, nghiệm thu theo quy định.",
+            })
+                AppendParagraph(body, muc);
             AppendParagraph(body, "");
 
             AppendHeading(body, "ĐIỀU 6. ĐIỀU KHOẢN CHUNG", 13);
-            AppendParagraph(body, "6.1. Trong quá trình thực hiện Hợp đồng, nếu một trong hai bên có yêu cầu sửa đổi, bổ sung nội dung hoặc có căn cứ để chấm dứt thực hiện Hợp đồng phải thông báo cho bên kia ít nhất 15 ngày trước.");
+            AppendParagraph(body,
+                "6.1. Trong quá trình thực hiện Hợp đồng, nếu một trong hai bên có yêu cầu sửa đổi, bổ sung nội dung " +
+                "hoặc có căn cứ để chấm dứt thực hiện Hợp đồng phải thông báo cho bên kia ít nhất là 15 ngày làm việc. " +
+                "Các sửa đổi, bổ sung phải lập thành văn bản phụ lục có đầy đủ chữ ký của các bên và được coi là bộ phận " +
+                "không tách rời của Hợp đồng.");
             AppendParagraph(body, "6.2. Hai bên cam kết thực hiện đúng các quy định của Hợp đồng và hợp tác giải quyết các vướng mắc phát sinh.");
-            AppendParagraph(body, "6.3. Mọi tranh chấp được các bên thương lượng hoà giải; không hoà giải được thì đưa ra cơ quan có thẩm quyền giải quyết.");
+            AppendParagraph(body,
+                "6.3. Mọi tranh chấp phát sinh trong quá trình thực hiện Hợp đồng do các bên thương lượng hòa giải để " +
+                "giải quyết. Trường hợp không hòa giải được thì một trong hai bên có quyền đưa tranh chấp ra Trọng tài " +
+                "để giải quyết hoặc khởi kiện tại Tòa án có thẩm quyền theo quy định của pháp luật về tố tụng dân sự.");
             AppendParagraph(body, "");
 
             AppendHeading(body, "ĐIỀU 7. HIỆU LỰC CỦA HỢP ĐỒNG", 13);
@@ -634,6 +680,62 @@ public class DocumentExportService : IDocumentExportService
 
         var code = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
         return (ms.ToArray(), $"HopDong_{code}.docx");
+    }
+
+    /// <summary>
+    /// Đọc số tiền thành chữ tiếng Việt — hợp đồng thật luôn ghi *"… đồng (bằng chữ: …)"* để
+    /// không ai sửa được con số bằng cách thêm một chữ số.
+    /// </summary>
+    private static string DongBangChu(decimal amount)
+    {
+        var n = (long)Math.Round(amount, 0);
+        if (n == 0) return "không đồng";
+
+        string[] chuSo = { "không", "một", "hai", "ba", "bốn", "năm", "sáu", "bảy", "tám", "chín" };
+
+        // Đọc một nhóm ba chữ số. `đayDu` = còn nhóm phía trước nên phải đọc đủ cả "không trăm".
+        static string DocBaSo(long block, bool dayDu, string[] cs)
+        {
+            var tram = block / 100;
+            var chuc = block % 100 / 10;
+            var donVi = block % 10;
+            var sb = new System.Text.StringBuilder();
+
+            if (tram > 0 || dayDu) sb.Append(cs[tram]).Append(" trăm");
+            if (chuc == 0)
+            {
+                if (donVi > 0 && (tram > 0 || dayDu)) sb.Append(" linh ").Append(cs[donVi]);
+                else if (donVi > 0) sb.Append(cs[donVi]);
+            }
+            else if (chuc == 1)
+            {
+                sb.Append(sb.Length > 0 ? " mười" : "mười");
+                if (donVi == 5) sb.Append(" lăm");
+                else if (donVi > 0) sb.Append(' ').Append(cs[donVi]);
+            }
+            else
+            {
+                sb.Append(sb.Length > 0 ? " " : "").Append(cs[chuc]).Append(" mươi");
+                if (donVi == 1) sb.Append(" mốt");
+                else if (donVi == 5) sb.Append(" lăm");
+                else if (donVi > 0) sb.Append(' ').Append(cs[donVi]);
+            }
+            return sb.ToString().Trim();
+        }
+
+        string[] donViLon = { "", " nghìn", " triệu", " tỷ" };
+        var blocks = new List<long>();
+        while (n > 0) { blocks.Add(n % 1000); n /= 1000; }
+
+        var parts = new List<string>();
+        for (var i = blocks.Count - 1; i >= 0; i--)
+        {
+            if (blocks[i] == 0) continue;
+            parts.Add(DocBaSo(blocks[i], i < blocks.Count - 1, chuSo) + donViLon[i % 4]);
+        }
+
+        var text = string.Join(" ", parts).Trim();
+        return char.ToUpper(text[0]) + text[1..] + " đồng";
     }
 
     // ── Biên bản nghiệm thu & thanh lý hợp đồng — BM13 ──────────────────────
