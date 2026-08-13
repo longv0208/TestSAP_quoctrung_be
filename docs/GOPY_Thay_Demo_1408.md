@@ -110,7 +110,7 @@ diện màn hợp đồng — vẫn treo.)
 
 **Thầy nói / anh quan sát:** *"nó bị gửi mail bị sao ấy với tk pokewar.2233@gmail.com, không biết phải không."*
 
-**Nguyên nhân đã tìm ra (13/08):** `EmailSettings:RedirectAllTo` chuyển hướng **TẤT CẢ** mail về
+**Nguyên nhân đã tìm ra (13/08):** `EmailSettings:CatchFakeMailInbox` chuyển hướng **TẤT CẢ** mail về
 hộp thư đó, tiêu đề bị chèn tiền tố `[→ người-nhận-thật]` ⇒ nhìn rất lạ khi trình diễn.
 
 **Đã sửa:** thêm `RedirectDomains` — chỉ hứng mail của miền giả (`furpms.edu.vn`), địa chỉ thật đi

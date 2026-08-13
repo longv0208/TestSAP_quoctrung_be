@@ -135,7 +135,7 @@ Mật khẩu **tất cả** tài khoản: `password`
 | Hiện tượng | Vì sao | Xử lý |
 |---|---|---|
 | Bấm gì cũng lâu rồi lỗi | `.env` trỏ Render (bản free ngủ sau ~15 phút) | Đổi về `http://localhost:5068/api`, chạy lại `npm run dev` |
-| Không nhận được mail | Mail của địa chỉ `@furpms.edu.vn` bị **hứng** về hộp thư thật (địa chỉ giả) | Xem hộp thư trong `RedirectAllTo`; địa chỉ **thật** thì đi thẳng |
+| Không nhận được mail | Mail của địa chỉ `@furpms.edu.vn` bị **hứng** về hộp thư thật (địa chỉ giả) | Xem hộp thư trong `CatchFakeMailInbox`; địa chỉ **thật** thì đi thẳng |
 | Mail vào Spam | `FromEmail` là `@gmail.com` gửi qua relay Brevo ⇒ SPF/DKIM không khớp | Không sửa được bằng code — mở sẵn tab Spam trước khi demo |
 | AI gợi ý điểm báo "chưa có bộ tiêu chí" | Hội đồng chưa gắn bộ tiêu chí | Staff → Hội đồng → gắn bộ tiêu chí **trước** buổi demo |
 | Bấm "Bắt đầu" họp nhầm | — | Có nút **"Hoàn tác bắt đầu"** (khi chưa ai điểm danh) |

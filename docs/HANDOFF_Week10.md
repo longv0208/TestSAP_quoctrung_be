@@ -41,13 +41,13 @@ Rồi `dotnet run --project FURPMS.API` (hoặc F5 trong Visual Studio). Windows
     "SmtpUsername": "<user>@smtp-brevo.com",
     "SmtpPassword": "<xsmtpsib-...>",
     // DEV: hứng hộ mail của các miền GIẢ về 1 hộp thư thật. PROD phải bỏ cả 2 dòng.
-    "RedirectAllTo": "ban@gmail.com",
+    "CatchFakeMailInbox": "ban@gmail.com",
     "RedirectDomains": [ "furpms.edu.vn" ]
   },
   "GeminiAI": { "ApiKey": "<AIza...>", "Model": "gemini-flash-latest" }
 }
 ```
-> **Vì sao cần `RedirectAllTo`:** tài khoản seed dùng email **không có thật** (`pi.demo@furpms.edu.vn`…) → đi luồng sẽ không thấy mail nào, tưởng hỏng. Đổi email seed thì hỏng seeder (nó dùng email **làm khóa định danh**: `FirstAsync(u => u.Email == "admin@furpms.edu.vn")`). Nên chuyển hướng ở **tầng gửi**: mail về hộp thư của bạn, tiêu đề ghi `[→ pi.demo@furpms.edu.vn]` để biết ai đáng lẽ nhận. `email_log` vẫn ghi **người nhận thật** nên vẫn trả lời được "đã báo cho PI chưa?".
+> **Vì sao cần `CatchFakeMailInbox`:** tài khoản seed dùng email **không có thật** (`pi.demo@furpms.edu.vn`…) → đi luồng sẽ không thấy mail nào, tưởng hỏng. Đổi email seed thì hỏng seeder (nó dùng email **làm khóa định danh**: `FirstAsync(u => u.Email == "admin@furpms.edu.vn")`). Nên chuyển hướng ở **tầng gửi**: mail về hộp thư của bạn, tiêu đề ghi `[→ pi.demo@furpms.edu.vn]` để biết ai đáng lẽ nhận. `email_log` vẫn ghi **người nhận thật** nên vẫn trả lời được "đã báo cho PI chưa?".
 >
 > ⚠️ **`RedirectDomains` quyết định mail nào bị hứng.** Chỉ mail gửi tới các miền liệt kê ở đây mới chuyển hướng; **địa chỉ thật (gmail, fpt.edu.vn…) đi thẳng tới người nhận**. Trước đây chuyển hướng **tất cả** ⇒ tạo tài khoản bằng mail thật thì người ta **không bao giờ nhận được thư**, mà `email_log` vẫn ghi `SENT` nên rất khó lần ra. Bỏ trống `RedirectDomains` = quay lại hành vi cũ (hứng tất cả).
 > 📦 **Chỗ lưu file:** có cấu hình `Cloudinary:*` ⇒ lưu lên **Cloudinary**; không có ⇒ về **đĩa local** (`App_Data/uploads`). Production (Render) **bắt buộc** dùng Cloudinary: env `Cloudinary__CloudName`, `Cloudinary__ApiKey`, `Cloudinary__ApiSecret`, `Cloudinary__Folder`.

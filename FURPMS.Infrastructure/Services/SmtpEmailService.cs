@@ -62,7 +62,7 @@ public class SmtpEmailService : IEmailService
             // hộp thư thật, tiêu đề ghi rõ ai mới là người nhận. Địa chỉ thật vẫn đi thẳng —
             // nếu chuyển hướng cả địa chỉ thật thì tạo tài khoản bằng mail thật sẽ không bao
             // giờ nhận được thư, mà log vẫn báo "SENT" nên rất khó lần ra.
-            var redirect = _email.RedirectAllTo?.Trim();
+            var redirect = _email.CatchFakeMailInbox?.Trim();
             var isRedirected = !string.IsNullOrEmpty(redirect) && ShouldRedirect(recipientEmail);
 
             using var message = new MailMessage
