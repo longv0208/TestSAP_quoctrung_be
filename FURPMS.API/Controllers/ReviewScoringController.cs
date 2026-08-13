@@ -114,6 +114,23 @@ public class ReviewScoringController : ControllerBase
         return Ok(ApiResponse<CouncilDecisionDto>.Ok(result));
     }
 
+    /// <summary>
+    /// Chủ tịch <b>trả biên bản cho Thư ký sửa</b>, kèm ghi chú nêu rõ cần sửa gì.
+    /// <para>
+    /// QĐ543 Điều 8.3.c: Thư ký <i>ghi</i> biên bản, hội đồng <i>thông qua</i> — Chủ tịch không tự
+    /// sửa chữ của Thư ký. Trước đây hệ thống chỉ có "duyệt (khoá luôn)" hoặc "không làm gì", nên
+    /// muốn sửa một chỗ là phải nhắn tin ngoài hệ thống.
+    /// </para>
+    /// </summary>
+    [HttpPost("councils/{councilId:guid}/minutes/request-revision")]
+    public async Task<IActionResult> RequestMinutesRevision(
+        Guid councilId, [FromBody] RequestMinutesRevisionRequest request, [FromQuery] Guid? projectId)
+    {
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var result = await _scoring.RequestMinutesRevisionAsync(councilId, userId, request.Note, projectId);
+        return Ok(ApiResponse<CouncilDecisionDto>.Ok(result));
+    }
+
     // GET /api/review-scoring/councils/{councilId}/decision
     [HttpGet("councils/{councilId:guid}/decision")]
     public async Task<IActionResult> GetDecision(Guid councilId, [FromQuery] Guid? projectId)
@@ -121,4 +138,10 @@ public class ReviewScoringController : ControllerBase
         var result = await _scoring.GetDecisionAsync(councilId, projectId);
         return Ok(ApiResponse<CouncilDecisionDto?>.Ok(result));
     }
+}
+
+/// <summary>Ghi chú Chủ tịch gửi kèm khi trả biên bản — bắt buộc, không cho trả lại suông.</summary>
+public class RequestMinutesRevisionRequest
+{
+    public string Note { get; set; } = null!;
 }

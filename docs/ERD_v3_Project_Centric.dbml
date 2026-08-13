@@ -550,7 +550,10 @@ Table council_decision {
 
   indexes {
     (council_id, project_id) [unique]
-  }
+  }
+  revision_request_note varchar [note: 'Chủ tịch trả biên bản cho Thư ký sửa — QĐ543 Điều 8.3.c: Thư ký GHI, hội đồng THÔNG QUA, Chủ tịch không tự sửa. Xoá khi Thư ký lưu bản mới']
+  revision_requested_at datetime
+  revision_requested_by guid
 }
 
 // BM04/BM12 II.1 — biên bản dạng Hỏi–Đáp; xóa theo biên bản (cascade). Thêm PhaseF (tuần 10).

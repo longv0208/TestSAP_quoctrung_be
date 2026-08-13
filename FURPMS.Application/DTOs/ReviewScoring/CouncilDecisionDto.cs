@@ -13,6 +13,13 @@ public class CouncilDecisionDto
     public string? CouncilComments { get; set; }
     public string? Recommendations { get; set; }
     public DateTime? FinalizedAt { get; set; }
+
+    /// <summary>
+    /// Chủ tịch yêu cầu sửa gì (QĐ543 Điều 8.3.c — Thư ký ghi, hội đồng thông qua).
+    /// Có giá trị = biên bản đang bị trả lại, Thư ký cần sửa rồi lưu lại.
+    /// </summary>
+    public string? RevisionRequestNote { get; set; }
+    public DateTime? RevisionRequestedAt { get; set; }
     public List<QaEntryDto> QaEntries { get; set; } = new();
     public List<MemberOpinionDto> MemberOpinions { get; set; } = new();
 }

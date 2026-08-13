@@ -19,6 +19,21 @@ public class CouncilDecision
     public Guid? SecretaryUserId { get; set; }
     public DateTime? FinalizedAt { get; set; }
 
+    // ── Chủ tịch trả biên bản cho Thư ký sửa ────────────────────────────────
+    // QĐ543 Điều 8.3.c / 12.3.c: Thư ký **ghi** biên bản, các thành viên **thông qua** — quy định
+    // KHÔNG cho Chủ tịch tự sửa chữ của Thư ký. Nhưng trước 14/08 hệ thống chỉ có đúng hai đường:
+    // duyệt (khoá luôn) hoặc không làm gì. Chủ tịch thấy sai một chỗ thì phải nhắn tin/gọi điện
+    // ngoài hệ thống — không ai biết đã yêu cầu sửa gì, và biên bản không có dấu vết.
+    //
+    // Ghi chú lưu ở ĐÂY chứ không chỉ gửi thông báo: Thư ký mở màn soạn ra là thấy ngay cần sửa
+    // gì, không phải lục lại chuông báo.
+
+    /// <summary>Chủ tịch yêu cầu sửa gì. Null = chưa từng bị trả lại (hoặc Thư ký đã lưu bản mới).</summary>
+    public string? RevisionRequestNote { get; set; }
+
+    public DateTime? RevisionRequestedAt { get; set; }
+    public Guid? RevisionRequestedBy { get; set; }
+
     public ReviewCouncil Council { get; set; } = null!;
     public Projects.Project Project { get; set; } = null!;
     public User? ChairUser { get; set; }

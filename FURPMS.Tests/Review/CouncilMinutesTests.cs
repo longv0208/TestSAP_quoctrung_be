@@ -143,6 +143,120 @@ public class CouncilMinutesTests
         Assert.Null(decision.FinalizedAt);   // chặn mà vẫn khoá thì coi như không chặn
     }
 
+    // ── Chủ tịch trả biên bản cho Thư ký sửa (QĐ543 Điều 8.3.c) ─────────────
+    //
+    // Quy định: Thư ký GHI biên bản, hội đồng THÔNG QUA — Chủ tịch không tự sửa chữ của Thư ký.
+    // Trước 14/08 hệ thống chỉ có "duyệt (khoá luôn)" hoặc "không làm gì", nên Chủ tịch thấy sai
+    // một chỗ là phải nhắn tin ngoài hệ thống và biên bản không lưu dấu vết.
+
+    [Fact]
+    public async Task RequestRevision_ByChair_SavesNote_AndNotifiesSecretary()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, chairId, secId, _, _) = await SeedAsync(db);
+        var svc = MakeService(db);
+
+        await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "Ban dau"
+        });
+
+        await svc.RequestMinutesRevisionAsync(council.Id, chairId, "Thiếu ý kiến của phản biện 2");
+
+        var decision = await db.CouncilDecisions.FirstAsync(d => d.CouncilId == council.Id);
+        Assert.Equal("Thiếu ý kiến của phản biện 2", decision.RevisionRequestNote);
+        Assert.NotNull(decision.RevisionRequestedAt);
+        Assert.Null(decision.FinalizedAt);   // trả lại KHÔNG phải là chốt
+
+        // Thư ký phải được báo, không thì vẫn phải liên lạc ngoài hệ thống như cũ.
+        var sent = await db.Notifications.Where(n => n.UserId == secId).ToListAsync();
+        Assert.Contains(sent, n => n.NotificationType == "MINUTES_REVISION_REQUESTED"
+            && n.Body.Contains("Thiếu ý kiến của phản biện 2"));
+    }
+
+    [Fact]
+    public async Task RequestRevision_WithoutNote_Throws()
+    {
+        // Trả lại mà không nói lý do thì Thư ký chỉ biết bị trả, không biết sửa chỗ nào.
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, chairId, secId, _, _) = await SeedAsync(db);
+        var svc = MakeService(db);
+
+        await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "OK"
+        });
+
+        await Assert.ThrowsAsync<ArgumentException>(
+            () => svc.RequestMinutesRevisionAsync(council.Id, chairId, "   "));
+    }
+
+    [Fact]
+    public async Task RequestRevision_BySecretary_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, _, secId, _, _) = await SeedAsync(db);
+        var svc = MakeService(db);
+
+        await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "OK"
+        });
+
+        // Thư ký tự trả biên bản cho chính mình là vô nghĩa — chỉ Chủ tịch mới có quyền này.
+        await Assert.ThrowsAsync<ForbiddenException>(
+            () => svc.RequestMinutesRevisionAsync(council.Id, secId, "tự trả"));
+    }
+
+    [Fact]
+    public async Task RequestRevision_AfterFinalized_Throws()
+    {
+        // Khoá là khoá (rule #12) — không lách qua nút "trả lại" để sửa bản đã chốt.
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, chairId, secId, _, _) = await SeedAsync(db);
+        var svc = MakeService(db);
+
+        await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "OK"
+        });
+        await svc.ApproveMinutesAsync(council.Id, chairId);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.RequestMinutesRevisionAsync(council.Id, chairId, "muốn sửa lại"));
+        Assert.Contains("đã được chốt", ex.Message);
+    }
+
+    [Fact]
+    public async Task SaveMinutes_ClearsPreviousRevisionRequest()
+    {
+        // Không xoá thì cảnh báo "cần sửa" treo mãi dù Thư ký đã sửa xong.
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (council, chairId, secId, _, _) = await SeedAsync(db);
+        var svc = MakeService(db);
+
+        await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "Ban dau"
+        });
+        await svc.RequestMinutesRevisionAsync(council.Id, chairId, "Sửa mục II.1");
+
+        await svc.SaveMinutesAsync(council.Id, secId, new SaveMinutesRequest
+        {
+            Result = ReviewResult.Approved,
+            CouncilComments = "Da sua theo yeu cau"
+        });
+
+        var decision = await db.CouncilDecisions.FirstAsync(d => d.CouncilId == council.Id);
+        Assert.Null(decision.RevisionRequestNote);
+        Assert.Null(decision.RevisionRequestedAt);
+    }
+
     // ── 1: Thư ký soạn nháp → proposal CHƯA đổi, council vẫn FORMING, chưa khóa ──
     [Fact]
     public async Task SaveMinutes_BySecretary_DraftsOnly_NoStatusChange()

@@ -302,6 +302,13 @@ public class ReviewScoringService : IReviewScoringService
         decision.SecretaryUserId = secretaryUserId;
         decision.FinalizedAt = null;                 // vẫn là nháp, CHƯA khoá
 
+        // Thư ký đã lưu bản mới ⇒ xoá yêu cầu sửa của Chủ tịch. Không xoá thì cảnh báo "cần
+        // sửa" treo mãi trên màn dù đã sửa xong, và Chủ tịch không phân biệt được bản này đã
+        // xử lý yêu cầu hay chưa.
+        decision.RevisionRequestNote = null;
+        decision.RevisionRequestedAt = null;
+        decision.RevisionRequestedBy = null;
+
         // Cách 1 (Q&A): thay TOÀN BỘ danh sách hỏi–đáp mỗi lần lưu nháp (xoá cũ tường minh
         // để EF không báo "severed" khi FK bắt buộc, rồi thêm mới).
         if (decision.QaEntries.Count > 0)
@@ -338,6 +345,77 @@ public class ReviewScoringService : IReviewScoringService
         }
 
         await _review.SaveChangesAsync();
+        return MapDecision(decision);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CouncilDecisionDto> RequestMinutesRevisionAsync(
+        Guid councilId, Guid chairUserId, string note, Guid? projectId = null)
+    {
+        if (string.IsNullOrWhiteSpace(note))
+            throw new ArgumentException(
+                "Phải nêu rõ cần sửa gì. Trả biên bản mà không nói lý do thì Thư ký chỉ biết là bị " +
+                "trả lại, không biết sửa chỗ nào.");
+
+        var council = await _review.Query().Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+
+        var me = council.Members.FirstOrDefault(m => m.UserId == chairUserId)
+            ?? throw new ForbiddenException("Bạn không thuộc hội đồng này.");
+        AssertConfirmed(me);
+        if (!IsChair(me.MemberRole))
+            throw new ForbiddenException("Chỉ Chủ tịch hội đồng được trả biên bản cho Thư ký sửa.");
+
+        var query = _review.Decisions.Where(d => d.CouncilId == councilId);
+        if (projectId.HasValue) query = query.Where(d => d.ProjectId == projectId.Value);
+        var drafts = await query.ToListAsync();
+
+        if (drafts.Count == 0)
+            throw new InvalidOperationException("Chưa có biên bản nào để trả lại.");
+        if (drafts.Count > 1)
+            throw new InvalidOperationException(
+                "Hội đồng có nhiều biên bản (nhiều đề tài) — nêu rõ đề tài cần trả lại.");
+
+        var decision = drafts[0];
+
+        // Đã chốt thì thôi: khoá là khoá (rule #12). Muốn sửa bản đã chốt phải là một quy trình
+        // khác hẳn, không thể lách qua nút "trả lại".
+        if (decision.FinalizedAt != null)
+            throw new InvalidOperationException(
+                "Biên bản đã được chốt và khoá — không trả lại được. " +
+                "Khoá xong là kết quả đã có hiệu lực với đề tài.");
+
+        decision.RevisionRequestNote = note.Trim();
+        decision.RevisionRequestedAt = _clock.UtcNow;
+        decision.RevisionRequestedBy = chairUserId;
+        await _review.SaveChangesAsync();
+
+        // Báo đích danh Thư ký. Không có Thư ký ghi trên biên bản thì báo người giữ vai Thư ký
+        // trong hội đồng — biên bản mới soạn dở có thể chưa gán SecretaryUserId.
+        var secretaryId = decision.SecretaryUserId
+            ?? council.Members.FirstOrDefault(m => IsSecretary(m.MemberRole))?.UserId;
+
+        if (secretaryId.HasValue)
+        {
+            var chairName = await _review.Query()
+                .Where(c => c.Id == councilId)
+                .SelectMany(c => c.Members)
+                .Where(m => m.UserId == chairUserId)
+                .Select(m => m.User!.FullName)
+                .FirstOrDefaultAsync() ?? "Chủ tịch hội đồng";
+
+            await _notifier.NotifyAsync(
+                secretaryId.Value,
+                "MINUTES_REVISION_REQUESTED",
+                "Chủ tịch yêu cầu sửa biên bản",
+                $"{chairName} đề nghị chỉnh sửa biên bản trước khi chốt. Nội dung cần sửa: {note.Trim()}",
+                actionUrl: "/assigned-reviews",
+                entityType: "CouncilDecision",
+                entityId: decision.Id.ToString(),
+                priority: "HIGH");
+        }
+
         return MapDecision(decision);
     }
 
@@ -767,6 +845,8 @@ public class ReviewScoringService : IReviewScoringService
         CouncilComments = d.CouncilComments,
         Recommendations = d.Recommendations,
         FinalizedAt = d.FinalizedAt,
+        RevisionRequestNote = d.RevisionRequestNote,
+        RevisionRequestedAt = d.RevisionRequestedAt,
         QaEntries = d.QaEntries.OrderBy(q => q.Order).Select(q => new QaEntryDto
         {
             AskedBy = q.AskedBy,

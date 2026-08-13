@@ -49,10 +49,11 @@ NotifyAsync(...)  →  ① LUÔN tạo bản ghi `notifications` (chuông trong 
 | `PASSWORD_RESET` | Người dùng bấm **Quên mật khẩu** | Chính chủ tài khoản | ✅ | ✅ | HIGH |
 | `DISBURSEMENT_CONFIRMED` | Chuyên viên **đánh dấu đã giải ngân** một đợt | Chủ nhiệm | ✅ | ✅ | NORMAL |
 | `PROGRESS_REPORT_EVALUATED` | Chuyên viên **đánh giá báo cáo tiến độ** | Chủ nhiệm | ✅ | ✅ | HIGH nếu Không đạt/Có điều kiện · NORMAL nếu Đạt |
+| `MINUTES_REVISION_REQUESTED` | Chủ tịch **trả biên bản cho Thư ký sửa** | Thư ký hội đồng | ✅ | ✅ | HIGH |
 
-**18 loại**, chia hai nhóm:
+**19 loại**, chia hai nhóm:
 
-- **Theo sự kiện** (14 loại) — bắn ngay lúc ai đó bấm nút.
+- **Theo sự kiện** (15 loại) — bắn ngay lúc ai đó bấm nút.
 - **Theo lịch quét** (4 loại nhắc hạn/quá hạn) — `DeadlineReminderService` là background service,
   **chạy mỗi 24 giờ**, và **chống gửi trùng**: đã bắn `DEADLINE_REMINDER_T3` cho sản phẩm đó rồi thì
   lần quét sau không bắn lại. Admin có nút chạy tay để demo (không phải đợi 24h).
