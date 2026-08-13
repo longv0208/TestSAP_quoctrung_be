@@ -90,7 +90,12 @@ public class ContractService : IContractService
             EndDate = request.EndDate,
             OriginalEndDate = request.EndDate,
             MaxExtensionMonths = request.MaxExtensionMonths,
-            SideARepresentative = request.SideARepresentative ?? sideA,
+            // `??` KHÔNG đủ: form gửi lên chuỗi RỖNG chứ không phải null khi người dùng để trống,
+            // mà "" ?? sideA vẫn ra "". Người đại diện cấu hình trong Cài đặt vì thế chưa bao giờ
+            // được dùng — Staff phải gõ lại đúng cái tên đó mỗi lần lập hợp đồng.
+            SideARepresentative = string.IsNullOrWhiteSpace(request.SideARepresentative)
+                ? sideA
+                : request.SideARepresentative.Trim(),
             EcontractUrl = request.EcontractUrl,
             Status = ContractStatus.PendingSignature,
             CreatedBy = createdBy
@@ -181,7 +186,12 @@ public class ContractService : IContractService
         contract.EndDate = request.EndDate;
         if (neverExtended) contract.OriginalEndDate = request.EndDate;
         contract.MaxExtensionMonths = request.MaxExtensionMonths;
-        contract.SideARepresentative = request.SideARepresentative;
+        // Để trống khi SỬA cũng rơi về người đại diện mặc định, không xoá trắng ô đang có.
+        contract.SideARepresentative = string.IsNullOrWhiteSpace(request.SideARepresentative)
+            ? await _settings.GetStringAsync(
+                SystemSettingKeys.ContractSideARepresentative,
+                SystemSettingKeys.DefaultContractSideARepresentative)
+            : request.SideARepresentative.Trim();
         contract.EcontractUrl = request.EcontractUrl;
         contract.UpdatedAt = DateTime.UtcNow;
 
