@@ -104,6 +104,7 @@ public class MissingNotificationsTests
         db.AcademicProfiles.Add(new AcademicProfile { UserId = pi.Id, UpdatedAt = DateTime.UtcNow });
         await db.SaveChangesAsync();
 
+        var summaryQueue = new TestAiSummaryQueue();
         var svc = new ProposalService(
             new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db),
             new UserRepository(db), new FakeClock(),
@@ -111,13 +112,22 @@ public class MissingNotificationsTests
                 new NotificationRepository(db), TestNotifier.Create(db), new FakeClock()),
             new ReviewRepository(db),
             new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)),
-            TestNotifier.Create(db));
+            TestNotifier.Create(db),
+            summaryQueue);
 
         await svc.SubmitProposalAsync(proposal.Id, pi.Id);
 
         var sent = await db.Notifications.Where(n => n.UserId == staff.Id).ToListAsync();
         Assert.Single(sent);
         Assert.Equal("PROPOSAL_SUBMITTED", sent[0].NotificationType);
+
+        // Thầy góp ý 05/08 + 14/08: tóm tắt AI phải có SẴN khi người chấm mở đề tài, không để
+        // họ bấm rồi chờ 30–60 giây đúng lúc hội đồng đang ngồi nhìn. Nộp xong phải xếp hàng
+        // sinh tóm tắt — và chỉ XẾP HÀNG, không gọi Gemini ngay trong lời gọi nộp (bắt PI chờ
+        // một phút cho việc họ không cần).
+        Assert.Single(summaryQueue.Enqueued);
+        Assert.Equal(proposal.Id, summaryQueue.Enqueued[0].ProposalId);
+        Assert.Equal(pi.Id, summaryQueue.Enqueued[0].OnBehalfOfUserId);
         // Chuyên viên phải biết AI nộp và nộp cái gì, không chỉ "có đề cương mới".
         Assert.Contains("Nguyễn Văn A", sent[0].Body);
         Assert.Contains("Đề tài kiểm thử thông báo", sent[0].Body);

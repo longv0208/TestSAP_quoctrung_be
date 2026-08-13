@@ -87,6 +87,10 @@ public static class DependencyInjection
         services.AddScoped<IEmailService, SmtpEmailService>();
         services.AddScoped<INotifier, Notifier>();
         services.AddScoped<IDeadlineReminderScanner, DeadlineReminderScanner>();
+        // Hàng đợi phải là SINGLETON: controller/service ghi vào, worker nền đọc ra —
+        // hai vòng đời khác nhau, đăng ký scoped là mỗi bên cầm một hàng đợi riêng.
+        services.AddSingleton<IAiSummaryQueue, AiSummaryQueue>();
+        services.AddHostedService<AiSummaryPregenerationService>();
         services.AddHostedService<DeadlineReminderService>();
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<DemoScenarioSeeder>();

@@ -24,6 +24,7 @@ public class ProposalService : IProposalService
     private readonly IReviewRepository _review;
     private readonly IBudgetPolicyService _budgetPolicy;
     private readonly INotifier _notifier;
+    private readonly IAiSummaryQueue _summaryQueue;
 
     public ProposalService(
         IProposalRepository proposals,
@@ -34,10 +35,12 @@ public class ProposalService : IProposalService
         IReviewRoundService reviewRounds,
         IReviewRepository review,
         IBudgetPolicyService budgetPolicy,
-        INotifier notifier)
+        INotifier notifier,
+        IAiSummaryQueue summaryQueue)
     {
         _budgetPolicy = budgetPolicy;
         _notifier = notifier;
+        _summaryQueue = summaryQueue;
         _proposals = proposals;
         _cycles = cycles;
         _masterData = masterData;
@@ -608,6 +611,11 @@ public class ProposalService : IProposalService
             actionUrl: "/proposal-reviews",
             entityType: "Proposal",
             entityId: proposal.Id.ToString());
+
+        // Sinh sẵn tóm tắt AI cho người chấm (thầy góp ý 05/08, nhắc lại 14/08). CHỈ XẾP HÀNG —
+        // gọi Gemini mất 30–60 giây, nhét vào đây là bắt PI ngồi nhìn màn hình quay tròn một phút
+        // cho một việc họ không cần. Việc sinh chạy nền, xong lúc nào người chấm mở ra là có.
+        _summaryQueue.Enqueue(proposal.Id, userId);
 
         // Rule #1: nộp lại bản REVISION (v2+) → mở lại hội đồng đã chốt "cần chỉnh sửa" để chấm lại
         // (giữ điểm cũ). No-op nếu không có biên bản REVISION nào.
