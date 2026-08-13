@@ -10,6 +10,7 @@ using FURPMS.Infrastructure.Data;
 using FURPMS.Infrastructure.Repositories;
 using FURPMS.Infrastructure.Services;
 using FURPMS.Tests.Helpers;
+using Microsoft.EntityFrameworkCore;
 using FURPMS.Tests.Reminders;
 
 namespace FURPMS.Tests.Progress;
@@ -22,7 +23,7 @@ namespace FURPMS.Tests.Progress;
 public class ProgressReportEvaluationTests
 {
     private static ProgressReportService MakeService(FURPMSDbContext db) =>
-        new(new ContractRepository(db), new ProposalRepository(db), new FakeClock(), new DocumentRepository(db));
+        new(new ContractRepository(db), new ProposalRepository(db), new FakeClock(), new DocumentRepository(db), TestNotifier.Create(db));
 
     private static async Task<(FURPMSDbContext db, ProgressReport report)> SeedSubmittedReportAsync(
         string? reportFileUrl, bool withAttachment)
@@ -158,6 +159,49 @@ public class ProgressReportEvaluationTests
             new EvaluateProgressReportRequest { EvaluationResult = "PASS" }, Guid.NewGuid());
 
         Assert.Equal(ProgressReportStatus.Evaluated, result.Status);
+    }
+
+    /// <summary>
+    /// Chủ nhiệm phải được BÁO kết quả đánh giá.
+    /// <para>
+    /// Trước 14/08 hệ thống im lặng: PI nộp xong không biết đã được duyệt chưa, mà kết quả
+    /// "Không đạt" / "Đạt có điều kiện" thì họ phải biết ngay để còn kịp khắc phục — kỳ sau chỉ
+    /// mở khi kỳ trước đã có kết quả.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task Evaluate_NotifiesPi_WithResult()
+    {
+        var (db, report) = await SeedSubmittedReportAsync(reportFileUrl: null, withAttachment: true);
+        var piId = await db.Projects.Select(p => p.PiUserId).FirstAsync();
+
+        await MakeService(db).EvaluateAsync(report.Id,
+            new EvaluateProgressReportRequest { EvaluationResult = "FAIL", EvaluationComments = "Thiếu sản phẩm" },
+            Guid.NewGuid());
+
+        var sent = await db.Notifications.Where(n => n.UserId == piId).ToListAsync();
+        Assert.Single(sent);
+        Assert.Equal("PROGRESS_REPORT_EVALUATED", sent[0].NotificationType);
+        // Phải nói RÕ kết quả bằng tiếng Việt, không phải mã "FAIL" — PI đọc thông báo, không đọc enum.
+        Assert.Contains("Không đạt", sent[0].Title);
+        Assert.Contains("Thiếu sản phẩm", sent[0].Body);
+        // Trượt thì phải nổi bật hơn đạt.
+        Assert.Equal("HIGH", sent[0].Priority);
+    }
+
+    [Fact]
+    public async Task Evaluate_Pass_NotifiesPi_AtNormalPriority()
+    {
+        var (db, report) = await SeedSubmittedReportAsync(reportFileUrl: null, withAttachment: true);
+        var piId = await db.Projects.Select(p => p.PiUserId).FirstAsync();
+
+        await MakeService(db).EvaluateAsync(report.Id,
+            new EvaluateProgressReportRequest { EvaluationResult = "PASS" }, Guid.NewGuid());
+
+        var sent = await db.Notifications.Where(n => n.UserId == piId).ToListAsync();
+        Assert.Single(sent);
+        Assert.Contains("Đạt", sent[0].Title);
+        Assert.Equal("NORMAL", sent[0].Priority);
     }
 
     /// <summary>Kết quả đánh giá chỉ có 3 giá trị theo BM06 — "ACHIEVED" không nằm trong đó.</summary>

@@ -17,10 +17,13 @@ public class ProgressReportService : IProgressReportService
     // trong dự án đã theo quy ước này.
     private readonly IClock _clock;
     private readonly IDocumentRepository _documents;
+    private readonly INotifier _notifier;
 
     public ProgressReportService(IContractRepository contracts, IProposalRepository proposals, IClock clock,
-        IDocumentRepository documents)
+        IDocumentRepository documents,
+        INotifier notifier)
     {
+        _notifier = notifier;
         _contracts = contracts;
         _proposals = proposals;
         _clock = clock;
@@ -343,6 +346,36 @@ public class ProgressReportService : IProgressReportService
         report.EvaluationComments = request.EvaluationComments;
         report.UpdatedAt = DateTime.UtcNow;
         await _contracts.SaveChangesAsync();
+
+        // Báo chủ nhiệm KẾT QUẢ đánh giá. Trước đây hệ thống im lặng — PI nộp xong không biết
+        // đã được duyệt chưa, mà kết quả "Không đạt"/"Đạt có điều kiện" thì họ phải biết NGAY
+        // để còn kịp khắc phục; kỳ sau chỉ mở khi kỳ trước đã có kết quả.
+        var info = await _contracts.ProgressReports
+            .Where(r => r.Id == reportId)
+            .Select(r => new { r.Contract!.Project!.PiUserId, Title = r.Contract!.Project!.TitleVi, r.ReportRound })
+            .FirstOrDefaultAsync();
+        if (info != null)
+        {
+            var ketQua = request.EvaluationResult switch
+            {
+                "PASS" => "Đạt",
+                "FAIL" => "Không đạt",
+                _ => "Đạt có điều kiện"
+            };
+            var nhanXet = string.IsNullOrWhiteSpace(report.EvaluationComments)
+                ? ""
+                : $" Nhận xét: {report.EvaluationComments}";
+            await _notifier.NotifyAsync(
+                info.PiUserId,
+                "PROGRESS_REPORT_EVALUATED",
+                $"Kết quả đánh giá báo cáo tiến độ kỳ {info.ReportRound}: {ketQua}",
+                $"Báo cáo tiến độ kỳ {info.ReportRound} của đề tài \"{info.Title}\" đã được đánh giá: " +
+                $"{ketQua}.{nhanXet}",
+                actionUrl: "/progress-reports",
+                entityType: "ProgressReport",
+                entityId: reportId.ToString(),
+                priority: request.EvaluationResult == "PASS" ? "NORMAL" : "HIGH");
+        }
 
         return await GetByIdAsync(reportId);
     }

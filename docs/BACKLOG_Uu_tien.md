@@ -25,7 +25,7 @@
 
 | # | Việc | Doc? | Ghi chú |
 |---|---|---|---|
-| P0-1 | **Tóm tắt AI phải sinh SẴN lúc PI nộp, không bắt người chấm ngồi chờ** | ❓ | Thầy đã góp ý. Hiện phản biện mở ra mới bấm "Tạo" rồi chờ — đúng lúc đang có hội đồng ngồi nhìn. Cần: nộp xong chạy nền, lưu lại, người chấm chỉ việc đọc. |
+| ✅ P0-1 | **Tóm tắt AI phải sinh SẴN lúc PI nộp, không bắt người chấm ngồi chờ** | ❓ | Thầy đã góp ý. Hiện phản biện mở ra mới bấm "Tạo" rồi chờ — đúng lúc đang có hội đồng ngồi nhìn. Cần: nộp xong chạy nền, lưu lại, người chấm chỉ việc đọc.  **XONG 14/08** — hàng đợi + `AiSummaryPregenerationService`; nộp xong chỉ xếp hàng, sinh nền; quét bù lúc khởi động. Đo thật: bắt được 11 đề cương thiếu tóm tắt. |
 | ~~P0-2~~ | ~~Tóm tắt AI không đọc file đính kèm~~ | — | ❌ **BÁO ĐỘNG NHẦM — tôi ghi sai.** `AiSummaryService` **CÓ** đọc file (`GetLatestProposalFileAsync`; PDF gửi thẳng bytes, .docx bóc text). Chính bản tóm tắt anh chụp cũng ghi *"AI đã đọc file đề cương: Report3_SRS_FURPMS_v0.9.docx"* và chỉ ra file không khớp đề tài — đó là **AI làm đúng việc**, không phải nó không đọc. |
 | ✅ P0-3 | Bấm "Duyệt & khoá" biên bản không có xác nhận | — | **XONG 12/08** — hộp thoại nêu rõ: khoá xong không sửa điểm, không sửa biên bản, trạng thái đề tài đổi theo |
 | ✅ P0-4 | Tạo vòng NGHIỆM THU khi chưa có đề tài nào được duyệt | — | **XONG 12/08** — 409 kèm căn cứ Điều 11.2.c và chỉ đường mở vòng xét duyệt trước. Đo thật: ACCEPTANCE → 409, REVIEW → 200 |
@@ -44,7 +44,7 @@
 | ✅ P1-3 | **Ký hợp đồng: bấm một nút là xong, không cần bản ký** | ⚠️ | Rule #21 định nghĩa: xuất Word → ký ngoài → **upload bản ký làm minh chứng**. Hiện `POST /contracts/{id}/sign` không đòi gì. Đề xuất: chặn ký khi chưa có bản ký đính kèm, **hoặc** tách hai trạng thái "đã ký" (có minh chứng) vs "ghi nhận ký". Cần anh chốt.  **XONG 12/08** — chặn ký khi chưa có bản ký đính kèm, thêm ô ngày ký thực tế |
 | ✅ P1-4 | **CRUD hợp đồng** | — | Có sửa + xoá (chỉ khi chưa ký). Cần rà lại: sửa được những trường nào sau khi ký? Rule #21 nói sau khi ký phải đi đường **phụ lục**, không sửa đè.  **XONG 12/08** — `PUT` chặn sau khi ký, chỉ đường sang phụ lục (BM05 Điều 6.1) |
 | ✅ P1-5 | **Quyết toán: bấm một phát xong hết, không xác nhận, không sửa lại** | ✅ | QĐ543 **Điều 13.1.e** đòi *"Xác nhận của Ban kế toán về việc đề tài đã quyết toán kinh phí và đã xử lý tài sản"* và **Điều 13.2** đòi ký **Biên bản thanh lý hợp đồng (BM13)**. Hiện chỉ có 2 nút đánh dấu, **chưa có biên bản thanh lý**. Cần: xác nhận trước khi đánh dấu · bỏ đánh dấu được · thêm BM13.  **XONG 12/08** — xác nhận trước khi đánh dấu, bỏ đánh dấu được, thêm biên bản thanh lý BM13 |
-| P1-6 | **Thông báo còn thiếu** | — | Xác nhận giải ngân · duyệt báo cáo tiến độ. Chi tiết ở `THONG_BAO_VA_EMAIL.md`. |
+| ✅ P1-6 | **Thông báo còn thiếu** | — | Xác nhận giải ngân · duyệt báo cáo tiến độ. Chi tiết ở `THONG_BAO_VA_EMAIL.md`.  **XONG 14/08** — `DISBURSEMENT_CONFIRMED` + `PROGRESS_REPORT_EVALUATED` (ưu tiên HIGH khi Không đạt). |
 | ✅ P1-7 | **Quên mật khẩu qua email** | — | **XONG 12/08** — `POST /auth/forgot-password` + `/auth/reset-password`, liên kết "Quên mật khẩu?" ở màn đăng nhập, 2 màn mới. Mã băm SHA-256 trong DB, sống 30 phút, dùng một lần; email không tồn tại vẫn trả 200 (chống dò tài khoản). |
 
 ---

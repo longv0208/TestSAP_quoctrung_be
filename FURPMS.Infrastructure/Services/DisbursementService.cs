@@ -14,11 +14,14 @@ public class DisbursementService : IDisbursementService
     private readonly IMasterDataRepository _masterData;
     private readonly IClock _clock;
     private readonly ISystemSettingService _settings;
+    private readonly INotifier _notifier;
 
     public DisbursementService(IContractRepository contracts, IMasterDataRepository masterData,
         IClock clock,
-        ISystemSettingService settings)
+        ISystemSettingService settings,
+        INotifier notifier)
     {
+        _notifier = notifier;
         _contracts = contracts;
         _masterData = masterData;
         _clock = clock;
@@ -131,6 +134,28 @@ public class DisbursementService : IDisbursementService
         d.ProcessedBy = processedBy;
 
         await _contracts.SaveChangesAsync();
+
+        // Báo chủ nhiệm mốc giải ngân đã được xác nhận. Trước đây hệ thống im lặng: PI chỉ biết
+        // khi tự vào xem hợp đồng, mà đây là mốc họ chờ nhất — tiền về mới triển khai tiếp được.
+        // Hệ thống KHÔNG quản tiền (rule #15) nên thông báo nói về MỐC và MINH CHỨNG, không nói số.
+        var piInfo = await _contracts.Query()
+            .Where(x => x.Id == d.ContractId)
+            .Select(x => new { x.Project!.PiUserId, x.ContractNumber, Title = x.Project!.TitleVi })
+            .FirstOrDefaultAsync();
+        if (piInfo != null)
+        {
+            await _notifier.NotifyAsync(
+                piInfo.PiUserId,
+                "DISBURSEMENT_CONFIRMED",
+                $"Đã xác nhận giải ngân đợt {d.RoundNumber}",
+                $"Đợt giải ngân số {d.RoundNumber} của hợp đồng {piInfo.ContractNumber} " +
+                $"(đề tài \"{piInfo.Title}\") đã được đánh dấu đã chi. " +
+                "Bạn có thể xem minh chứng ở tab Tiến trình của hợp đồng.",
+                actionUrl: "/contracts",
+                entityType: "Contract",
+                entityId: d.ContractId.ToString());
+        }
+
         return Map(d);
     }
 

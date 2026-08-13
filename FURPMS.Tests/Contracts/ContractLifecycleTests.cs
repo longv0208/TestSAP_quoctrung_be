@@ -108,7 +108,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
         var result = (await svc.GenerateAsync(contract.Id)).OrderBy(x => x.RoundNumber).ToList();
 
         Assert.Equal(4, result.Count);
@@ -149,7 +149,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Equal(3, result.Count);
@@ -190,7 +190,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Single(result);
@@ -223,7 +223,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Single(result);
@@ -610,7 +610,7 @@ public class ContractLifecycleTests
 
     private static DisbursementService MakeDisbursementService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
         new(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(),
-            new SystemSettingService(new MasterDataRepository(db)));
+            new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
 
     [Theory]
     [InlineData("PENDING")]
