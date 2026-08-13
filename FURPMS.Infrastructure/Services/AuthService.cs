@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Auth;
 using FURPMS.Application.Interfaces.Repositories;
@@ -95,13 +96,13 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Email == request.Email);
 
         if (user == null || string.IsNullOrEmpty(user.PasswordHash))
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
+            throw new AppException(ErrorCodes.InvalidCredentials, "Email hoặc mật khẩu không đúng.", 401);
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
+            throw new AppException(ErrorCodes.InvalidCredentials, "Email hoặc mật khẩu không đúng.", 401);
 
         if (user.Status != UserStatus.Active)
-            throw new UnauthorizedAccessException("Tài khoản đang bị khoá. Liên hệ quản trị viên.");
+            throw new AppException(ErrorCodes.AccountInactive, "Tài khoản đang bị khoá. Liên hệ quản trị viên.", 401);
 
         user.LastLoginAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
@@ -135,7 +136,7 @@ public class AuthService : IAuthService
             ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
-            throw new UnauthorizedAccessException("Mật khẩu hiện tại không đúng.");
+            throw new AppException(ErrorCodes.PasswordIncorrect, "Mật khẩu hiện tại không đúng.", 400);
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
         user.UpdatedAt = DateTime.UtcNow;

@@ -4,6 +4,19 @@ using FURPMS.Application.Common;
 
 namespace FURPMS.API.Middleware;
 
+/// <summary>
+/// Biến mọi ngoại lệ thành phản hồi thống nhất: <b>mã HTTP + mã lỗi ổn định + câu chữ dự phòng</b>.
+///
+/// <para>
+/// Trước đây chỉ trả câu chữ, giao diện hiện nguyên văn. Nghĩa là ngôn ngữ bị khoá cứng ở máy chủ,
+/// và giao diện không thể phản ứng theo <i>loại</i> lỗi trừ khi đi so khớp chuỗi — thứ gãy ngay khi
+/// ai đó sửa một dấu chấm.
+/// </para>
+/// <para>
+/// Nay kèm <c>errorCode</c>. Câu chữ tiếng Việt <b>vẫn giữ</b> làm phương án dự phòng cho những mã
+/// giao diện chưa dịch, nên chuyển đổi được từng phần.
+/// </para>
+/// </summary>
 public class GlobalExceptionMiddleware
 {
     private readonly RequestDelegate _next;
@@ -32,25 +45,39 @@ public class GlobalExceptionMiddleware
     {
         context.Response.ContentType = "application/json";
 
-        var (statusCode, message) = exception switch
-        {
-            // 401 = chưa/hết đăng nhập (FE sẽ đăng xuất). 403 = đã đăng nhập nhưng không đủ quyền.
-            UnauthorizedAccessException => (HttpStatusCode.Unauthorized, exception.Message),
-            ForbiddenException => (HttpStatusCode.Forbidden, exception.Message),
-            KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),
-            ArgumentException => (HttpStatusCode.BadRequest, exception.Message),
-            InvalidOperationException => (HttpStatusCode.Conflict, exception.Message),
-            _ => (HttpStatusCode.InternalServerError, "An unexpected error occurred.")
-        };
+        var (statusCode, message, code, details) = Describe(exception);
 
-        context.Response.StatusCode = (int)statusCode;
+        context.Response.StatusCode = statusCode;
 
-        var response = ApiResponse.Fail(message);
+        var response = ApiResponse.Fail(message, errorCode: code);
+        response.Details = details;
+
         var json = JsonSerializer.Serialize(response, new JsonSerializerOptions
         {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            // Bỏ null cho gọn: phản hồi thành công không có errorCode/details.
+            DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         });
 
         await context.Response.WriteAsync(json);
     }
+
+    private static (int Status, string Message, string Code, IReadOnlyDictionary<string, object>? Details)
+        Describe(Exception ex) => ex switch
+    {
+        // Ngoại lệ có mã riêng thì tôn trọng mã đó — nó cụ thể hơn mọi phép suy ra.
+        AppException app => (app.StatusCode, app.Message, app.Code, app.Details),
+
+        // 401 = chưa/hết đăng nhập (giao diện sẽ đăng xuất). 403 = đã đăng nhập nhưng thiếu quyền.
+        UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, ex.Message, ErrorCodes.InvalidCredentials, null),
+        ForbiddenException => ((int)HttpStatusCode.Forbidden, ex.Message, ErrorCodes.Forbidden, null),
+        KeyNotFoundException => ((int)HttpStatusCode.NotFound, ex.Message, ErrorCodes.NotFound, null),
+        ArgumentException => ((int)HttpStatusCode.BadRequest, ex.Message, ErrorCodes.ValidationFailed, null),
+        InvalidOperationException => ((int)HttpStatusCode.Conflict, ex.Message, ErrorCodes.Conflict, null),
+
+        // Lỗi ngoài dự kiến: KHÔNG lộ chi tiết kỹ thuật ra ngoài. Log đã giữ đủ để tra.
+        _ => ((int)HttpStatusCode.InternalServerError,
+              "Hệ thống gặp sự cố ngoài dự kiến. Vui lòng thử lại; nếu vẫn lỗi hãy báo quản trị viên.",
+              ErrorCodes.Unexpected, null)
+    };
 }
