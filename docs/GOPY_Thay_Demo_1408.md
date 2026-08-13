@@ -106,7 +106,7 @@ diện màn hợp đồng — vẫn treo.)
 
 ---
 
-## 5. Email gửi tới `pokewar.2233@gmail.com` có gì đó sai
+## 5. Email gửi tới `pokewar.2233@gmail.com` có gì đó sai ✅ XONG 13/08
 
 **Thầy nói / anh quan sát:** *"nó bị gửi mail bị sao ấy với tk pokewar.2233@gmail.com, không biết phải không."*
 
@@ -219,10 +219,11 @@ không dùng ⇒ lần bấm đầu rất lâu — đây có thể chính là ng
 | 5 | **7 + 9 — lỗi AI bên PI, lỗi tạo đợt** | Lỗi thật, chặn luồng |
 | 6 | **4 — format hợp đồng** | Thầy nêu đích danh |
 | 7 | **8 — file kịch bản demo** | Giúp chính anh lần sau đỡ cấn |
+| — | **Tất cả đã xong trừ #9 (không dựng lại được) và #10 (Railway — việc của anh)** | |
 
 ---
 
-## 11. Thông báo lỗi nhìn từ phía NGƯỜI DÙNG (anh nêu 14/08)
+## 11. Thông báo lỗi nhìn từ phía NGƯỜI DÙNG (anh nêu 14/08) ✅ XONG 14/08
 
 **Anh nói:** *"có mấy cái thông báo lỗi mà nó nói theo luật #13 gì á… làm tôi cảm thấy đấy là cái
 luật gì? để vô đó chi vậy?"*
@@ -249,7 +250,7 @@ gì, đọc xong chỉ thấy hệ thống đang nói chuyện với chính nó.
 
 ---
 
-## 12. Định dạng ngày/số trong file xuất ra — rủi ro khi lên máy chủ
+## 12. Định dạng ngày/số trong file xuất ra — rủi ro khi lên máy chủ ✅ XONG 14/08
 
 **Anh hỏi:** *"nếu nó hiện trong hợp đồng lúc xuất ra ngày tháng kiểu Mỹ luôn thì có vẻ không ổn?"*
 

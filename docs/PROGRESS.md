@@ -1,3 +1,17 @@
+## Cập nhật 14/08 — sau demo với thầy
+
+| Việc | Trạng thái |
+|---|---|
+| Góp ý thầy buổi demo 14/08 (12 mục, xem `GOPY_Thay_Demo_1408.md`) | **11/12 xong** — còn #10 Railway là việc hạ tầng của anh |
+| Backlog `BACKLOG_Uu_tien.md` | **26/36 (72%)** — hết sạch P0 và P1 |
+| Test BE | **173 xanh** |
+
+**Việc lớn xong đợt này:** lý lịch khoa học liệt kê chi tiết theo BM02 · sinh sẵn tóm tắt AI lúc PI nộp · gộp 1 nút AI cho người chấm · Chủ tịch trả biên bản cho Thư ký sửa · thể thức file Word theo Nghị định 30/2020 · dọn sạch 233 chuỗi tiếng Anh/mã nội bộ trong thông báo lỗi.
+
+**Còn 10 mục, đều P2/P3 đánh bóng** — không mục nào chặn luồng chính.
+
+---
+
 # FURPMS Backend — Tiến độ theo nhóm chức năng
 
 > Ảnh chụp % hoàn thiện **so với phạm vi đồ án** (không phải "phần mềm hoàn hảo"). Đây là **ước lượng có cơ sở** (38 controller, Phase A→L đã code, **106/106 test**, luồng core đã E2E) — KHÔNG phải số đo tự động. Cập nhật: **2026-08-06** (sau demo thầy 05/08 — xem `PLAN_Week13_Demo_0508.md`).
