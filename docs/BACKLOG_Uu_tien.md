@@ -40,10 +40,10 @@
 | # | Việc | Doc? | Căn cứ / ghi chú |
 |---|---|---|---|
 | P1-1 | **Chủ tịch có được sửa biên bản không?** | ✅ | **QĐ543 Điều 8.3.c / 12.3.c:** *"Thư ký ghi biên bản cùng dự thảo kết luận của Hội đồng và **các thành viên của Hội đồng thông qua** biên bản họp."* ⇒ Thư ký **soạn**, hội đồng **thông qua**, Chủ tịch **chốt** — quy định **không** cho Chủ tịch tự sửa. Hiện code đúng. **Nhưng thiếu đường "Chủ tịch yêu cầu Thư ký sửa"** — hiện hai người phải tự liên lạc ngoài hệ thống. Nên thêm: Chủ tịch trả lại kèm ghi chú → Thư ký nhận thông báo. |
-| P1-2 | **Hợp đồng: form tạo quá ít trường so với BM05** | ⚠️ | Bản `..._clean.docx` **chỉ có phần điều khoản, không kèm biểu mẫu** ⇒ chưa đối chiếu được đủ trường. Nhưng file Word xuất ra đã có Bên A/Bên B, số tài khoản, kinh phí… ⇒ **hệ thống đang tự bốc từ hồ sơ PI**, Staff không phải nhập lại. Việc cần làm: mở đúng file biểu mẫu BM05 gốc, đối chiếu từng trường, liệt kê cái nào còn thiếu. |
-| P1-3 | **Ký hợp đồng: bấm một nút là xong, không cần bản ký** | ⚠️ | Rule #21 định nghĩa: xuất Word → ký ngoài → **upload bản ký làm minh chứng**. Hiện `POST /contracts/{id}/sign` không đòi gì. Đề xuất: chặn ký khi chưa có bản ký đính kèm, **hoặc** tách hai trạng thái "đã ký" (có minh chứng) vs "ghi nhận ký". Cần anh chốt. |
-| P1-4 | **CRUD hợp đồng** | — | Có sửa + xoá (chỉ khi chưa ký). Cần rà lại: sửa được những trường nào sau khi ký? Rule #21 nói sau khi ký phải đi đường **phụ lục**, không sửa đè. |
-| P1-5 | **Quyết toán: bấm một phát xong hết, không xác nhận, không sửa lại** | ✅ | QĐ543 **Điều 13.1.e** đòi *"Xác nhận của Ban kế toán về việc đề tài đã quyết toán kinh phí và đã xử lý tài sản"* và **Điều 13.2** đòi ký **Biên bản thanh lý hợp đồng (BM13)**. Hiện chỉ có 2 nút đánh dấu, **chưa có biên bản thanh lý**. Cần: xác nhận trước khi đánh dấu · bỏ đánh dấu được · thêm BM13. |
+| ⚪ P1-2 | **Hợp đồng: form tạo quá ít trường so với BM05** | ⚠️ | Bản `..._clean.docx` **chỉ có phần điều khoản, không kèm biểu mẫu** ⇒ chưa đối chiếu được đủ trường. Nhưng file Word xuất ra đã có Bên A/Bên B, số tài khoản, kinh phí… ⇒ **hệ thống đang tự bốc từ hồ sơ PI**, Staff không phải nhập lại. Việc cần làm: mở đúng file biểu mẫu BM05 gốc, đối chiếu từng trường, liệt kê cái nào còn thiếu.  **KHÔNG CẦN SỬA** — đã tra: hệ thống tự bốc Bên B từ hồ sơ PI, Staff chỉ nhập 5 trường hệ thống không tự biết |
+| ✅ P1-3 | **Ký hợp đồng: bấm một nút là xong, không cần bản ký** | ⚠️ | Rule #21 định nghĩa: xuất Word → ký ngoài → **upload bản ký làm minh chứng**. Hiện `POST /contracts/{id}/sign` không đòi gì. Đề xuất: chặn ký khi chưa có bản ký đính kèm, **hoặc** tách hai trạng thái "đã ký" (có minh chứng) vs "ghi nhận ký". Cần anh chốt.  **XONG 12/08** — chặn ký khi chưa có bản ký đính kèm, thêm ô ngày ký thực tế |
+| ✅ P1-4 | **CRUD hợp đồng** | — | Có sửa + xoá (chỉ khi chưa ký). Cần rà lại: sửa được những trường nào sau khi ký? Rule #21 nói sau khi ký phải đi đường **phụ lục**, không sửa đè.  **XONG 12/08** — `PUT` chặn sau khi ký, chỉ đường sang phụ lục (BM05 Điều 6.1) |
+| ✅ P1-5 | **Quyết toán: bấm một phát xong hết, không xác nhận, không sửa lại** | ✅ | QĐ543 **Điều 13.1.e** đòi *"Xác nhận của Ban kế toán về việc đề tài đã quyết toán kinh phí và đã xử lý tài sản"* và **Điều 13.2** đòi ký **Biên bản thanh lý hợp đồng (BM13)**. Hiện chỉ có 2 nút đánh dấu, **chưa có biên bản thanh lý**. Cần: xác nhận trước khi đánh dấu · bỏ đánh dấu được · thêm BM13.  **XONG 12/08** — xác nhận trước khi đánh dấu, bỏ đánh dấu được, thêm biên bản thanh lý BM13 |
 | P1-6 | **Thông báo còn thiếu** | — | Xác nhận giải ngân · duyệt báo cáo tiến độ. Chi tiết ở `THONG_BAO_VA_EMAIL.md`. |
 | ✅ P1-7 | **Quên mật khẩu qua email** | — | **XONG 12/08** — `POST /auth/forgot-password` + `/auth/reset-password`, liên kết "Quên mật khẩu?" ở màn đăng nhập, 2 màn mới. Mã băm SHA-256 trong DB, sống 30 phút, dùng một lần; email không tồn tại vẫn trả 200 (chống dò tài khoản). |
 
@@ -53,14 +53,14 @@
 
 | # | Việc | Doc? | Ghi chú |
 |---|---|---|---|
-| P2-1 | **Màn "Sửa đề cương" có phần "Sản phẩm dự kiến" và "Tài liệu đính kèm" phân loại (thuyết minh / lý lịch khoa học)** — trong khi lúc **tạo** thì không có | ✅ | QĐ543 **Điều 6.4** yêu cầu hồ sơ có **lý lịch khoa học (BM02)**; **Điều 11.1** liệt sản phẩm cam kết. ⇒ Hai phần này **đúng nghiệp vụ**, cái sai là **lúc tạo lại không có** ⇒ PI nộp lần đầu thiếu. Cần đưa lên bước tạo. |
+| ✅ P2-1 | **Màn "Sửa đề cương" có phần "Sản phẩm dự kiến" và "Tài liệu đính kèm" phân loại (thuyết minh / lý lịch khoa học)** — trong khi lúc **tạo** thì không có | ✅ | QĐ543 **Điều 6.4** yêu cầu hồ sơ có **lý lịch khoa học (BM02)**; **Điều 11.1** liệt sản phẩm cam kết. ⇒ Hai phần này **đúng nghiệp vụ**, cái sai là **lúc tạo lại không có** ⇒ PI nộp lần đầu thiếu. Cần đưa lên bước tạo.  **XONG 12/08** — wizard nay có Sản phẩm dự kiến + hiện tệp đã đính kèm khi sửa |
 | P2-2 | **Staff: đổi "Xét duyệt" thành "Xem chi tiết đề tài"** + thêm tab tiến độ như bên PI | — | Anh đề xuất. Hợp lý: màn đó thực chất là màn xem tổng hợp. |
 | P2-3 | **Tiêu đề lịch họp: không gợi ý, không chặn trùng tên** | ⚠️ | Đề xuất: gợi ý sẵn `"Họp HĐ <loại vòng> — <tên đề tài>"`. Trùng tên thì **cảnh báo chứ không chặn** (hai đợt khác nhau trùng tên là bình thường). |
-| P2-4 | **Gán hội đồng khi chưa gửi thư mời** | ✅ | **Đúng như hiện tại.** Rule #13: gán hết rồi mới gửi một lượt. Không cần sửa. |
-| P2-5 | **Nhập số tháng gia hạn quá lớn** | — | Hiện chặn báo lỗi. Đề xuất tự kẹp về tối đa — **anh nghiêng về "thôi"**, tôi đồng ý: báo lỗi rõ ràng hơn là âm thầm đổi số người ta gõ. |
+| ⚪ P2-4 | **Gán hội đồng khi chưa gửi thư mời** | ✅ | **Đúng như hiện tại.** Rule #13: gán hết rồi mới gửi một lượt. Không cần sửa.  **KHÔNG CẦN SỬA** — đúng rule #13: gán hết rồi mới gửi một lượt |
+| ⚪ P2-5 | **Nhập số tháng gia hạn quá lớn** | — | Hiện chặn báo lỗi. Đề xuất tự kẹp về tối đa — **anh nghiêng về "thôi"**, tôi đồng ý: báo lỗi rõ ràng hơn là âm thầm đổi số người ta gõ.  **KHÔNG LÀM** — anh chốt: báo lỗi rõ ràng hơn là âm thầm đổi số người ta gõ |
 | P2-6 | **Ô "nhận xét chung / kiến nghị" khác màu các ô chấm** | — | Vì không thuộc tiêu chí chấm. Chấp nhận được, nhưng nên có tiêu đề nhóm cho rõ. |
 | P2-7 | **Trạng thái còn tiếng Anh ở màn Staff xét duyệt** | — | Sót sau đợt rà 36 màn (màn này vào bằng đường khác). |
-| P2-8 | **Tab "Kho tài liệu" trống** | — | Cần xác định: chưa làm, hay có mà không có dữ liệu. |
+| ✅ P2-8 | **Tab "Kho tài liệu" trống** | — | Cần xác định: chưa làm, hay có mà không có dữ liệu.  **XONG 14/08** — ẩn khỏi menu Staff/Admin theo yêu cầu (route/page giữ nguyên) |
 | P2-9 | **Admin có nên sửa thông tin cá nhân của người khác không?** | ⚠️ | Quy định không nói. Đề xuất: Admin sửa **vai + khoá/mở tài khoản**; thông tin cá nhân (điện thoại, học vị) để chính chủ sửa ở Hồ sơ. |
 | ✅ P2-10 | **Tạo tài khoản mới không gửi mail** | — | **XONG 12/08** — `ACCOUNT_CREATED`: chuông + mail kèm mật khẩu tạm, dẫn thẳng tới màn đổi mật khẩu. Đo thật: `email_logs` ghi `SENT`. |
 
@@ -134,7 +134,7 @@ giữ bản đã ký làm bằng chứng, và từ lúc ký thì khoá lại —
 | ✅ HD-5 | **Biên bản thanh lý hợp đồng BM13** (Điều 13.2) | — | **XONG 12/08** — `GET /contracts/{id}/export-settlement-word` |
 | ✅ HD-6 | Đối chiếu **BM05 gốc** từng trường | — | **XONG 12/08.** Cấu trúc 7 Điều vốn đã khớp; bù **7 chỗ thiếu**: 3 căn cứ pháp lý · Địa chỉ Bên B · mục "Đại diện cho các thành viên" · **số tiền bằng chữ** · Điều 5 đầy đủ 15 mục a–h (trước gộp thành 2 câu) · Điều 6.1 vế phụ lục · Điều 6.3 vế Trọng tài/Toà án. Bản Word từ 74 → **95 dòng** |
 | HD-7 | Lưu **hash file bản ký** để chống tráo file | P2 | không |
-| HD-8 | Bố cục file Word xuất ra cho giống hợp đồng thật | P3 | không |
+| ✅ HD-8 | Bố cục file Word xuất ra cho giống hợp đồng thật | P3 | không  **XONG 14/08** — thể thức theo Nghị định 30/2020: Times New Roman 13, A4, lề 30mm, quốc hiệu căn giữa, khối ký không viền |
 | HD-9 | Làm lại giao diện màn hợp đồng | P3 | không |
 
 ---

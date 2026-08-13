@@ -73,7 +73,7 @@ dài hay ngắn. Đã chụp lại đối chiếu trước/sau.
 
 ---
 
-## 4. Hợp đồng — format lại cho đẹp
+## 4. Hợp đồng — format lại cho đẹp ✅ XONG 14/08
 
 **Thầy nói:** *"format lại hợp đồng cho đẹp, lên mạng tham khảo các thứ."*
 
