@@ -18,6 +18,21 @@ public static class SystemSettingKeys
     // ── Hội đồng ──────────────────────────────────────────────────────────────
     /// <summary>Số ngày reviewer được phép suy nghĩ trước khi xác nhận/từ chối lời mời (rule #13).</summary>
     public const string CouncilInviteDeadlineDays = "COUNCIL_INVITE_DEADLINE_DAYS";
+
+    /// <summary>
+    /// Cho phép chuyên viên <b>trả lời thư mời THAY</b> thành viên hội đồng.
+    /// <para>
+    /// Bật (mặc định) vì thực tế nhiều thầy trả lời qua điện thoại/email rồi chuyên viên ghi nhận
+    /// hộ, và vì lúc demo không phải lúc nào cũng có sẵn tài khoản người chấm để tự bấm.
+    /// </para>
+    /// <para>
+    /// Tắt khi cần <b>chỉ chấp nhận thành viên tự xác nhận</b> — lúc đó lời xác nhận mới thực sự
+    /// là của người đứng tên. Dù bật, hệ thống luôn ghi lại ai đã bấm hộ
+    /// (<c>council_members.responded_on_behalf_by</c>).
+    /// </para>
+    /// </summary>
+    public const string CouncilAllowRespondOnBehalf = "COUNCIL_ALLOW_RESPOND_ON_BEHALF";
+    public const bool DefaultCouncilAllowRespondOnBehalf = true;
     public const int DefaultCouncilInviteDeadlineDays = 7;
 
     /// <summary>

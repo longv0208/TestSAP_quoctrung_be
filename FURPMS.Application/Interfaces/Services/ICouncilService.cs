@@ -34,7 +34,15 @@ public interface ICouncilService
     Task<CouncilMemberResponse> RespondToMembershipAsync(Guid memberId, Guid userId, bool accept, string? declineReason);
     // Staff/Admin xác nhận thay thành viên (reviewer đồng ý qua điện thoại/email ngoài hệ thống,
     // hoặc tiện demo khi không có tài khoản reviewer để tự bấm nhận).
-    Task<CouncilMemberResponse> ConfirmMemberOnBehalfAsync(Guid memberId);
+    /// <summary>
+    /// Chuyên viên trả lời thư mời <b>thay</b> thành viên (họ đã đồng ý/từ chối ngoài hệ thống).
+    /// <para>
+    /// Chịu công tắc <c>COUNCIL_ALLOW_RESPOND_ON_BEHALF</c>, và luôn ghi lại ai đã bấm hộ.
+    /// </para>
+    /// </summary>
+    /// <param name="accept">true = xác nhận thay · false = đánh dấu đã từ chối.</param>
+    Task<CouncilMemberResponse> RespondOnBehalfAsync(
+        Guid memberId, Guid staffUserId, bool accept, string? declineReason);
     Task<IEnumerable<CouncilMemberResponse>> GetMembersAsync(Guid councilId);
     Task RemoveMemberAsync(Guid memberId);
     // Xoá cả hội đồng (chỉ khi chưa có phiếu chấm / biên bản / nghiệm thu).

@@ -1,3 +1,5 @@
+using FURPMS.Application.Common;
+using FURPMS.Application.Constants;
 using FURPMS.Tests.Reminders;
 using FURPMS.Application.DTOs.Councils;
 using FURPMS.Domain.Entities.Proposals;
@@ -188,12 +190,122 @@ public class CouncilServiceTests
         var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
         var member = await service.AddMemberAsync(council.Id, new AddCouncilMemberRequest { UserId = reviewer.Id, MemberRole = "MEMBER", IsExternal = false });
 
+        // Phải GỬI THƯ MỜI trước — chưa gửi mà đã ghi nhận trả lời là hồ sơ tự mâu thuẫn.
+        var entity = await db.CouncilMembers.FirstAsync(m => m.Id == member.Id);
+        entity.InvitationSentAt = DateTime.UtcNow;
+        await db.SaveChangesAsync();
+
         // Act
-        var confirmed = await service.ConfirmMemberOnBehalfAsync(member.Id);
+        var confirmed = await service.RespondOnBehalfAsync(member.Id, staff.Id, accept: true, declineReason: null);
 
         // Assert — chuyển sang CONFIRMED + có mốc thời gian, không cần đăng nhập tài khoản reviewer
         Assert.Equal("CONFIRMED", confirmed.Status);
         Assert.NotNull(confirmed.ConfirmedAt);
+
+        // …và LƯU LẠI ai đã bấm hộ. Không có dấu vết này thì về sau không phân biệt được thành
+        // viên thật sự đồng ý hay chuyên viên bấm thay.
+        var saved = await db.CouncilMembers.FirstAsync(m => m.Id == member.Id);
+        Assert.Equal(staff.Id, saved.RespondedOnBehalfBy);
+    }
+
+    /// <summary>
+    /// Nút "Đánh dấu từ chối" của chuyên viên phải CHẠY ĐƯỢC.
+    /// <para>
+    /// Trước 14/08 giao diện gọi nhầm sang endpoint dành cho chính thành viên, nên chuyên viên
+    /// luôn nhận 403 "Bạn chỉ trả lời được thư mời gửi cho chính mình" — câu vô nghĩa với người
+    /// đang ghi nhận hộ. Nhánh XÁC NHẬN đã được chuyển sang endpoint riêng từ trước, nhánh TỪ
+    /// CHỐI thì bị bỏ sót.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task RespondOnBehalf_Decline_Works_AndRecordsWhoDidIt()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (service, staffId, memberId) = await SeedInvitedMemberAsync(db);
+
+        var result = await service.RespondOnBehalfAsync(memberId, staffId, accept: false, declineReason: "Bận công tác");
+
+        Assert.Equal("DECLINED", result.Status);
+        var saved = await db.CouncilMembers.FirstAsync(m => m.Id == memberId);
+        Assert.Equal("Bận công tác", saved.DeclineReason);
+        Assert.Equal(staffId, saved.RespondedOnBehalfBy);
+    }
+
+    /// <summary>Chưa gửi thư mời mà đã ghi nhận trả lời là hồ sơ tự mâu thuẫn — không có thư nào để trả lời.</summary>
+    [Fact]
+    public async Task RespondOnBehalf_BeforeInvitationSent_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (service, staffId, memberId) = await SeedInvitedMemberAsync(db, sendInvitation: false);
+
+        var ex = await Assert.ThrowsAsync<AppException>(
+            () => service.RespondOnBehalfAsync(memberId, staffId, accept: true, declineReason: null));
+        Assert.Contains("Chưa gửi thư mời", ex.Message);
+    }
+
+    /// <summary>Tắt công tắc thì chỉ thành viên tự trả lời — chuyên viên không ghi nhận hộ được nữa.</summary>
+    [Fact]
+    public async Task RespondOnBehalf_WhenSettingOff_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (service, staffId, memberId) = await SeedInvitedMemberAsync(db);
+
+        db.SystemSettings.Add(new FURPMS.Domain.Entities.MasterData.SystemSetting
+        {
+            Key = SystemSettingKeys.CouncilAllowRespondOnBehalf,
+            Value = "false",
+            RecommendedValue = "true"
+        });
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<AppException>(
+            () => service.RespondOnBehalfAsync(memberId, staffId, accept: true, declineReason: null));
+        Assert.Contains("TỰ trả lời", ex.Message);
+    }
+
+    /// <summary>Đã từ chối rồi thì không "ghi nhận lại" — phải gán người thay.</summary>
+    [Fact]
+    public async Task RespondOnBehalf_AfterDeclined_Throws()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (service, staffId, memberId) = await SeedInvitedMemberAsync(db);
+
+        await service.RespondOnBehalfAsync(memberId, staffId, accept: false, declineReason: "x");
+
+        await Assert.ThrowsAsync<AppException>(
+            () => service.RespondOnBehalfAsync(memberId, staffId, accept: true, declineReason: null));
+    }
+
+    /// <summary>Dựng sẵn một hội đồng có 1 thành viên ĐÃ ĐƯỢC GỬI thư mời.</summary>
+    private static async Task<(CouncilService Service, Guid StaffId, Guid MemberId)> SeedInvitedMemberAsync(
+        FURPMS.Infrastructure.Data.FURPMSDbContext db, bool sendInvitation = true)
+    {
+        var pi = MakeUser();
+        var reviewer = MakeUser();
+        var staff = MakeUser();
+        var (project, proposal) = MakeProjectWithProposal(pi.Id);
+        var council = MakeCouncil(project.Id, staff.Id);
+
+        db.Users.AddRange(pi, reviewer, staff);
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        db.ReviewCouncils.Add(council);
+        db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
+        await db.SaveChangesAsync();
+
+        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db),
+            new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var member = await service.AddMemberAsync(council.Id,
+            new AddCouncilMemberRequest { UserId = reviewer.Id, MemberRole = "MEMBER", IsExternal = false });
+
+        if (sendInvitation)
+        {
+            var entity = await db.CouncilMembers.FirstAsync(m => m.Id == member.Id);
+            entity.InvitationSentAt = DateTime.UtcNow;
+            await db.SaveChangesAsync();
+        }
+
+        return (service, staff.Id, member.Id);
     }
 
     [Fact]

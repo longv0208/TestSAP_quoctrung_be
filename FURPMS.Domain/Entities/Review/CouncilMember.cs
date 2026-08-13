@@ -17,6 +17,17 @@ public class CouncilMember
     public string? DeclineReason { get; set; }
     public string Status { get; set; } = "INVITED";
 
+    /// <summary>
+    /// Chuyên viên nào đã trả lời <b>THAY</b> thành viên này (xác nhận hộ / đánh dấu từ chối hộ).
+    /// <c>null</c> = chính thành viên tự bấm.
+    /// <para>
+    /// Trước 14/08 không lưu gì cả: <c>ConfirmedAt</c> được đặt y như người đó tự xác nhận, nên
+    /// về sau <b>không ai phân biệt được</b> thành viên thật sự đồng ý hay chuyên viên bấm hộ.
+    /// Với hệ thống mà cả mục đích là giữ hồ sơ đối chiếu được thì đó là lỗ hổng thật.
+    /// </para>
+    /// </summary>
+    public Guid? RespondedOnBehalfBy { get; set; }
+
     public ReviewCouncil Council { get; set; } = null!;
     public User User { get; set; } = null!;
 }

@@ -185,14 +185,27 @@ public class CouncilsController : ControllerBase
         return Ok(ApiResponse<CouncilMemberResponse>.Ok(result));
     }
 
-    // POST /api/council-members/{memberId}/confirm-on-behalf — Staff/Admin xác nhận thay
-    // (reviewer đồng ý ngoài hệ thống, hoặc tiện demo khi thiếu tài khoản reviewer để tự bấm nhận).
-    [HttpPost("/api/council-members/{memberId:guid}/confirm-on-behalf")]
+    /// <summary>
+    /// Chuyên viên ghi nhận trả lời thư mời <b>thay</b> thành viên — họ đã đồng ý hoặc từ chối
+    /// ngoài hệ thống (gọi điện, email), hoặc lúc demo không có sẵn tài khoản người chấm.
+    ///
+    /// <para>
+    /// Trước 14/08 nút "Đánh dấu từ chối" ở giao diện gọi nhầm sang endpoint dành cho <i>chính
+    /// thành viên</i> (<c>PATCH /respond</c>) ⇒ chuyên viên luôn nhận <b>403 "Bạn chỉ trả lời được
+    /// thư mời gửi cho chính mình"</b> — câu hoàn toàn vô nghĩa với người đang ghi nhận hộ.
+    /// Nút "Xác nhận thay" đã được chuyển sang endpoint riêng từ trước, nhưng nhánh TỪ CHỐI thì bị
+    /// bỏ sót.
+    /// </para>
+    /// </summary>
+    [HttpPost("/api/council-members/{memberId:guid}/respond-on-behalf")]
     [Authorize(Roles = "Staff,Admin")]
-    public async Task<ActionResult<ApiResponse<CouncilMemberResponse>>> ConfirmOnBehalf(Guid memberId)
+    public async Task<ActionResult<ApiResponse<CouncilMemberResponse>>> RespondOnBehalf(
+        Guid memberId, [FromBody] RespondMembershipRequest request)
     {
-        var result = await _service.ConfirmMemberOnBehalfAsync(memberId);
-        return Ok(ApiResponse<CouncilMemberResponse>.Ok(result, "Đã xác nhận thay thành viên."));
+        var result = await _service.RespondOnBehalfAsync(
+            memberId, GetCurrentUserId(), request.Accept, request.DeclineReason);
+        return Ok(ApiResponse<CouncilMemberResponse>.Ok(
+            result, request.Accept ? "Đã xác nhận thay thành viên." : "Đã ghi nhận thành viên từ chối."));
     }
 
     // DELETE /api/council-members/{memberId}

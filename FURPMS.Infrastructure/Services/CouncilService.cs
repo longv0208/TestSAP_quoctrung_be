@@ -527,21 +527,53 @@ public class CouncilService : ICouncilService
 
     // Staff/Admin bấm "Xác nhận thay" — reviewer đã đồng ý ngoài hệ thống (điện thoại/email),
     // hoặc tiện demo. Chuyển ASSIGNED/INVITED → CONFIRMED, không cần đăng nhập tài khoản reviewer.
-    public async Task<CouncilMemberResponse> ConfirmMemberOnBehalfAsync(Guid memberId)
+    /// <inheritdoc/>
+    public async Task<CouncilMemberResponse> RespondOnBehalfAsync(
+        Guid memberId, Guid staffUserId, bool accept, string? declineReason)
     {
+        var allowed = await _settings.GetBoolAsync(
+            SystemSettingKeys.CouncilAllowRespondOnBehalf,
+            SystemSettingKeys.DefaultCouncilAllowRespondOnBehalf);
+        if (!allowed)
+            throw AppException.Forbidden(ErrorCodes.Forbidden,
+                "Cấu hình hệ thống đang yêu cầu thành viên TỰ trả lời thư mời. " +
+                "Quản trị viên có thể bật lại ở Cài đặt nếu cần ghi nhận hộ.");
+
         var member = await _review.CouncilMembers
             .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.Id == memberId)
             ?? throw new KeyNotFoundException("Không tìm thấy thành viên hội đồng.");
 
         if (member.Status == CouncilMemberStatus.Declined)
-            throw new InvalidOperationException("Thành viên đã từ chối lời mời — không thể xác nhận thay.");
+            throw AppException.Conflict(ErrorCodes.Conflict,
+                "Thành viên đã từ chối lời mời — không ghi nhận lại được. Hãy gán người thay.");
 
-        member.Status = CouncilMemberStatus.Confirmed;
-        member.ConfirmedAt = DateTime.UtcNow;
+        // Chưa gửi thư mời mà đã ghi nhận trả lời là hồ sơ tự mâu thuẫn: không có thư nào để trả
+        // lời cả. Trước đây giao diện cho bấm ngay cả khi mới gán người (ASSIGNED).
+        if (member.InvitationSentAt == null)
+            throw AppException.Conflict(ErrorCodes.Conflict,
+                $"Chưa gửi thư mời cho {member.User?.FullName ?? "thành viên này"} — " +
+                "gửi thư mời trước rồi mới ghi nhận trả lời.");
+
+        if (accept)
+        {
+            member.Status = CouncilMemberStatus.Confirmed;
+            member.ConfirmedAt = DateTime.UtcNow;
+        }
+        else
+        {
+            member.Status = CouncilMemberStatus.Declined;
+            member.DeclinedAt = DateTime.UtcNow;
+            member.DeclineReason = declineReason;
+        }
+
+        // Ghi lại AI đã bấm hộ. Không có dòng này thì về sau không phân biệt được thành viên thật
+        // sự đồng ý hay chuyên viên bấm thay.
+        member.RespondedOnBehalfBy = staffUserId;
         await _review.SaveChangesAsync();
         return MapMember(member);
     }
+
 
     public async Task<IEnumerable<CouncilMemberResponse>> GetMembersAsync(Guid councilId)
     {
