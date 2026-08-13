@@ -79,8 +79,30 @@ dài hay ngắn. Đã chụp lại đối chiếu trước/sau.
 
 **Hiểu là:** file Word hợp đồng xuất ra (BM05) bố cục còn thô so với hợp đồng thật.
 
-**Việc:** làm lại bố cục file Word — canh lề, font, khoảng cách, bảng kinh phí, khối chữ ký.
-(Trùng với **P3-2** trong `BACKLOG_Uu_tien.md` — nay thầy nêu nên **nâng ưu tiên**.)
+**Căn cứ tìm được:** đây **không phải chuyện thẩm mỹ tuỳ ý**. Thể thức văn bản hành chính Việt
+Nam có quy định pháp lý — **Nghị định 30/2020/NĐ-CP, Phụ lục I**.
+
+Bản cũ **không đặt gì cả**:
+
+| Hạng mục | Trước | Nay (theo NĐ30) |
+|---|---|---|
+| Phông chữ | không đặt ⇒ Word dùng Calibri/Aptos của **máy người mở** | **Times New Roman 13** (quy định 13–14) |
+| Khổ giấy | không đặt | **A4** |
+| Lề | không đặt | trên/dưới 20mm · **trái 30mm** (chừa đóng gáy) · phải 15mm |
+| **Quốc hiệu** | **căn TRÁI** ← đúng chỗ thầy chỉ | in hoa đậm **CĂN GIỮA** |
+| Tiêu ngữ | gạch ngang `–` (sai thể thức) và `***` thay cho đường kẻ | gạch nối `-`, đậm 14pt, có **đường kẻ ngang** dài đúng bằng dòng chữ |
+| Khối "Căn cứ…" | thường, căn trái | **nghiêng**, căn đều hai bên, lùi đầu dòng 1cm |
+| Khối ký | bảng **kẻ ô** ⇒ ra cái lưới quanh chỗ ký | bảng **không viền**, 2 cột căn giữa, chừa 4 dòng cho chữ ký + dấu |
+
+Áp cho cả **3 văn bản**: hợp đồng (BM05) · biên bản thanh lý (BM13) · phụ lục điều chỉnh.
+Sửa luôn "CỘNG HOÀ" → "CỘNG HÒA".
+
+**Cách xác minh:** xuất hợp đồng thật rồi **bóc XML kiểm từng thuộc tính** — `rFonts` = Times New
+Roman, `sz` = 26 (13pt), `pgSz` = 11906×16838 (A4), `pgMar left` = 1701 (30mm), quốc hiệu
+`jc=center`, tiêu ngữ có `pBdr`, bảng ký 6 cạnh `w:val="none"`.
+
+(Ứng với **HD-8** và nửa phần Word của **P3-2** trong `BACKLOG_Uu_tien.md`; nửa còn lại — giao
+diện màn hợp đồng — vẫn treo.)
 
 ---
 
