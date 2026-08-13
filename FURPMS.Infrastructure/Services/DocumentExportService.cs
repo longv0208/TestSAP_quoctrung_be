@@ -499,16 +499,18 @@ public class DocumentExportService : IDocumentExportService
             var money = c.TotalAmount > 0 ? c.TotalAmount.ToString("N0", vi) : "…………";
             const string Blank = "……………………………";
 
-            AppendParagraph(body, "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
-            AppendParagraph(body, "Độc lập – Tự do – Hạnh phúc");
-            AppendParagraph(body, "***");
-            AppendParagraph(body, "");
+            // Quốc hiệu + tiêu ngữ căn giữa, có đường kẻ ngang (NĐ30 Phụ lục I).
+            AppendNationalHeading(body);
+
             AppendHeading(body, $"HỢP ĐỒNG NGHIÊN CỨU KHOA HỌC CẤP TRƯỜNG NĂM {c.StartDate.Year}",
-                16, bold: true, justify: JustificationValues.Center);
-            AppendParagraph(body, $"Số: {c.ContractNumber}/QLKH-FEHO");
-            AppendParagraph(body, "(Dùng cho việc giao khoán thực hiện Đề tài NCKH cấp Trường với Chủ nhiệm đề tài)");
+                14, bold: true, justify: JustificationValues.Center);
+            AppendParagraph(body, $"Số: {c.ContractNumber}/QLKH-FEHO",
+                bold: true, justify: JustificationValues.Center);
+            AppendParagraph(body, "(Dùng cho việc giao khoán thực hiện Đề tài NCKH cấp Trường với Chủ nhiệm đề tài)",
+                italic: true, fontSize: 12, justify: JustificationValues.Center);
             AppendParagraph(body, "");
 
+            // Khối "Căn cứ …" theo thông lệ văn bản pháp quy: in nghiêng, căn đều hai bên.
             foreach (var can in new[]
             {
                 "Căn cứ Bộ luật Dân sự số 91/2015/QH13 ngày 24/11/2015;",
@@ -520,7 +522,7 @@ public class DocumentExportService : IDocumentExportService
                 $"Căn cứ Quyết định của Hiệu trưởng Trường Đại học FPT về việc phê duyệt danh mục đề tài nghiên cứu khoa học cấp Trường năm {c.StartDate.Year};",
                 "Căn cứ thuyết minh đề cương nghiên cứu của đề tài đã được phê duyệt."
             })
-                AppendParagraph(body, can);
+                AppendParagraph(body, can, italic: true, justify: JustificationValues.Both, indentFirstLine: true);
 
             AppendParagraph(body, "");
             AppendParagraph(body, "Chúng tôi gồm:", bold: true);
@@ -673,9 +675,12 @@ AppendParagraph(body,
             AppendParagraph(body, "");
             AppendParagraph(body, "");
 
-            var sign = CreateTable(body, new[] { "ĐẠI DIỆN BÊN A", "CHỦ NHIỆM ĐỀ TÀI (BÊN B)" }, new[] { 4500, 4500 });
-            AddTableRow(sign, "(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)");
-            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (pi?.FullName ?? ""));
+            AppendSignatureBlock(body,
+                leftTitle: "ĐẠI DIỆN BÊN A", leftName: c.SideARepresentative,
+                rightTitle: "CHỦ NHIỆM ĐỀ TÀI (BÊN B)", rightName: pi?.FullName);
+
+            // Đặt CUỐI CÙNG: SectionProperties phải là phần tử cuối của body.
+            ApplyAdministrativeFormat(mainPart, body);
         }
 
         var code = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
@@ -780,10 +785,7 @@ AppendParagraph(body,
             var today = DateTime.UtcNow;
             var signedOn = c.SignedAt ?? today;
 
-            AppendParagraph(body, "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
-            AppendParagraph(body, "Độc Lập – Tự Do – Hạnh Phúc");
-            AppendParagraph(body, "***");
-            AppendParagraph(body, "");
+            AppendNationalHeading(body);
             AppendHeading(body, "BIÊN BẢN NGHIỆM THU & THANH LÝ HỢP ĐỒNG", 16, bold: true,
                 justify: JustificationValues.Center);
             AppendHeading(body, $"NGHIÊN CỨU KHOA HỌC CẤP TRƯỜNG NĂM {c.EndDate.Year}", 14, bold: true,
@@ -871,9 +873,12 @@ AppendParagraph(body,
             AppendParagraph(body, "");
             AppendParagraph(body, "");
 
-            var sign = CreateTable(body, new[] { "ĐẠI DIỆN BÊN A (Bên giao)", "BÊN B (Bên nhận)" }, new[] { 4500, 4500 });
-            AddTableRow(sign, "(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)");
-            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (pi?.FullName ?? ""));
+            AppendSignatureBlock(body,
+                leftTitle: "ĐẠI DIỆN BÊN A (Bên giao)", leftName: c.SideARepresentative,
+                rightTitle: "BÊN B (Bên nhận)", rightName: pi?.FullName);
+
+            // Đặt CUỐI CÙNG: SectionProperties phải là phần tử cuối của body.
+            ApplyAdministrativeFormat(mainPart, body);
         }
 
         var code = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
@@ -934,8 +939,7 @@ AppendParagraph(body,
             mainPart.Document = new Document(new Body());
             var body = mainPart.Document.Body!;
 
-            AppendParagraph(body, "CỘNG HOÀ XÃ HỘI CHỦ NGHĨA VIỆT NAM", bold: true, fontSize: 12);
-            AppendParagraph(body, "Độc lập - Tự do - Hạnh phúc", bold: true, fontSize: 12);
+            AppendNationalHeading(body);
             AppendParagraph(body, "");
             AppendHeading(body, "PHỤ LỤC HỢP ĐỒNG", 15, bold: true, justify: JustificationValues.Center);
             AppendHeading(body, "NGHIÊN CỨU KHOA HỌC CẤP TRƯỜNG", 13, bold: true, justify: JustificationValues.Center);
@@ -1021,21 +1025,173 @@ AppendParagraph(body,
             AppendParagraph(body, "");
             AppendParagraph(body, "");
 
-            var sign = CreateTable(body, new[] { "ĐẠI DIỆN BÊN A", "CHỦ NHIỆM ĐỀ TÀI (BÊN B)" }, new[] { 4500, 4500 });
-            AddTableRow(sign, "(Ký, ghi rõ họ tên)", "(Ký, ghi rõ họ tên)");
-            AddTableRow(sign, "\n\n\n" + (c.SideARepresentative ?? ""), "\n\n\n" + (pi?.FullName ?? ""));
+            AppendSignatureBlock(body,
+                leftTitle: "ĐẠI DIỆN BÊN A", leftName: c.SideARepresentative,
+                rightTitle: "CHỦ NHIỆM ĐỀ TÀI (BÊN B)", rightName: pi?.FullName);
+
+            // Đặt CUỐI CÙNG: SectionProperties phải là phần tử cuối của body.
+            ApplyAdministrativeFormat(mainPart, body);
         }
 
         var contractCode = c.ContractNumber.Replace("/", "-").Replace(" ", "_");
         return (ms.ToArray(), $"PhuLucHopDong_{contractCode}_{a.RequestedAt:yyyyMMdd}.docx");
     }
 
-    private static void AppendParagraph(Body body, string text, bool bold = false, int fontSize = 11)
+    // ── Thể thức văn bản hành chính — Nghị định 30/2020/NĐ-CP, Phụ lục I ────────────────────
+    //
+    // Trước đây các file Word xuất ra KHÔNG đặt gì cả: không font (Word tự dùng Calibri/Aptos),
+    // không khổ giấy, không lề, quốc hiệu căn trái. Thầy nhận xét ở buổi demo 14/08:
+    // "cái cộng hòa xã hội chủ nghĩa phải ra giữa". Đây không phải chuyện thẩm mỹ tuỳ ý — thể
+    // thức văn bản hành chính Việt Nam có quy định pháp lý, và hợp đồng đem đi ký thì càng phải
+    // đúng.
+
+    /// <summary>Khổ A4 tính theo twip (1 inch = 1440 twip): 210 × 297 mm.</summary>
+    private const int A4WidthTwips = 11906;
+    private const int A4HeightTwips = 16838;
+
+    /// <summary>1 mm = 56.7 twip — dùng để đổi số đo lề trong Nghị định 30 sang đơn vị Word.</summary>
+    private static int Mm(double mm) => (int)Math.Round(mm * 56.7);
+
+    /// <summary>
+    /// Đặt thể thức chung cho một văn bản hành chính theo <b>Nghị định 30/2020/NĐ-CP</b>:
+    /// <list type="bullet">
+    ///   <item>Phông chữ <b>Times New Roman</b>, cỡ <b>13</b> (quy định 13–14)</item>
+    ///   <item>Khổ <b>A4</b>; lề trên 20mm · dưới 20mm · <b>trái 30mm</b> · phải 15mm</item>
+    ///   <item>Giãn dòng tối thiểu đơn, cách đoạn 6pt</item>
+    /// </list>
+    /// Không đặt thì Word dùng phông mặc định của máy người mở — mỗi máy ra một kiểu, và không
+    /// máy nào ra đúng Times New Roman.
+    /// </summary>
+    private static void ApplyAdministrativeFormat(MainDocumentPart mainPart, Body body)
+    {
+        var stylesPart = mainPart.AddNewPart<StyleDefinitionsPart>();
+        stylesPart.Styles = new Styles(
+            new DocDefaults(
+                new RunPropertiesDefault(
+                    new RunPropertiesBaseStyle(
+                        new RunFonts { Ascii = "Times New Roman", HighAnsi = "Times New Roman", ComplexScript = "Times New Roman" },
+                        new FontSize { Val = "26" },              // 13pt (đơn vị nửa point)
+                        new FontSizeComplexScript { Val = "26" })),
+                new ParagraphPropertiesDefault(
+                    new ParagraphPropertiesBaseStyle(
+                        new SpacingBetweenLines { After = "120", Line = "276", LineRule = LineSpacingRuleValues.Auto }))));
+        stylesPart.Styles.Save();
+
+        // SectionProperties phải là phần tử CUỐI CÙNG của body, nếu không Word báo file hỏng.
+        body.Append(new SectionProperties(
+            new PageSize { Width = (uint)A4WidthTwips, Height = (uint)A4HeightTwips },
+            new PageMargin
+            {
+                Top = Mm(20),
+                Bottom = Mm(20),
+                Left = (uint)Mm(30),    // lề trái rộng để đóng gáy — quy định 30–35mm
+                Right = (uint)Mm(15),
+                Header = 720,
+                Footer = 720,
+                Gutter = 0
+            }));
+    }
+
+    /// <summary>
+    /// Quốc hiệu và tiêu ngữ theo Nghị định 30/2020 — <b>căn giữa</b>, in đậm, và tiêu ngữ có
+    /// <b>đường kẻ ngang bên dưới dài bằng dòng chữ</b>.
+    /// <para>
+    /// Đường kẻ này là một phần của thể thức, không phải trang trí. Trước đây thay bằng ba dấu
+    /// sao <c>***</c> — nhìn qua thì giống, nhưng không phải thứ quy định yêu cầu.
+    /// </para>
+    /// </summary>
+    private static void AppendNationalHeading(Body body)
+    {
+        AppendParagraph(body, "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+            bold: true, fontSize: 13, justify: JustificationValues.Center);
+
+        // Tiêu ngữ: chữ đầu mỗi cụm viết hoa, giữa các cụm là dấu gạch nối có cách chữ.
+        // Gạch NGANG (–) là sai thể thức, phải là gạch nối (-).
+        var tieuNgu = new Paragraph(
+            new ParagraphProperties(
+                new Justification { Val = JustificationValues.Center },
+                // Đường kẻ ngang = viền dưới của chính đoạn tiêu ngữ ⇒ luôn dài đúng bằng dòng chữ.
+                new ParagraphBorders(new BottomBorder { Val = BorderValues.Single, Size = 6, Space = 1 }),
+                new SpacingBetweenLines { After = "0" }),
+            new Run(
+                new RunProperties(new Bold(), new FontSize { Val = "28" }),   // 14pt
+                new Text("Độc lập - Tự do - Hạnh phúc") { Space = SpaceProcessingModeValues.Preserve }));
+        body.Append(tieuNgu);
+
+        AppendParagraph(body, "");
+    }
+
+    /// <summary>
+    /// Khối chữ ký hai bên — bảng <b>không viền</b>, mỗi ô căn giữa.
+    /// <para>
+    /// Trước đây dùng bảng có kẻ ô đầy đủ, ra một cái lưới bao quanh chỗ ký. Hợp đồng thật không
+    /// kẻ ô ở phần ký: hai cột chỉ để canh vị trí, còn con dấu phải đè lên được chữ ký.
+    /// </para>
+    /// <para>Chừa 4 dòng trống giữa chức danh và họ tên — chỗ ký tay và đóng dấu.</para>
+    /// </summary>
+    private static void AppendSignatureBlock(
+        Body body, string leftTitle, string? leftName, string rightTitle, string? rightName)
+    {
+        static TableCell Cell(string title, string? name)
+        {
+            var cell = new TableCell(new TableCellProperties(
+                new TableCellWidth { Width = "4680", Type = TableWidthUnitValues.Dxa }));
+
+            static Paragraph Line(string text, bool bold = false, bool italic = false, int size = 13)
+            {
+                var rpr = new RunProperties();
+                if (bold) rpr.Append(new Bold());
+                if (italic) rpr.Append(new Italic());
+                rpr.Append(new FontSize { Val = (size * 2).ToString() });
+
+                return new Paragraph(
+                    new ParagraphProperties(
+                        new Justification { Val = JustificationValues.Center },
+                        new SpacingBetweenLines { After = "0" }),
+                    new Run(rpr, new Text(text) { Space = SpaceProcessingModeValues.Preserve }));
+            }
+
+            cell.Append(Line(title, bold: true));
+            cell.Append(Line("(Ký, ghi rõ họ tên, đóng dấu)", italic: true, size: 12));
+            for (int i = 0; i < 4; i++) cell.Append(Line(""));
+            cell.Append(Line(name ?? "", bold: true));
+            return cell;
+        }
+
+        var table = new Table(
+            new TableProperties(
+                // Không kẻ viền — khác hẳn các bảng dữ liệu ở trên.
+                new TableBorders(
+                    new TopBorder { Val = BorderValues.None },
+                    new BottomBorder { Val = BorderValues.None },
+                    new LeftBorder { Val = BorderValues.None },
+                    new RightBorder { Val = BorderValues.None },
+                    new InsideHorizontalBorder { Val = BorderValues.None },
+                    new InsideVerticalBorder { Val = BorderValues.None }),
+                new TableWidth { Width = "9360", Type = TableWidthUnitValues.Dxa }),
+            new TableGrid(new GridColumn { Width = "4680" }, new GridColumn { Width = "4680" }),
+            new TableRow(Cell(leftTitle, leftName), Cell(rightTitle, rightName)));
+
+        body.Append(table);
+        // Word đòi một đoạn văn sau bảng cuối cùng, thiếu là file bị báo hỏng.
+        AppendParagraph(body, "");
+    }
+
+    private static void AppendParagraph(Body body, string text, bool bold = false, int fontSize = 13,
+        JustificationValues? justify = null, bool indentFirstLine = false, bool italic = false)
     {
         var para = new Paragraph();
+
+        var ppr = new ParagraphProperties();
+        if (justify.HasValue) ppr.Append(new Justification { Val = justify.Value });
+        // Văn bản hành chính lùi đầu dòng 1–1,27cm. 1cm ≈ 567 twip.
+        if (indentFirstLine) ppr.Append(new Indentation { FirstLine = "567" });
+        if (ppr.HasChildren) para.Append(ppr);
+
         var run = new Run();
         var rpr = new RunProperties();
         if (bold) rpr.Append(new Bold());
+        if (italic) rpr.Append(new Italic());
         rpr.Append(new FontSize { Val = (fontSize * 2).ToString() });
         run.Append(rpr);
         run.Append(new Text(text) { Space = SpaceProcessingModeValues.Preserve });
