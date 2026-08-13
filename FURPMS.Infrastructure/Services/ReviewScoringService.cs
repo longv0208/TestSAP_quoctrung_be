@@ -78,7 +78,7 @@ public class ReviewScoringService : IReviewScoringService
         var template = await _masterData.RubricTemplates
             .Include(t => t.Criteria)
             .FirstOrDefaultAsync(t => t.Id == templateId)
-            ?? throw new KeyNotFoundException($"Rubric template {templateId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy bộ tiêu chí.");
 
         return MapTemplate(template);
     }
@@ -89,7 +89,7 @@ public class ReviewScoringService : IReviewScoringService
     {
         var council = await _review.Query()
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var projectId = await ResolveProjectIdAsync(councilId, request.ProjectId);
 
@@ -107,7 +107,7 @@ public class ReviewScoringService : IReviewScoringService
         var template = await _masterData.RubricTemplates
             .Include(t => t.Criteria)
             .FirstOrDefaultAsync(t => t.Id == request.TemplateId)
-            ?? throw new KeyNotFoundException($"Rubric template {request.TemplateId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy bộ tiêu chí.");
 
         /*
          * Bộ tiêu chí phải CỘNG ĐÚNG MaxTotalScore mới được đem chấm.
@@ -230,7 +230,7 @@ public class ReviewScoringService : IReviewScoringService
     public async Task<IEnumerable<ReviewScoreDto>> GetCouncilScoresAsync(Guid councilId, Guid? projectId = null)
     {
         _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var pid = await ResolveProjectIdAsync(councilId, projectId);
 
@@ -263,7 +263,7 @@ public class ReviewScoringService : IReviewScoringService
 
         var council = await _review.Query().Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         if (council.Status == CouncilStatus.Decided)
             throw new InvalidOperationException("Biên bản đã được Chủ tịch khoá, không thể sửa.");
@@ -359,7 +359,7 @@ public class ReviewScoringService : IReviewScoringService
 
         var council = await _review.Query().Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var me = council.Members.FirstOrDefault(m => m.UserId == chairUserId)
             ?? throw new ForbiddenException("Bạn không thuộc hội đồng này.");
@@ -423,7 +423,7 @@ public class ReviewScoringService : IReviewScoringService
     {
         var council = await _review.Query().Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         if (council.Status == CouncilStatus.Decided)
             throw new InvalidOperationException("Biên bản đã được khoá.");
@@ -604,7 +604,7 @@ public class ReviewScoringService : IReviewScoringService
     {
         var council = await _review.Query().Include(c => c.Members).ThenInclude(m => m.User)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var pid = await ResolveProjectIdAsync(councilId, projectId);
         var isAcceptance = await IsAcceptanceCouncilAsync(council);

@@ -25,7 +25,7 @@ public class FinalReportService : IFinalReportService
     {
         var contract = await _contracts.Query()
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
         var report = await _contracts.FinalReports
             .FirstOrDefaultAsync(r => r.ProjectId == contract.ProjectId);
         return report == null ? null : Map(report);
@@ -39,7 +39,7 @@ public class FinalReportService : IFinalReportService
         var contract = await _contracts.Query()
             .Include(c => c.Project)
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         if (contract.Project.PiUserId != userId)
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được báo cáo tổng kết.");
@@ -87,7 +87,7 @@ public class FinalReportService : IFinalReportService
 
         var report = await _contracts.FinalReports
             .FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tổng kết.");
 
         if (report.Status != FinalReportStatus.Submitted)
             throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ yêu cầu chỉnh sửa được với báo cáo đã nộp.");
@@ -103,7 +103,7 @@ public class FinalReportService : IFinalReportService
     {
         var report = await _contracts.FinalReports
             .FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tổng kết.");
 
         if (report.Status != FinalReportStatus.Submitted)
             throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ chấp nhận được báo cáo đã nộp.");
@@ -118,7 +118,7 @@ public class FinalReportService : IFinalReportService
     {
         var report = await _contracts.FinalReports
             .FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Final report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tổng kết.");
 
         if (report.Status != FinalReportStatus.Accepted)
             throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ lưu trữ được báo cáo đã được chấp nhận.");

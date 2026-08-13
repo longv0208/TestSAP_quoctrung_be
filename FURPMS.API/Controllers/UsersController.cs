@@ -34,7 +34,7 @@ public class UsersController : ControllerBase
         var roles = User.FindAll(ClaimTypes.Role).Select(c => c.Value).ToHashSet();
 
         if (!roles.Contains("Admin") && !roles.Contains("Staff") && callerId != id)
-            throw new UnauthorizedAccessException("Access denied.");
+            throw new UnauthorizedAccessException("Bạn không có quyền thực hiện thao tác này.");
 
         var result = await _users.GetUserByIdAsync(id);
         return Ok(ApiResponse<UserDto>.Ok(result));

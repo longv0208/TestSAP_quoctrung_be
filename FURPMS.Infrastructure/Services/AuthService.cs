@@ -95,13 +95,13 @@ public class AuthService : IAuthService
             .FirstOrDefaultAsync(u => u.Email == request.Email);
 
         if (user == null || string.IsNullOrEmpty(user.PasswordHash))
-            throw new UnauthorizedAccessException("Invalid credentials.");
+            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
 
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
-            throw new UnauthorizedAccessException("Invalid credentials.");
+            throw new UnauthorizedAccessException("Email hoặc mật khẩu không đúng.");
 
         if (user.Status != UserStatus.Active)
-            throw new UnauthorizedAccessException("Account is not active.");
+            throw new UnauthorizedAccessException("Tài khoản đang bị khoá. Liên hệ quản trị viên.");
 
         user.LastLoginAt = DateTime.UtcNow;
         user.UpdatedAt = DateTime.UtcNow;
@@ -123,7 +123,7 @@ public class AuthService : IAuthService
         var user = await _users.Query()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.Id == userId)
-            ?? throw new KeyNotFoundException("User not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
         return MapUserInfo(user, roles);
@@ -132,10 +132,10 @@ public class AuthService : IAuthService
     public async Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request)
     {
         var user = await _users.GetByIdAsync(userId)
-            ?? throw new KeyNotFoundException("User not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         if (string.IsNullOrEmpty(user.PasswordHash) || !BCrypt.Net.BCrypt.Verify(request.CurrentPassword, user.PasswordHash))
-            throw new UnauthorizedAccessException("Current password is incorrect.");
+            throw new UnauthorizedAccessException("Mật khẩu hiện tại không đúng.");
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword, workFactor: 12);
         user.UpdatedAt = DateTime.UtcNow;

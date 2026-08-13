@@ -76,7 +76,7 @@ public class CouncilMeetingService : ICouncilMeetingService
     public async Task<IEnumerable<MeetingDto>> GetByCouncilAsync(Guid councilId)
     {
         _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var meetings = await _review.Meetings
             .Where(m => m.CouncilId == councilId)
@@ -89,7 +89,7 @@ public class CouncilMeetingService : ICouncilMeetingService
     public async Task<MeetingDto> ScheduleAsync(Guid councilId, ScheduleMeetingRequest request)
     {
         _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var platform = ValidateAndNormalize(request, requireFuture: true);
 
@@ -157,7 +157,7 @@ public class CouncilMeetingService : ICouncilMeetingService
     {
         var meeting = await _review.Meetings
             .FirstOrDefaultAsync(m => m.Id == meetingId)
-            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy buổi họp.");
 
         var isPast = meeting.Status != MeetingStatus.Scheduled;
         var platform = ValidateAndNormalize(request, requireFuture: !isPast);
@@ -186,7 +186,7 @@ public class CouncilMeetingService : ICouncilMeetingService
     {
         var meeting = await _review.Meetings
             .FirstOrDefaultAsync(m => m.Id == meetingId)
-            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy buổi họp.");
 
         if (meeting.Status != MeetingStatus.Scheduled)
             throw new InvalidOperationException(
@@ -216,7 +216,7 @@ public class CouncilMeetingService : ICouncilMeetingService
     {
         var meeting = await _review.Meetings
             .FirstOrDefaultAsync(m => m.Id == meetingId)
-            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy buổi họp.");
 
         if (meeting.Status != MeetingStatus.Scheduled)
             throw new InvalidOperationException($"Buổi họp đang ở trạng thái {StatusText.Vi(meeting.Status)} — chỉ buổi đã lên lịch mới bắt đầu được.");
@@ -243,7 +243,7 @@ public class CouncilMeetingService : ICouncilMeetingService
     {
         var meeting = await _review.Meetings
             .FirstOrDefaultAsync(m => m.Id == meetingId)
-            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy buổi họp.");
 
         if (meeting.Status != MeetingStatus.InProgress)
             throw new InvalidOperationException(
@@ -266,7 +266,7 @@ public class CouncilMeetingService : ICouncilMeetingService
     {
         var meeting = await _review.Meetings
             .FirstOrDefaultAsync(m => m.Id == meetingId)
-            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy buổi họp.");
 
         if (meeting.Status != MeetingStatus.InProgress)
             throw new InvalidOperationException($"Buổi họp đang ở trạng thái {StatusText.Vi(meeting.Status)} — chỉ buổi đang diễn ra mới kết thúc được.");
@@ -283,7 +283,7 @@ public class CouncilMeetingService : ICouncilMeetingService
         var meeting = await _review.Meetings
             .Include(m => m.Council).ThenInclude(c => c.Members).ThenInclude(mm => mm.User)
             .FirstOrDefaultAsync(m => m.Id == meetingId)
-            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy buổi họp.");
 
         var existing = await _review.MeetingAttendances
             .Where(a => a.MeetingId == meetingId)
@@ -308,7 +308,7 @@ public class CouncilMeetingService : ICouncilMeetingService
         var meeting = await _review.Meetings
             .Include(m => m.Council).ThenInclude(c => c.Members)
             .FirstOrDefaultAsync(m => m.Id == meetingId)
-            ?? throw new KeyNotFoundException($"Meeting {meetingId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy buổi họp.");
 
         // Quyền: Admin/Staff, hoặc Thư ký của hội đồng này.
         var isSecretary = meeting.Council.Members.Any(mm =>

@@ -41,7 +41,7 @@ public class ProgressReportService : IProgressReportService
         var contract = await _contracts.Query()
             .Include(c => c.Project).ThenInclude(p => p.ResearchType)
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         if (roundCount is < 1 or > 12)
             throw new ArgumentException("Số kỳ báo cáo phải từ 1 đến 12.");
@@ -80,7 +80,7 @@ public class ProgressReportService : IProgressReportService
     public async Task<IEnumerable<ProgressReportSummaryDto>> GetByContractAsync(Guid contractId)
     {
         _ = await _contracts.Query().FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         var reports = await _contracts.ProgressReports
             .Where(r => r.ContractId == contractId)
@@ -95,7 +95,7 @@ public class ProgressReportService : IProgressReportService
         var report = await _contracts.ProgressReports
             .Include(r => r.Items).ThenInclude(i => i.Activity)
             .FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tiến độ.");
 
         return MapDetail(report);
     }
@@ -106,7 +106,7 @@ public class ProgressReportService : IProgressReportService
             .Include(c => c.Project).ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
             .Include(c => c.Project).ThenInclude(p => p.ResearchType)
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         if (contract.Project.PiUserId != userId)
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài của hợp đồng này mới tạo được báo cáo tiến độ.");
@@ -155,7 +155,7 @@ public class ProgressReportService : IProgressReportService
             _contracts.AddProgressReportItemsRange(request.Items.Select(i =>
             {
                 if (!activities.ContainsKey(i.ActivityId))
-                    throw new KeyNotFoundException($"Activity {i.ActivityId} not found for this proposal.");
+                    throw new KeyNotFoundException("Không tìm thấy hoạt động trong đề cương này.");
                 return new ProgressReportItem
                 {
                     ReportId = report.Id,
@@ -177,7 +177,7 @@ public class ProgressReportService : IProgressReportService
         var report = await _contracts.ProgressReports
             .Include(r => r.Contract).ThenInclude(c => c.Project)
             .FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tiến độ.");
 
         if (report.Contract.Project.PiUserId != userId)
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới sửa được báo cáo này.");
@@ -227,7 +227,7 @@ public class ProgressReportService : IProgressReportService
         var report = await _contracts.ProgressReports
             .Include(r => r.Contract).ThenInclude(c => c.Project)
             .FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tiến độ.");
 
         if (report.Contract.Project.PiUserId != userId)
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được báo cáo này.");
@@ -324,7 +324,7 @@ public class ProgressReportService : IProgressReportService
 
         var report = await _contracts.ProgressReports
             .FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tiến độ.");
 
         if (report.Status != ProgressReportStatus.Submitted)
             throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ đánh giá được báo cáo đã nộp.");
@@ -383,7 +383,7 @@ public class ProgressReportService : IProgressReportService
     public async Task<ProgressReportDto> ScheduleAsync(Guid reportId, ScheduleProgressReportRequest request)
     {
         var report = await _contracts.ProgressReports.FirstOrDefaultAsync(r => r.Id == reportId)
-            ?? throw new KeyNotFoundException($"Progress report {reportId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tiến độ.");
 
         if (!string.IsNullOrWhiteSpace(request.DueDate))
         {

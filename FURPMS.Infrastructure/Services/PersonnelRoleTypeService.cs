@@ -28,7 +28,7 @@ public class PersonnelRoleTypeService : IPersonnelRoleTypeService
     public async Task<PersonnelRoleTypeResponse> GetByIdAsync(int id)
     {
         var entity = await _masterData.PersonnelRoleTypes.FirstOrDefaultAsync(x => x.Id == id)
-            ?? throw new KeyNotFoundException($"PersonnelRoleType {id} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vai trò nhân sự.");
         return Map(entity);
     }
 
@@ -61,7 +61,7 @@ public class PersonnelRoleTypeService : IPersonnelRoleTypeService
             throw new ArgumentException("Phải nhập tên chức danh.");
 
         var entity = await _masterData.PersonnelRoleTypes.FirstOrDefaultAsync(x => x.Id == id)
-            ?? throw new KeyNotFoundException($"PersonnelRoleType {id} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vai trò nhân sự.");
 
         var codeConflict = await _masterData.PersonnelRoleTypes
             .AnyAsync(x => x.Code == request.Code.ToUpperInvariant() && x.Id != id);

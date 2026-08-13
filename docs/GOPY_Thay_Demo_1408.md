@@ -219,3 +219,52 @@ không dùng ⇒ lần bấm đầu rất lâu — đây có thể chính là ng
 | 5 | **7 + 9 — lỗi AI bên PI, lỗi tạo đợt** | Lỗi thật, chặn luồng |
 | 6 | **4 — format hợp đồng** | Thầy nêu đích danh |
 | 7 | **8 — file kịch bản demo** | Giúp chính anh lần sau đỡ cấn |
+
+---
+
+## 11. Thông báo lỗi nhìn từ phía NGƯỜI DÙNG (anh nêu 14/08)
+
+**Anh nói:** *"có mấy cái thông báo lỗi mà nó nói theo luật #13 gì á… làm tôi cảm thấy đấy là cái
+luật gì? để vô đó chi vậy?"*
+
+Đúng. `rule #13` là **số hiệu nội bộ trong `CLAUDE.md`** — người dùng không có cách nào biết nó là
+gì, đọc xong chỉ thấy hệ thống đang nói chuyện với chính nó.
+
+**Rà toàn bộ thì ra ba lớp, mỗi lớp một đợt quét trước KHÔNG thể thấy:**
+
+| Lớp | Số chỗ | Vì sao lọt |
+|---|---|---|
+| Số hiệu quy tắc nội bộ (`rule #7/#13/#16`) | 6 | Chỉ hiện khi vi phạm đúng ràng buộc đó |
+| Thông báo lỗi máy chủ còn **tiếng Anh**, kèm **GUID** — `Contract 3f2a-8b91… not found.` | **175** (71 chuỗi) | Chỉ hiện khi thao tác thất bại |
+| Lỗi validate giao diện còn tiếng Anh | 52 | Chỉ hiện khi nhập sai |
+
+**Đã sửa hết.** Nguyên tắc áp dụng:
+
+- Nói **lý do**, không nói số hiệu: *"Mỗi năm chỉ mở MỘT đợt cho mỗi loại — muốn mở cả hai loại thì
+  tạo hai đợt riêng"* thay cho *"(rule #7)"*.
+- **Bỏ GUID** khỏi thông báo. Người dùng không tra được mã đó, mà nhìn vào thì tưởng hệ thống sập.
+  Log vẫn giữ đủ stack trace để lập trình viên tra.
+- Nêu **việc phải làm tiếp**, không chỉ nêu cái sai: *"Phiên đăng nhập không hợp lệ. Hãy đăng nhập
+  lại."*
+
+---
+
+## 12. Định dạng ngày/số trong file xuất ra — rủi ro khi lên máy chủ
+
+**Anh hỏi:** *"nếu nó hiện trong hợp đồng lúc xuất ra ngày tháng kiểu Mỹ luôn thì có vẻ không ổn?"*
+
+**Kiểm thật: hiện tại ĐÚNG kiểu Việt** — `01/09/2026`, tiền `145.000.000`.
+
+**Nhưng đang may chứ không phải chắc.** Ứng dụng **không đặt culture** ở đâu cả nên lấy theo máy
+đang chạy, mà trong .NET dấu `/` trong `"dd/MM/yyyy"` **không phải ký tự cố định** — nó là chỗ dành
+cho dấu phân cách ngày của culture hiện hành. Máy anh cho ra đúng, còn máy chủ (Render/Railway)
+thường chạy `en-US` hoặc invariant ⇒ **cùng một hợp đồng xuất ở hai nơi ra hai kiểu ngày và hai kiểu
+số tiền**. Với văn bản đem đi ký thì không chấp nhận được.
+
+**Đã ghim cứng culture `vi-VN`** cho mọi chỗ định dạng ngày/số trong `DocumentExportService`
+(13 chỗ). Kèm 3 test chứng minh bẫy là thật: cùng chuỗi `"dd/MM/yyyy"`, culture `da-DK` cho ra
+`01.09.2026` còn `vi-VN` cho ra `01/09/2026`.
+
+⚠️ **Việc còn treo khi deploy:** phần còn lại của ứng dụng (ngoài xuất văn bản) vẫn chưa ghim
+culture. Chưa thấy triệu chứng, nhưng nên đặt `CultureInfo.DefaultThreadCurrentCulture` trong
+`Program.cs` trước khi lên Railway.

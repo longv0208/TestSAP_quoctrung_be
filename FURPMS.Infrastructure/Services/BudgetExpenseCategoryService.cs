@@ -28,7 +28,7 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
     public async Task<BudgetExpenseCategoryResponse> GetByIdAsync(int id)
     {
         var entity = await _masterData.BudgetExpenseCategories.FirstOrDefaultAsync(x => x.Id == id)
-            ?? throw new KeyNotFoundException($"BudgetExpenseCategory {id} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hạng mục chi.");
         return Map(entity);
     }
 
@@ -62,7 +62,7 @@ public class BudgetExpenseCategoryService : IBudgetExpenseCategoryService
             throw new ArgumentException("Phải nhập tên hạng mục.");
 
         var entity = await _masterData.BudgetExpenseCategories.FirstOrDefaultAsync(x => x.Id == id)
-            ?? throw new KeyNotFoundException($"BudgetExpenseCategory {id} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hạng mục chi.");
 
         var codeConflict = await _masterData.BudgetExpenseCategories
             .AnyAsync(x => x.Code == request.Code.ToUpperInvariant() && x.Id != id);

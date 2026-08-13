@@ -48,7 +48,7 @@ public class NotificationService : INotificationService
     {
         var notification = await _notifications.Query()
             .FirstOrDefaultAsync(n => n.Id == notificationId && n.UserId == userId)
-            ?? throw new KeyNotFoundException($"Notification {notificationId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy thông báo.");
 
         if (!notification.IsRead)
         {

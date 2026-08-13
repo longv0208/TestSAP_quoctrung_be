@@ -121,7 +121,7 @@ public class ProposalBudgetService : IProposalBudgetService
         {
             var config = await _masterData.SystemFinancialConfigs
                 .FirstOrDefaultAsync(c => c.Code == "BASE_DAILY_SALARY" && c.IsActive)
-                ?? throw new KeyNotFoundException("System config BASE_DAILY_SALARY not found.");
+                ?? throw new KeyNotFoundException("Chưa cấu hình mức lương ngày cơ sở. Liên hệ quản trị viên.");
             detail.DailyRate = request.Coefficient.Value * config.Value;
         }
         else

@@ -94,7 +94,10 @@ public class CycleValidationTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => svc.CreateCycleAsync(Request(name: "Đợt khác tên"), Guid.NewGuid()));
 
-        Assert.Contains("rule #7", ex.Message);
+        // Thông báo phải nói bằng lời NGƯỜI DÙNG hiểu, không phải số hiệu quy tắc nội bộ:
+        // đọc "(rule #7)" thì người dùng chỉ biết mình sai chứ không biết luật đó là gì.
+        Assert.Contains("hai đợt riêng", ex.Message);
+        Assert.DoesNotContain("rule #", ex.Message);
     }
 
     [Fact]

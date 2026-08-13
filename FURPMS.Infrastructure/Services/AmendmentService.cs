@@ -26,7 +26,7 @@ public class AmendmentService : IAmendmentService
     public async Task<IEnumerable<AmendmentListResponse>> GetByContractAsync(Guid contractId)
     {
         _ = await _contracts.Query().FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         var items = await _contracts.Amendments
             .Include(a => a.Category)
@@ -42,7 +42,7 @@ public class AmendmentService : IAmendmentService
         var a = await _contracts.Amendments
             .Include(a => a.Category)
             .FirstOrDefaultAsync(a => a.Id == amendmentId)
-            ?? throw new KeyNotFoundException($"Amendment {amendmentId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn điều chỉnh.");
         return MapDetail(a);
     }
 
@@ -52,12 +52,12 @@ public class AmendmentService : IAmendmentService
         var contract = await _contracts.Query()
             .Include(c => c.Project)
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         EnsureContractStillOpen(contract, "gửi đơn đề nghị điều chỉnh");
 
         _ = await _masterData.AmendmentCategories.FirstOrDefaultAsync(c => c.Id == request.CategoryId)
-            ?? throw new KeyNotFoundException($"Amendment category {request.CategoryId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy nhóm điều chỉnh.");
 
         var amendment = new AmendmentRequest
         {
@@ -85,7 +85,7 @@ public class AmendmentService : IAmendmentService
             .Include(a => a.Category)
             .Include(a => a.Contract)
             .FirstOrDefaultAsync(a => a.Id == amendmentId)
-            ?? throw new KeyNotFoundException($"Amendment {amendmentId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn điều chỉnh.");
 
         if (amendment.Status != AmendmentStatus.Pending)
             throw new InvalidOperationException($"Đề nghị điều chỉnh đã ở trạng thái {StatusText.Vi(amendment.Status)} — không xử lý lại được.");
@@ -96,7 +96,7 @@ public class AmendmentService : IAmendmentService
         var contract = await _contracts.Query()
             .Include(c => c.Project)
             .FirstOrDefaultAsync(c => c.Id == amendment.ContractId)
-            ?? throw new KeyNotFoundException($"Contract {amendment.ContractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
         EnsureContractStillOpen(contract, "duyệt đơn đề nghị điều chỉnh");
 
         amendment.Status = AmendmentStatus.Approved;
@@ -117,7 +117,7 @@ public class AmendmentService : IAmendmentService
         var amendment = await _contracts.Amendments
             .Include(a => a.Category)
             .FirstOrDefaultAsync(a => a.Id == amendmentId)
-            ?? throw new KeyNotFoundException($"Amendment {amendmentId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn điều chỉnh.");
 
         if (amendment.Status != AmendmentStatus.Pending)
             throw new InvalidOperationException($"Đề nghị điều chỉnh đã ở trạng thái {StatusText.Vi(amendment.Status)} — không xử lý lại được.");

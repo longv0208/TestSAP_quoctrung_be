@@ -39,7 +39,7 @@ public class ChangeRequestService : IChangeRequestService
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var project = proposal.Project;
         if (project.PiUserId != requestedBy)
@@ -69,7 +69,7 @@ public class ChangeRequestService : IChangeRequestService
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var items = await _proposals.ChangeRequests
             .Where(cr => cr.ProjectId == proposal.ProjectId)
@@ -98,7 +98,7 @@ public class ChangeRequestService : IChangeRequestService
         var entity = await _proposals.ChangeRequests
             .Include(cr => cr.Project).ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
             .FirstOrDefaultAsync(cr => cr.Id == id)
-            ?? throw new KeyNotFoundException($"Change request {id} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy yêu cầu thay đổi.");
 
         if (entity.Status != "Pending")
             throw new InvalidOperationException($"Yêu cầu đã được xử lý ('{StatusText.Vi(entity.Status)}') — không thể duyệt lại.");

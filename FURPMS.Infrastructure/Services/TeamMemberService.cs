@@ -25,7 +25,7 @@ public class TeamMemberService : ITeamMemberService
     {
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
         return proposal.ProjectId;
     }
 

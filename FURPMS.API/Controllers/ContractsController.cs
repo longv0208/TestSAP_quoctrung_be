@@ -188,9 +188,9 @@ public class ContractsController : ControllerBase
             .Where(c => c.Id == contractId)
             .Select(c => (Guid?)c.Project.PiUserId)
             .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         if (piId != userId)
-            throw new UnauthorizedAccessException("Access denied: not the PI of this contract's proposal.");
+            throw new UnauthorizedAccessException("Chỉ chủ nhiệm đề tài mới xem được hợp đồng này.");
     }
 }

@@ -33,10 +33,10 @@ public class CouncilService : ICouncilService
     {
         var reqProposal = await _proposals.Query().IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.Id == request.ProposalId)
-            ?? throw new KeyNotFoundException($"Proposal {request.ProposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var round = await _review.GetRoundByIdAsync(request.RoundId)
-            ?? throw new KeyNotFoundException($"Review round {request.RoundId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
 
         // Phase B: đề tài phải đang THAM GIA round (project_round) mới lập council chấm nó.
         var joined = await _review.ProjectRounds
@@ -102,7 +102,7 @@ public class CouncilService : ICouncilService
             .Include(c => c.Members)
             .Include(c => c.ProjectAssignments)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         // COI (rule #5) — check với TẤT CẢ đề tài council này được gán chấm.
         var assignedProjectIds = council.ProjectAssignments.Select(a => a.ProjectId).ToList();
@@ -144,7 +144,7 @@ public class CouncilService : ICouncilService
     {
         var council = await _review.Query().Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         // Gate (rule tuần 10): đủ Chủ tịch + Thư ký + đã có LỊCH HỌP (ngày/giờ + địa điểm/link) mới cho gửi.
         bool HasRole(params string[] roles) => council.Members.Any(m =>
@@ -289,7 +289,7 @@ public class CouncilService : ICouncilService
         var member = await _review.CouncilMembers
             .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.Id == memberId)
-            ?? throw new KeyNotFoundException($"Council membership {memberId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy thành viên hội đồng.");
 
         if (member.UserId != userId)
             throw new ForbiddenException("Bạn chỉ trả lời được thư mời gửi cho chính mình.");
@@ -328,7 +328,7 @@ public class CouncilService : ICouncilService
         var member = await _review.CouncilMembers
             .Include(m => m.User)
             .FirstOrDefaultAsync(m => m.Id == memberId)
-            ?? throw new KeyNotFoundException($"Council membership {memberId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy thành viên hội đồng.");
 
         if (member.Status == CouncilMemberStatus.Declined)
             throw new InvalidOperationException("Thành viên đã từ chối lời mời — không thể xác nhận thay.");
@@ -342,7 +342,7 @@ public class CouncilService : ICouncilService
     public async Task<IEnumerable<CouncilMemberResponse>> GetMembersAsync(Guid councilId)
     {
         _ = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var members = await _review.CouncilMembers
             .Where(m => m.CouncilId == councilId)
@@ -356,7 +356,7 @@ public class CouncilService : ICouncilService
     public async Task DeleteCouncilAsync(Guid councilId)
     {
         var council = await _review.Query().FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         if (await _review.ReviewScores.AnyAsync(s => s.CouncilId == councilId))
             throw new InvalidOperationException("Hội đồng đã có phiếu chấm — không thể xoá.");
@@ -383,7 +383,7 @@ public class CouncilService : ICouncilService
     {
         var member = await _review.CouncilMembers
             .FirstOrDefaultAsync(m => m.Id == memberId)
-            ?? throw new KeyNotFoundException($"Council member {memberId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy thành viên hội đồng.");
 
         _review.RemoveMember(member);
         await _review.SaveChangesAsync();
@@ -396,7 +396,7 @@ public class CouncilService : ICouncilService
         var council = await _review.Query()
             .Include(c => c.Members)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         if (council.RoundId == null)
             throw new InvalidOperationException("Hội đồng không gắn với vòng chấm nào.");
@@ -587,7 +587,7 @@ public class CouncilService : ICouncilService
         var council = await _review.Query()
             .Include(c => c.ProjectAssignments).ThenInclude(a => a.Project)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         return council.ProjectAssignments
             .OrderBy(a => a.SlotOrder ?? int.MaxValue)
@@ -610,7 +610,7 @@ public class CouncilService : ICouncilService
             .Include(c => c.ProjectAssignments)
             .Include(c => c.Meetings)
             .FirstOrDefaultAsync(c => c.Id == councilId)
-            ?? throw new KeyNotFoundException($"Council {councilId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         // Slot con thuộc buổi họp sớm nhất của hội đồng (thường 1 buổi cho vòng xét duyệt).
         var meeting = council.Meetings.OrderBy(m => m.ScheduledAt).FirstOrDefault();

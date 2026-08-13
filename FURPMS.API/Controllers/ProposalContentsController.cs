@@ -70,7 +70,7 @@ public class ProposalContentsController : ControllerBase
         await EnsureProposalOwnerOrStaff(proposalId);
         var content = await _proposals.ResearchContents
             .FirstOrDefaultAsync(c => c.Id == contentId && c.ProposalId == proposalId)
-            ?? throw new KeyNotFoundException("Research content not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy nội dung nghiên cứu.");
 
         content.ContentNumber = request.ContentNumber;
         content.Title = request.Title;
@@ -90,7 +90,7 @@ public class ProposalContentsController : ControllerBase
         await EnsureProposalOwnerOrStaff(proposalId);
         var content = await _proposals.ResearchContents
             .FirstOrDefaultAsync(c => c.Id == contentId && c.ProposalId == proposalId)
-            ?? throw new KeyNotFoundException("Research content not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy nội dung nghiên cứu.");
         _proposals.RemoveResearchContent(content);
         await _proposals.SaveChangesAsync();
         return Ok(ApiResponse.Ok("Deleted."));
@@ -104,7 +104,7 @@ public class ProposalContentsController : ControllerBase
         await EnsureProposalOwnerOrStaff(proposalId);
         var contentExists = await _proposals.ResearchContents
             .AnyAsync(c => c.Id == contentId && c.ProposalId == proposalId);
-        if (!contentExists) throw new KeyNotFoundException("Research content not found.");
+        if (!contentExists) throw new KeyNotFoundException("Không tìm thấy nội dung nghiên cứu.");
 
         var activity = new ProposalActivity
         {
@@ -131,7 +131,7 @@ public class ProposalContentsController : ControllerBase
         await EnsureProposalOwnerOrStaff(proposalId);
         var activity = await _proposals.Activities
             .FirstOrDefaultAsync(a => a.Id == activityId && a.ProposalId == proposalId)
-            ?? throw new KeyNotFoundException("Activity not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hoạt động.");
 
         activity.ActivityName = request.ActivityName;
         activity.ExpectedResult = request.ExpectedResult;
@@ -152,7 +152,7 @@ public class ProposalContentsController : ControllerBase
         await EnsureProposalOwnerOrStaff(proposalId);
         var activity = await _proposals.Activities
             .FirstOrDefaultAsync(a => a.Id == activityId && a.ProposalId == proposalId)
-            ?? throw new KeyNotFoundException("Activity not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hoạt động.");
         _proposals.RemoveActivity(activity);
         await _proposals.SaveChangesAsync();
         return Ok(ApiResponse.Ok("Deleted."));
@@ -213,7 +213,7 @@ public class ProposalContentsController : ControllerBase
         var projectIdU = await ResolveProjectIdAsync(proposalId);
         var product = await _proposals.Deliverables
             .FirstOrDefaultAsync(p => p.Id == productId && p.ProjectId == projectIdU)
-            ?? throw new KeyNotFoundException("Expected product not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm dự kiến.");
 
         product.CategoryId = request.CategoryId;
         product.ProductName = request.ProductName;
@@ -236,7 +236,7 @@ public class ProposalContentsController : ControllerBase
         var projectIdD = await ResolveProjectIdAsync(proposalId);
         var product = await _proposals.Deliverables
             .FirstOrDefaultAsync(p => p.Id == productId && p.ProjectId == projectIdD)
-            ?? throw new KeyNotFoundException("Expected product not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm dự kiến.");
         _proposals.RemoveDeliverable(product);
         await _proposals.SaveChangesAsync();
         return Ok(ApiResponse.Ok("Deleted."));
@@ -250,16 +250,16 @@ public class ProposalContentsController : ControllerBase
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var proposal = await _proposals.Query().Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException("Proposal not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
         if (proposal.Project.PiUserId != userId)
-            throw new UnauthorizedAccessException("You do not own this proposal.");
+            throw new UnauthorizedAccessException("Đây không phải đề cương của bạn.");
     }
 
     private async Task<Guid> ResolveProjectIdAsync(Guid proposalId)
     {
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException("Proposal not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
         return proposal.ProjectId;
     }
 

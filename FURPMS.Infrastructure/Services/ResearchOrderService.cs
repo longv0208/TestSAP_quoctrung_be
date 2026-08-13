@@ -22,14 +22,14 @@ public class ResearchOrderService : IResearchOrderService
     public async Task<int> MatchWinnerAsync(int orderId, Guid winnerProposalId)
     {
         var order = await _cycles.Orders.FirstOrDefaultAsync(o => o.Id == orderId)
-            ?? throw new KeyNotFoundException("Research order not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn đặt hàng nghiên cứu.");
         if (order.Status != OrderOpen)
             throw new InvalidOperationException("Chỉ ghép được đề tài vào danh mục đặt hàng đang mở.");
 
         var winner = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == winnerProposalId)
-            ?? throw new KeyNotFoundException("Proposal not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
         if (winner.Project.OrderId != orderId)
             throw new ArgumentException("Đề cương này không đăng ký cho đề tài đặt hàng này.");
 

@@ -158,7 +158,7 @@ public class CouncilsController : ControllerBase
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier)
             ?? User.FindFirstValue("sub")
-            ?? throw new UnauthorizedAccessException("User ID not found in token.");
+            ?? throw new UnauthorizedAccessException("Phiên đăng nhập không hợp lệ. Hãy đăng nhập lại.");
         return Guid.Parse(value);
     }
 }

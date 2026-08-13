@@ -11,6 +11,24 @@ namespace FURPMS.Infrastructure.Services;
 
 public class DocumentExportService : IDocumentExportService
 {
+    /// <summary>
+    /// Văn hoá dùng cho MỌI chỗ định dạng ngày và số trong văn bản xuất ra.
+    ///
+    /// <para>
+    /// Ứng dụng <b>không đặt culture</b> ở đâu cả, nên mặc định lấy theo máy đang chạy. Mà trong
+    /// .NET, dấu <c>/</c> trong chuỗi định dạng <c>"dd/MM/yyyy"</c> <b>không phải ký tự cố định</b>
+    /// — nó là chỗ dành cho dấu phân cách ngày của culture hiện hành. Dấu phân cách nghìn của số
+    /// tiền cũng vậy.
+    /// </para>
+    /// <para>
+    /// Máy dev đang cho ra đúng kiểu Việt, nhưng máy chủ (Render/Railway) thường chạy
+    /// <c>en-US</c> hoặc invariant ⇒ <b>cùng một hợp đồng xuất ở hai nơi ra hai kiểu ngày và hai
+    /// kiểu số tiền</b>. Với văn bản đem đi ký thì đó là chuyện không chấp nhận được, nên ghim
+    /// cứng ở đây thay vì trông chờ vào cấu hình máy.
+    /// </para>
+    /// </summary>
+    private static readonly System.Globalization.CultureInfo Vi = new("vi-VN");
+
     private readonly IProposalRepository _proposals;
     private readonly IMasterDataRepository _masterData;
     private readonly IContractRepository _contracts;
@@ -40,7 +58,7 @@ public class DocumentExportService : IDocumentExportService
             .Include(p => p.ResearchContents).ThenInclude(c => c.Activities)
             .Include(p => p.Project).ThenInclude(pr => pr.Deliverables).ThenInclude(ep => ep.Category)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var secretary = proposal.Project.Members.FirstOrDefault(m => m.IsSecretary);
 
@@ -93,7 +111,7 @@ public class DocumentExportService : IDocumentExportService
             var piProfile = pi.AcademicProfile;
             var piTable = CreateTable(body, new[] { "Thông tin", "Giá trị" }, new[] { 3000, 6000 });
             AddTableRow(piTable, "Họ và tên", pi.FullName);
-            AddTableRow(piTable, "Ngày tháng năm sinh", piProfile?.DateOfBirth?.ToString("dd/MM/yyyy") ?? "—");
+            AddTableRow(piTable, "Ngày tháng năm sinh", piProfile?.DateOfBirth?.ToString("dd/MM/yyyy", Vi) ?? "—");
             AddTableRow(piTable, "Giới tính", piProfile?.Gender ?? "—");
             AddTableRow(piTable, "Học hàm, học vị", piProfile?.AcademicTitle ?? "—");
             AddTableRow(piTable, "Chuyên ngành", piProfile?.Specialization ?? "—");
@@ -270,7 +288,7 @@ public class DocumentExportService : IDocumentExportService
             .Include(p => p.Budget)
             .Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var categories = await _masterData.BudgetExpenseCategories
             .Where(c => c.IsActive)
@@ -462,7 +480,7 @@ public class DocumentExportService : IDocumentExportService
             .Include(x => x.Project).ThenInclude(p => p.PiUser).ThenInclude(u => u.AcademicProfile)
             .Include(x => x.Project).ThenInclude(p => p.HostingUnit)
             .FirstOrDefaultAsync(x => x.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         // Điều 2 (sản phẩm) và Điều 4 (đợt giải ngân) phải là dữ liệu THẬT của hợp đồng này,
         // không phải câu mẫu chung chung.
@@ -495,8 +513,7 @@ public class DocumentExportService : IDocumentExportService
             var titleVi = c.Project?.TitleVi ?? c.ScopeTitle ?? "…";
             // Định dạng vi-VN: 95.000.000 chứ không phải 95,000,000 — người Việt đọc dấu phẩy là
             // phần thập phân, để mặc định là số tiền trên hợp đồng dễ bị hiểu sai.
-            var vi = new System.Globalization.CultureInfo("vi-VN");
-            var money = c.TotalAmount > 0 ? c.TotalAmount.ToString("N0", vi) : "…………";
+            var money = c.TotalAmount > 0 ? c.TotalAmount.ToString("N0", Vi) : "…………";
             const string Blank = "……………………………";
 
             // Quốc hiệu + tiêu ngữ căn giữa, có đường kẻ ngang (NĐ30 Phụ lục I).
@@ -586,7 +603,7 @@ AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? "………………"}    
                     {
                         (i + 1).ToString(),
                         deliverables[i].ProductName,
-                        deliverables[i].DueDate?.ToString("dd/MM/yyyy") ?? "—"
+                        deliverables[i].DueDate?.ToString("dd/MM/yyyy", Vi) ?? "—"
                     });
             }
             AppendParagraph(body, "Toàn bộ thủ tục giao nộp sản phẩm phải hoàn tất trong 30 ngày kể từ ngày nghiệm thu.");
@@ -598,7 +615,7 @@ AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? "………………"}    
             AppendParagraph(body, $"Từ tháng {c.StartDate.Month} năm {c.StartDate.Year} đến tháng {c.EndDate.Month} năm {c.EndDate.Year}.");
             AppendParagraph(body, "Thời gian trên đã bao gồm thời gian nghiệm thu sản phẩm.");
             if (c.EndDate != c.OriginalEndDate)
-                AppendParagraph(body, $"(Đã gia hạn — thời hạn theo hợp đồng gốc: {c.OriginalEndDate:dd/MM/yyyy})");
+                AppendParagraph(body, $"(Đã gia hạn — thời hạn theo hợp đồng gốc: {c.OriginalEndDate.ToString("dd/MM/yyyy", Vi)})");
             AppendParagraph(body, "");
 
             AppendHeading(body, "ĐIỀU 4. GIÁ TRỊ HỢP ĐỒNG VÀ PHƯƠNG THỨC THANH TOÁN", 13);
@@ -614,7 +631,7 @@ AppendParagraph(body,
                     {
                         d.RoundNumber.ToString(),
                         string.IsNullOrWhiteSpace(d.ConditionDescription) ? "Theo tiến độ thực hiện" : d.ConditionDescription,
-                        d.ConditionMetAt?.ToString("dd/MM/yyyy") ?? "—"
+                        d.ConditionMetAt?.ToString("dd/MM/yyyy", Vi) ?? "—"
                     });
             }
             else
@@ -760,7 +777,7 @@ AppendParagraph(body,
             .Include(x => x.Project).ThenInclude(p => p.PiUser)
             .Include(x => x.Project).ThenInclude(p => p.HostingUnit)
             .FirstOrDefaultAsync(x => x.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         var settlement = await _contracts.Settlements
             .FirstOrDefaultAsync(x => x.ContractId == contractId);
@@ -852,9 +869,9 @@ AppendParagraph(body,
             if (settlement != null)
             {
                 var acc = settlement.AccountingClearedAt.HasValue
-                    ? settlement.AccountingClearedAt.Value.ToString("dd/MM/yyyy") : "chưa xác nhận";
+                    ? settlement.AccountingClearedAt.Value.ToString("dd/MM/yyyy", Vi) : "chưa xác nhận";
                 var ast = settlement.AssetsClearedAt.HasValue
-                    ? settlement.AssetsClearedAt.Value.ToString("dd/MM/yyyy") : "chưa xác nhận";
+                    ? settlement.AssetsClearedAt.Value.ToString("dd/MM/yyyy", Vi) : "chưa xác nhận";
                 AppendParagraph(body, $"Kế toán xác nhận đã quyết toán kinh phí: {acc}.");
                 AppendParagraph(body, $"Xác nhận đã xử lý tài sản: {ast}.");
             }
@@ -909,7 +926,7 @@ AppendParagraph(body,
             .Include(x => x.ReviewedByUser)
             .Include(x => x.Contract).ThenInclude(c => c.Project).ThenInclude(p => p.PiUser)
             .FirstOrDefaultAsync(x => x.Id == amendmentId)
-            ?? throw new KeyNotFoundException($"Amendment {amendmentId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn điều chỉnh.");
 
         // Đơn vị chủ trì tra riêng, KHÔNG Include: đây là navigation bắt buộc nên EF nối INNER JOIN,
         // thiếu đơn vị là mất luôn bản ghi gốc và người dùng nhận 404 khó hiểu thay vì một ô trống.
@@ -945,14 +962,14 @@ AppendParagraph(body,
             AppendHeading(body, "NGHIÊN CỨU KHOA HỌC CẤP TRƯỜNG", 13, bold: true, justify: JustificationValues.Center);
             AppendParagraph(body, "");
             AppendParagraph(body, $"(Kèm theo Hợp đồng số {c.ContractNumber}" +
-                                  $"{(c.SignedAt.HasValue ? $" ký ngày {c.SignedAt.Value:dd/MM/yyyy}" : "")})");
+                                  $"{(c.SignedAt.HasValue ? $" ký ngày {c.SignedAt.Value.ToString("dd/MM/yyyy", Vi)}" : "")})");
             AppendParagraph(body, "");
 
             AppendParagraph(body, "Căn cứ Quyết định số 543/QĐ-ĐHFPT ngày 30/5/2024 của Hiệu trưởng Trường Đại học FPT ban hành Quy định quản lý đề tài nghiên cứu khoa học cấp Trường;");
             AppendParagraph(body, $"Căn cứ Hợp đồng nghiên cứu khoa học cấp Trường số {c.ContractNumber};");
             AppendParagraph(body, "Căn cứ Điều 6.1 của Hợp đồng về việc sửa đổi, bổ sung nội dung Hợp đồng;");
-            AppendParagraph(body, $"Căn cứ đề nghị điều chỉnh của Chủ nhiệm đề tài ngày {a.RequestedAt:dd/MM/yyyy}" +
-                                  $"{(a.ReviewedAt.HasValue ? $" và ý kiến phê duyệt ngày {a.ReviewedAt.Value:dd/MM/yyyy}" : "")};");
+            AppendParagraph(body, $"Căn cứ đề nghị điều chỉnh của Chủ nhiệm đề tài ngày {a.RequestedAt.ToString("dd/MM/yyyy", Vi)}" +
+                                  $"{(a.ReviewedAt.HasValue ? $" và ý kiến phê duyệt ngày {a.ReviewedAt.Value.ToString("dd/MM/yyyy", Vi)}" : "")};");
             AppendParagraph(body, "");
 
             AppendParagraph(body, $"Hôm nay, ngày {(a.ReviewedAt ?? a.RequestedAt):dd} tháng {(a.ReviewedAt ?? a.RequestedAt):MM} năm {(a.ReviewedAt ?? a.RequestedAt):yyyy}, chúng tôi gồm:");
@@ -993,8 +1010,8 @@ AppendParagraph(body,
                 AddTableRowMulti(diff, new[]
                 {
                     "Thời gian thực hiện",
-                    $"{c.StartDate:dd/MM/yyyy} – {oldEnd:dd/MM/yyyy}",
-                    $"{c.StartDate:dd/MM/yyyy} – {newEnd:dd/MM/yyyy}"
+                    $"{c.StartDate.ToString("dd/MM/yyyy", Vi)} – {oldEnd.ToString("dd/MM/yyyy", Vi)}",
+                    $"{c.StartDate.ToString("dd/MM/yyyy", Vi)} – {newEnd.ToString("dd/MM/yyyy", Vi)}"
                 });
                 AddTableRowMulti(diff, new[] { "Số tháng gia hạn", "—", $"{months} tháng" });
             }

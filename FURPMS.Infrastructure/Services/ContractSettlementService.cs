@@ -35,7 +35,7 @@ public class ContractSettlementService : IContractSettlementService
     {
         var contract = await _contracts.Query()
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException("Contract not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         var exists = await _contracts.Settlements.AnyAsync(s => s.ContractId == contractId);
         if (exists)
@@ -80,13 +80,13 @@ public class ContractSettlementService : IContractSettlementService
         var settlement = await _contracts.Settlements
             .Include(s => s.SideASignee)
             .FirstOrDefaultAsync(s => s.Id == settlementId)
-            ?? throw new KeyNotFoundException("Settlement not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hồ sơ quyết toán.");
 
         if (settlement.SettlementSignedAt.HasValue)
             throw new InvalidOperationException("Bản quyết toán đã ký, không sửa được nữa.");
 
         var signee = await _users.Query().FirstOrDefaultAsync(u => u.Id == request.SideASigneeId)
-            ?? throw new KeyNotFoundException("Signee user not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người ký.");
 
         settlement.SideASigneeId = request.SideASigneeId;
         settlement.SettlementSignedAt = _clock.UtcNow;
@@ -109,7 +109,7 @@ public class ContractSettlementService : IContractSettlementService
     {
         var settlement = await _contracts.Settlements
             .FirstOrDefaultAsync(s => s.Id == settlementId)
-            ?? throw new KeyNotFoundException("Settlement not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hồ sơ quyết toán.");
 
         AssertUnlocked(settlement);
         settlement.AccountingClearedAt = clear ? clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow) : null;
@@ -123,7 +123,7 @@ public class ContractSettlementService : IContractSettlementService
     {
         var settlement = await _contracts.Settlements
             .FirstOrDefaultAsync(s => s.Id == settlementId)
-            ?? throw new KeyNotFoundException("Settlement not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hồ sơ quyết toán.");
 
         AssertUnlocked(settlement);
         settlement.AssetsClearedAt = clear ? clearedDate ?? DateOnly.FromDateTime(_clock.UtcNow) : null;

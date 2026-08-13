@@ -37,7 +37,7 @@ public class ProductCategoriesController : ControllerBase
     public async Task<IActionResult> GetById(int id)
     {
         var item = await _repo.ProductCategories.FirstOrDefaultAsync(c => c.Id == id)
-            ?? throw new KeyNotFoundException("Product category not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy nhóm sản phẩm.");
         return Ok(ApiResponse<ProductCategory>.Ok(item));
     }
 
@@ -59,7 +59,7 @@ public class ProductCategoriesController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] ProductCategoryRequest request)
     {
         var entity = await _repo.ProductCategories.FirstOrDefaultAsync(c => c.Id == id)
-            ?? throw new KeyNotFoundException("Product category not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy nhóm sản phẩm.");
 
         entity.Code = request.Code;
         entity.Name = request.Name;

@@ -193,7 +193,9 @@ public class RubricTemplatesController : ControllerBase
 
         var type = (request.TemplateType ?? "").Trim().ToUpperInvariant();
         if (!AllowedTypes.Contains(type))
-            throw new ArgumentException("Loại vòng chỉ nhận REVIEW hoặc ACCEPTANCE (rule #16: chỉ 2 hội đồng).");
+            throw new ArgumentException(
+                "Loại vòng chỉ nhận REVIEW (Xét duyệt đề cương) hoặc ACCEPTANCE (Nghiệm thu) — " +
+                "quy định chỉ có hai hội đồng này.");
 
         if (!request.AppliesBasic && !request.AppliesApplied)
             throw new ArgumentException("Bộ tiêu chí phải áp dụng cho ít nhất 1 loại đề tài.");
@@ -389,7 +391,7 @@ public class RubricTemplatesController : ControllerBase
         throw new InvalidOperationException(
             $"Bộ tiêu chí này đã được dùng để chấm ({ballots} phiếu) nên không {action} được nữa — " +
             "sửa là đổi nghĩa những phiếu đã chấm. Hãy bấm \"Nhân bản\" để tạo bộ mới rồi gắn cho " +
-            "vòng chấm sau; các vòng đang dùng bộ cũ giữ nguyên (rule #13).");
+            "vòng chấm sau; các vòng đang dùng bộ cũ giữ nguyên.");
     }
 
     /// <summary>

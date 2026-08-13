@@ -33,7 +33,7 @@ public class DeliverableService : IDeliverableService
     public async Task<IEnumerable<DeliverableResponse>> GetByContractAsync(Guid contractId)
     {
         _ = await _contracts.Query().FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         var items = await _contracts.Deliverables
             .Include(d => d.Category)
@@ -48,7 +48,7 @@ public class DeliverableService : IDeliverableService
     public async Task<DeliverableResponse> CreateAsync(Guid contractId, CreateDeliverableRequest request, Guid createdBy)
     {
         var contract = await _contracts.Query().FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
         if (string.IsNullOrWhiteSpace(request.ProductName))
             throw new ArgumentException("Tên sản phẩm là bắt buộc.");
 
@@ -174,7 +174,7 @@ public class DeliverableService : IDeliverableService
         var d = await _contracts.Deliverables
             .Include(d => d.Category)
             .FirstOrDefaultAsync(x => x.Id == deliverableId)
-            ?? throw new KeyNotFoundException($"Deliverable {deliverableId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
 
         /*
          * Sản phẩm đã nghiệm thu ĐẠT thì ĐÓNG, không nộp lại được nữa
@@ -213,7 +213,7 @@ public class DeliverableService : IDeliverableService
                 .ThenInclude(c => c.Project)
                     .ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
             .FirstOrDefaultAsync(x => x.Id == deliverableId)
-            ?? throw new KeyNotFoundException($"Deliverable {deliverableId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy sản phẩm.");
 
         if (deliverable.Contract == null)
             throw new InvalidOperationException("Deliverable chưa được gắn vào hợp đồng nào — không thể nghiệm thu theo hợp đồng.");

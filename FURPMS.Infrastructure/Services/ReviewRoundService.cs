@@ -39,7 +39,7 @@ public class ReviewRoundService : IReviewRoundService
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
         return (proposal.ProjectId, proposal.Project.CycleTrackId);
     }
 
@@ -93,14 +93,16 @@ public class ReviewRoundService : IReviewRoundService
 
         if (string.IsNullOrWhiteSpace(request.RoundType) ||
             !new[] { "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
-            throw new ArgumentException("RoundType chỉ nhận REVIEW hoặc ACCEPTANCE (rule #16: chỉ 2 hội đồng).");
+            throw new ArgumentException(
+                "Loại vòng chỉ nhận REVIEW (Xét duyệt đề cương) hoặc ACCEPTANCE (Nghiệm thu) — " +
+                "quy định chỉ có hai hội đồng này.");
 
         var (projectId, cycleTrackId) = await ResolveProjectAsync(proposalId);
 
         if (request.PrerequisiteRoundId.HasValue)
         {
             var prereq = await _review.GetRoundByIdAsync(request.PrerequisiteRoundId.Value)
-                ?? throw new KeyNotFoundException($"Prerequisite round {request.PrerequisiteRoundId} not found.");
+                ?? throw new KeyNotFoundException("Không tìm thấy vòng tiên quyết.");
             if (prereq.CycleTrackId != cycleTrackId)
                 throw new ArgumentException("Vòng tiên quyết không thuộc lĩnh vực trong đợt này.");
         }
@@ -143,7 +145,7 @@ public class ReviewRoundService : IReviewRoundService
     public async Task<ReviewRoundResponse> OpenRoundAsync(Guid roundId)
     {
         var round = await _review.GetRoundByIdAsync(roundId)
-            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
 
         if (round.Status != ReviewRoundStatus.Pending)
             throw new InvalidOperationException($"Vòng đang ở trạng thái {StatusText.Vi(round.Status)} — chỉ mở được vòng chưa bắt đầu.");
@@ -151,7 +153,7 @@ public class ReviewRoundService : IReviewRoundService
         if (round.PrerequisiteRoundId.HasValue)
         {
             var prereq = await _review.GetRoundByIdAsync(round.PrerequisiteRoundId.Value)
-                ?? throw new KeyNotFoundException("Prerequisite round not found.");
+                ?? throw new KeyNotFoundException("Không tìm thấy vòng tiên quyết.");
 
             if (prereq.Status != ReviewRoundStatus.Passed)
                 throw new InvalidOperationException(
@@ -175,7 +177,7 @@ public class ReviewRoundService : IReviewRoundService
             .Include(r => r.Councils)
             .Include(r => r.ProjectRounds)
             .FirstOrDefaultAsync(r => r.Id == roundId)
-            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
 
         if (round.Status != ReviewRoundStatus.Open)
             throw new InvalidOperationException($"Vòng đang ở trạng thái {StatusText.Vi(round.Status)} — chỉ đóng được vòng đang mở.");
@@ -209,7 +211,7 @@ public class ReviewRoundService : IReviewRoundService
     {
         if (explicitProjectId.HasValue)
             return round.ProjectRounds.FirstOrDefault(pr => pr.ProjectId == explicitProjectId.Value)
-                ?? throw new KeyNotFoundException("Project is not part of this round.");
+                ?? throw new KeyNotFoundException("Đề tài không thuộc vòng chấm này.");
 
         var pending = round.ProjectRounds.Where(pr => pr.Status == ReviewRoundStatus.Pending).ToList();
         if (pending.Count == 1) return pending[0];
@@ -264,7 +266,7 @@ public class ReviewRoundService : IReviewRoundService
         var round = await _review.ReviewRounds
             .Include(r => r.ProjectRounds)
             .FirstOrDefaultAsync(r => r.Id == roundId)
-            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
 
         // Find or auto-create council for this round
         var council = await _review.Query()

@@ -158,7 +158,9 @@ public class ReviewBoardService : IReviewBoardService
 
         if (string.IsNullOrWhiteSpace(request.RoundType) ||
             !new[] { "REVIEW", "ACCEPTANCE" }.Contains(request.RoundType))
-            throw new ArgumentException("RoundType chỉ nhận REVIEW hoặc ACCEPTANCE (rule #16: chỉ 2 hội đồng).");
+            throw new ArgumentException(
+                "Loại vòng chỉ nhận REVIEW (Xét duyệt đề cương) hoặc ACCEPTANCE (Nghiệm thu) — " +
+                "quy định chỉ có hai hội đồng này.");
 
         var cycleTrack = await _cycles.CycleTracks
             .FirstOrDefaultAsync(ct => ct.CycleId == cycleId && ct.TrackId == trackId)
@@ -169,7 +171,7 @@ public class ReviewBoardService : IReviewBoardService
         if (request.PrerequisiteRoundId.HasValue)
         {
             var prereq = await _review.GetRoundByIdAsync(request.PrerequisiteRoundId.Value)
-                ?? throw new KeyNotFoundException($"Prerequisite round {request.PrerequisiteRoundId} not found.");
+                ?? throw new KeyNotFoundException("Không tìm thấy vòng tiên quyết.");
             if (prereq.CycleTrackId != cycleTrack.Id)
                 throw new ArgumentException("Vòng tiên quyết không thuộc lĩnh vực này.");
         }
@@ -234,7 +236,7 @@ public class ReviewBoardService : IReviewBoardService
         var round = await _review.ReviewRounds
             .Include(r => r.ProjectRounds)
             .FirstOrDefaultAsync(r => r.Id == roundId)
-            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
 
         var hasCouncil = await _review.Query().AnyAsync(c => c.RoundId == roundId);
         if (hasCouncil)
@@ -252,11 +254,11 @@ public class ReviewBoardService : IReviewBoardService
     {
         var round = await _review.ReviewRounds
             .FirstOrDefaultAsync(r => r.Id == roundId)
-            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
 
         var project = await _proposals.Projects.IgnoreQueryFilters()
             .FirstOrDefaultAsync(p => p.Id == projectId)
-            ?? throw new KeyNotFoundException($"Project {projectId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề tài.");
 
         if (project.CycleTrackId != round.CycleTrackId)
             throw new ArgumentException("Đề tài không thuộc lĩnh vực của vòng này.");
@@ -337,7 +339,7 @@ public class ReviewBoardService : IReviewBoardService
 
         var round = await _review.ReviewRounds
             .FirstOrDefaultAsync(r => r.Id == roundId)
-            ?? throw new KeyNotFoundException($"Round {roundId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
 
         var joinedProjectIds = await _review.ProjectRounds
             .Where(pr => pr.RoundId == roundId)

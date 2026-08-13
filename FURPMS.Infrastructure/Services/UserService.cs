@@ -43,7 +43,7 @@ public class UserService : IUserService
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .Include(u => u.Unit)
             .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted)
-            ?? throw new KeyNotFoundException($"User {userId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         var degree = await _users.AcademicProfiles
             .Where(a => a.UserId == userId)
@@ -70,7 +70,7 @@ public class UserService : IUserService
         {
             var roleExists = await _users.Roles.AnyAsync(r => r.Id == roleId);
             if (!roleExists)
-                throw new KeyNotFoundException($"Role {roleId} not found.");
+                throw new KeyNotFoundException("Không tìm thấy vai trò.");
         }
 
         var user = new User
@@ -111,13 +111,13 @@ public class UserService : IUserService
         var user = await _users.Query()
             .Include(u => u.UserRoles)
             .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted)
-            ?? throw new KeyNotFoundException($"User {userId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         foreach (var roleId in request.Roles)
         {
             var roleExists = await _users.Roles.AnyAsync(r => r.Id == roleId);
             if (!roleExists)
-                throw new KeyNotFoundException($"Role {roleId} not found.");
+                throw new KeyNotFoundException("Không tìm thấy vai trò.");
         }
 
         user.FullName = request.FullName;
@@ -150,7 +150,7 @@ public class UserService : IUserService
         var user = await _users.Query()
             .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
             .FirstOrDefaultAsync(u => u.Id == userId)
-            ?? throw new KeyNotFoundException($"User {userId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         user.Status = user.Status == "ACTIVE" ? "INACTIVE" : "ACTIVE";
         user.UpdatedAt = DateTime.UtcNow;
@@ -163,7 +163,7 @@ public class UserService : IUserService
     {
         var user = await _users.Query()
             .FirstOrDefaultAsync(u => u.Id == userId)
-            ?? throw new KeyNotFoundException($"User {userId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Furpms@123456", workFactor: 12);
         user.UpdatedAt = DateTime.UtcNow;

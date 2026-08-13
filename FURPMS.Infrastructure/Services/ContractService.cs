@@ -55,7 +55,7 @@ public class ContractService : IContractService
     {
         var c = await QueryWithProject()
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
         return MapDetail(c);
     }
 
@@ -65,7 +65,7 @@ public class ContractService : IContractService
             .Include(p => p.Budget)
             .Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == request.ProposalId)
-            ?? throw new KeyNotFoundException($"Proposal {request.ProposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         if (proposal.Status != ProposalStatus.Approved)
             throw new InvalidOperationException(
@@ -148,7 +148,7 @@ public class ContractService : IContractService
     {
         var contract = await QueryWithProject()
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         // QĐ543 BM05 Điều 6.1: *"Các sửa đổi, bổ sung phải lập thành văn bản PHỤ LỤC có đầy đủ chữ
         // ký của các bên"* — và phải báo trước 15 ngày làm việc. Sửa đè bản đã ký là làm sai lệch
@@ -210,7 +210,7 @@ public class ContractService : IContractService
     {
         var contract = await _contracts.Query()
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         if (contract.Status != ContractStatus.PendingSignature)
             throw new InvalidOperationException(
@@ -274,7 +274,7 @@ public class ContractService : IContractService
     {
         var contract = await QueryWithProject()
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         if (contract.Status != ContractStatus.PendingSignature)
             throw new InvalidOperationException(

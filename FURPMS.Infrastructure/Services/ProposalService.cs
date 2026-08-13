@@ -107,7 +107,7 @@ public class ProposalService : IProposalService
                 .Where(p => p.Id == proposalId)
                 .Select(p => new { p.Project.PiUserId, p.ProjectId })
                 .FirstOrDefaultAsync()
-                ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+                ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
             var allowed = info.PiUserId == callerId
                 || await _review.CouncilMembers.AnyAsync(m => m.UserId == callerId
@@ -125,7 +125,7 @@ public class ProposalService : IProposalService
         var proposal = await QueryWithProject()
             .Include(p => p.Project).ThenInclude(pr => pr.Members)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var budgetItems = await _proposals.BudgetItems
             .Include(i => i.Category)
@@ -147,7 +147,7 @@ public class ProposalService : IProposalService
             throw new ArgumentException("Lĩnh vực nghiên cứu không hợp lệ.");
 
         _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
-            ?? throw new KeyNotFoundException($"Track {request.TrackId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy lĩnh vực nghiên cứu.");
 
         // PI chọn đợt: nếu có CycleId → dùng đúng đợt đó (phải OPEN); null → fallback đợt OPEN mới nhất.
         var openCycle = request.CycleId.HasValue
@@ -162,10 +162,10 @@ public class ProposalService : IProposalService
         // Loại đề tài LẤY TỪ ĐỢT (rule #7: 1 đợt = đúng 1 loại) — KHÔNG lấy từ input PI để tránh lệch dữ liệu.
         var researchType = await _masterData.ResearchTypes
             .FirstOrDefaultAsync(r => r.Id == openCycle.ResearchTypeId)
-            ?? throw new KeyNotFoundException("Research type of the cycle not found.");
+            ?? throw new KeyNotFoundException("Đợt này chưa gán loại đề tài.");
 
         var piUser = await _users.GetByIdAsync(piUserId)
-            ?? throw new KeyNotFoundException($"User {piUserId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
 
         var cycleTrack = await EnsureCycleTrackAsync(openCycle.Id, trackId);
         var orderId = await ResolveOrderIdAsync(openCycle, request.OrderId, piUser.UnitId ?? 1, piUserId);
@@ -250,7 +250,7 @@ public class ProposalService : IProposalService
         if (requestedOrderId.HasValue)
         {
             var order = await _cycles.Orders.FirstOrDefaultAsync(o => o.Id == requestedOrderId.Value)
-                ?? throw new KeyNotFoundException($"Research order {requestedOrderId} not found.");
+                ?? throw new KeyNotFoundException("Không tìm thấy đơn đặt hàng nghiên cứu.");
             return order.Id;
         }
 
@@ -387,7 +387,7 @@ public class ProposalService : IProposalService
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project).ThenInclude(pr => pr.CycleTrack).ThenInclude(ct => ct.Cycle)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var project = proposal.Project;
 
@@ -416,13 +416,13 @@ public class ProposalService : IProposalService
             throw new ArgumentException("Lĩnh vực nghiên cứu không hợp lệ.");
 
         _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
-            ?? throw new KeyNotFoundException($"Track {request.TrackId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy lĩnh vực nghiên cứu.");
 
         // Loại đề tài theo ĐỢT của project (cố định, không đổi khi sửa) — bỏ qua input PI.
         var cycleTypeId = project.CycleTrack.Cycle?.ResearchTypeId ?? project.ResearchTypeId;
         var researchType = await _masterData.ResearchTypes
             .FirstOrDefaultAsync(r => r.Id == cycleTypeId)
-            ?? throw new KeyNotFoundException("Research type of the cycle not found.");
+            ?? throw new KeyNotFoundException("Đợt này chưa gán loại đề tài.");
 
         // Đổi track → đổi cycle_track trên PROJECT (giữ nguyên cycle).
         if (project.CycleTrack.TrackId != trackId)
@@ -550,7 +550,7 @@ public class ProposalService : IProposalService
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project).ThenInclude(pr => pr.CycleTrack).ThenInclude(ct => ct.Cycle)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var project = proposal.Project;
 
@@ -630,7 +630,7 @@ public class ProposalService : IProposalService
         var proposal = await _proposals.Query().IgnoreQueryFilters()
             .Include(p => p.Project)
             .FirstOrDefaultAsync(p => p.Id == proposalId)
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         if (proposal.Project.PiUserId != userId)
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới rút lại được đề cương này.");

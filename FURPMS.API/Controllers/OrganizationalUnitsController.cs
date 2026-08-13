@@ -69,7 +69,7 @@ public class OrganizationalUnitsController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] OrgUnitRequest request)
     {
         var entity = await _repo.OrganizationalUnits.FirstOrDefaultAsync(u => u.Id == id)
-            ?? throw new KeyNotFoundException("Organizational unit not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn vị.");
 
         entity.Code = request.Code;
         entity.Name = request.Name;

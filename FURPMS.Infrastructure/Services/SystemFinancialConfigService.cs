@@ -28,7 +28,7 @@ public class SystemFinancialConfigService : ISystemFinancialConfigService
     public async Task<SystemFinancialConfigResponse> GetByIdAsync(int id)
     {
         var entity = await _masterData.SystemFinancialConfigs.FirstOrDefaultAsync(x => x.Id == id)
-            ?? throw new KeyNotFoundException($"SystemFinancialConfig {id} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy cấu hình tài chính.");
         return Map(entity);
     }
 
@@ -57,7 +57,7 @@ public class SystemFinancialConfigService : ISystemFinancialConfigService
     public async Task<SystemFinancialConfigResponse> UpdateAsync(int id, UpsertSystemFinancialConfigRequest request)
     {
         var entity = await _masterData.SystemFinancialConfigs.FirstOrDefaultAsync(x => x.Id == id)
-            ?? throw new KeyNotFoundException($"SystemFinancialConfig {id} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy cấu hình tài chính.");
 
         var codeConflict = await _masterData.SystemFinancialConfigs
             .AnyAsync(x => x.Code == request.Code.ToUpperInvariant() && x.Id != id);

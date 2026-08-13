@@ -70,7 +70,7 @@ public class ResearchOrdersController : ControllerBase
     {
         var o = await _cycles.Orders.Include(o => o.OrderingUnit)
             .FirstOrDefaultAsync(o => o.Id == id)
-            ?? throw new KeyNotFoundException("Research order not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đơn đặt hàng nghiên cứu.");
         return Ok(ApiResponse<ResearchOrderDto>.Ok(new ResearchOrderDto
         {
             Id = o.Id, CycleId = o.CycleId, OrderingUnitId = o.OrderingUnitId,
@@ -88,7 +88,7 @@ public class ResearchOrdersController : ControllerBase
 
         var unitExists = await _masterData.OrganizationalUnits
             .AnyAsync(u => u.Id == request.OrderingUnitId);
-        if (!unitExists) throw new KeyNotFoundException("Organizational unit not found.");
+        if (!unitExists) throw new KeyNotFoundException("Không tìm thấy đơn vị.");
 
         var order = new ResearchOrder
         {

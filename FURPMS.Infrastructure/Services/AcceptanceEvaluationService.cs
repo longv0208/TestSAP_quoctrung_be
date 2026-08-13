@@ -59,7 +59,7 @@ public class AcceptanceEvaluationService : IAcceptanceEvaluationService
 
         var member = await _review.CouncilMembers
             .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId)
-            ?? throw new KeyNotFoundException("You are not a member of this council.");
+            ?? throw new KeyNotFoundException("Bạn không thuộc hội đồng này.");
 
         // Biên bản đã được Chủ tịch chốt (rule #12) → khoá, không sửa phiếu nữa.
         var finalized = await _review.Decisions

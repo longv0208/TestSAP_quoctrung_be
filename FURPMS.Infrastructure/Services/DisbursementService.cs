@@ -31,7 +31,7 @@ public class DisbursementService : IDisbursementService
     public async Task<IEnumerable<DisbursementResponse>> GetByContractAsync(Guid contractId)
     {
         _ = await _contracts.Query().FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         var items = await _contracts.Disbursements
             .Include(d => d.Deliverable)
@@ -47,7 +47,7 @@ public class DisbursementService : IDisbursementService
         var d = await _contracts.Disbursements
             .Include(x => x.Deliverable)
             .FirstOrDefaultAsync(x => x.Id == disbursementId)
-            ?? throw new KeyNotFoundException($"Disbursement {disbursementId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt giải ngân.");
 
         if (d.Status == DisbursementStatus.Disbursed)
             throw new InvalidOperationException(
@@ -86,7 +86,7 @@ public class DisbursementService : IDisbursementService
             .Include(c => c.Project).ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
             .Include(c => c.Disbursements)
             .FirstOrDefaultAsync(c => c.Id == contractId)
-            ?? throw new KeyNotFoundException($"Contract {contractId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
 
         if (contract.Disbursements.Any())
             throw new InvalidOperationException("Hợp đồng này đã sinh các đợt giải ngân rồi.");
@@ -111,7 +111,7 @@ public class DisbursementService : IDisbursementService
         var d = await _contracts.Disbursements
             .Include(x => x.Deliverable)
             .FirstOrDefaultAsync(x => x.Id == disbursementId)
-            ?? throw new KeyNotFoundException($"Disbursement {disbursementId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt giải ngân.");
 
         if (d.Status == DisbursementStatus.Disbursed)
             throw new InvalidOperationException("Đợt giải ngân này đã được đánh dấu đã chi.");

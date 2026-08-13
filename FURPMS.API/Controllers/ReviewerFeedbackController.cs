@@ -52,12 +52,12 @@ public class ReviewerFeedbackController : ControllerBase
 
         var member = await _review.CouncilMembers
             .FirstOrDefaultAsync(m => m.CouncilId == councilId && m.UserId == userId)
-            ?? throw new KeyNotFoundException("You are not a member of this council.");
+            ?? throw new KeyNotFoundException("Bạn không thuộc hội đồng này.");
 
         var existing = await _review.ReviewerFeedbacks
             .FirstOrDefaultAsync(f => f.CouncilId == councilId && f.ReviewerMemberId == member.Id);
         if (existing != null)
-            throw new InvalidOperationException("You have already submitted feedback for this council.");
+            throw new InvalidOperationException("Bạn đã gửi nhận xét cho hội đồng này rồi.");
 
         var feedback = new ReviewerFeedback
         {

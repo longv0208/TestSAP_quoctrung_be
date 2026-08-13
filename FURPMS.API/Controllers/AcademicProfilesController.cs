@@ -23,7 +23,7 @@ public class AcademicProfilesController : ControllerBase
         var requesterId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var isAdminOrStaff = User.IsInRole("Admin") || User.IsInRole("Staff");
         if (userId != requesterId && !isAdminOrStaff)
-            throw new UnauthorizedAccessException("You can only view your own profile.");
+            throw new UnauthorizedAccessException("Bạn chỉ xem được hồ sơ của chính mình.");
 
         var profile = await _repo.AcademicProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
         return Ok(ApiResponse<AcademicProfileResponse?>.Ok(profile == null ? null : AcademicProfileResponse.From(profile)));
@@ -35,7 +35,7 @@ public class AcademicProfilesController : ControllerBase
         var requesterId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         var isAdminOrStaff = User.IsInRole("Admin") || User.IsInRole("Staff");
         if (userId != requesterId && !isAdminOrStaff)
-            throw new UnauthorizedAccessException("You can only update your own profile.");
+            throw new UnauthorizedAccessException("Bạn chỉ sửa được hồ sơ của chính mình.");
 
         var profile = await _repo.AcademicProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
         if (profile == null)

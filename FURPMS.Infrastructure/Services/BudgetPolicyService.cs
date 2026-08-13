@@ -43,7 +43,7 @@ public class BudgetPolicyService : IBudgetPolicyService
             .Where(p => p.Id == proposalId)
             .Select(p => new { p.Project.ResearchTypeId, p.Project.OrderId })
             .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         var type = await _masterData.ResearchTypes
             .Where(t => t.Id == info.ResearchTypeId)

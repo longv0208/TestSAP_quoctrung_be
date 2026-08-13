@@ -74,7 +74,7 @@ public class CycleService : ICycleService
         var cycle = await _cycles.Query()
             .Include(c => c.ResearchType)
             .FirstOrDefaultAsync(c => c.Id == cycleId)
-            ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt nghiên cứu.");
 
         var tracks = await GetTracksByCycleAsync(cycleId);
         var trackList = tracks.ToList();
@@ -102,7 +102,7 @@ public class CycleService : ICycleService
     public async Task<TrackDto> CreateTrackForCycleAsync(int cycleId, CreateTrackRequest request)
     {
         _ = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
-            ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt nghiên cứu.");
 
         var track = await CreateTrackInternalAsync(request);
 
@@ -120,9 +120,9 @@ public class CycleService : ICycleService
     public async Task AttachTrackToCycleAsync(int cycleId, int trackId)
     {
         _ = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
-            ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt nghiên cứu.");
         _ = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
-            ?? throw new KeyNotFoundException($"Track {trackId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy lĩnh vực nghiên cứu.");
 
         if (await _cycles.CycleTracks.AnyAsync(ct => ct.CycleId == cycleId && ct.TrackId == trackId))
             throw new InvalidOperationException("Lĩnh vực đã được gắn vào đợt này.");
@@ -305,13 +305,14 @@ public class CycleService : ICycleService
         if (duplicate)
             throw new InvalidOperationException(
                 $"Đã có đợt năm {cycleYear} cho loại đề tài này. Mỗi năm chỉ mở MỘT đợt cho mỗi loại " +
-                "(rule #7) — hãy sửa đợt đang có, hoặc chọn loại đề tài khác.");
+                "— hãy sửa đợt đang có, hoặc chọn loại đề tài khác. " +
+                "Muốn mở cả hai loại thì tạo hai đợt riêng.");
     }
 
     public async Task<CycleDto> UpdateCycleAsync(int cycleId, CreateCycleRequest request)
     {
         var cycle = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
-            ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt nghiên cứu.");
 
         if (!string.IsNullOrWhiteSpace(request.Name))
             cycle.SemesterCode = request.Name;
@@ -405,7 +406,7 @@ public class CycleService : ICycleService
     public async Task<CycleDto> OpenCycleAsync(int cycleId)
     {
         var cycle = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
-            ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt nghiên cứu.");
 
         if (cycle.Status == CycleStatus.Open)
             throw new InvalidOperationException("Đợt này đang mở rồi.");
@@ -420,7 +421,7 @@ public class CycleService : ICycleService
     public async Task<CycleDto> CloseCycleAsync(int cycleId)
     {
         var cycle = await _cycles.Query().FirstOrDefaultAsync(c => c.Id == cycleId)
-            ?? throw new KeyNotFoundException($"Cycle {cycleId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đợt nghiên cứu.");
 
         if (cycle.Status != CycleStatus.Open)
             throw new InvalidOperationException($"Đợt đang ở trạng thái {StatusText.Vi(cycle.Status)} — chỉ đóng được đợt đang mở.");
@@ -482,7 +483,7 @@ public class CycleService : ICycleService
     public async Task<TrackDto> UpdateTrackAsync(int trackId, UpdateTrackRequest request)
     {
         var track = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
-            ?? throw new KeyNotFoundException($"Track {trackId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy lĩnh vực nghiên cứu.");
 
         if (!string.IsNullOrWhiteSpace(request.Name))
         {
@@ -505,7 +506,7 @@ public class CycleService : ICycleService
     public async Task<TrackDto> AssignTrackOwnerAsync(int trackId, Guid? ownerId)
     {
         var track = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
-            ?? throw new KeyNotFoundException($"Track {trackId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy lĩnh vực nghiên cứu.");
 
         track.OwnerId = ownerId;
         _masterData.Update(track);
@@ -516,7 +517,7 @@ public class CycleService : ICycleService
     public async Task<TrackDto> DeactivateTrackAsync(int trackId)
     {
         var track = await _cycles.Tracks.FirstOrDefaultAsync(t => t.Id == trackId)
-            ?? throw new KeyNotFoundException($"Track {trackId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy lĩnh vực nghiên cứu.");
 
         if (!track.IsActive)
             throw new InvalidOperationException("Lĩnh vực này đã ngừng hoạt động.");

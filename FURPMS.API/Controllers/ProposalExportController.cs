@@ -55,9 +55,9 @@ public class ProposalExportController : ControllerBase
             .Where(p => p.Id == proposalId)
             .Select(p => (Guid?)p.Project.PiUserId)
             .FirstOrDefaultAsync()
-            ?? throw new KeyNotFoundException($"Proposal {proposalId} not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy đề cương.");
 
         if (piId.ToString() != userId)
-            throw new UnauthorizedAccessException("Access denied: not the PI of this proposal.");
+            throw new UnauthorizedAccessException("Chỉ chủ nhiệm đề tài mới xem được đề cương này.");
     }
 }

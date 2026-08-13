@@ -51,7 +51,9 @@ public class RubricCriteriaController : ControllerBase
     public async Task<IActionResult> Create([FromBody] SaveCriterionRequest request)
     {
         if (!TypeMap.TryGetValue(request.RoundType, out var templateType))
-            throw new ArgumentException($"roundType chỉ nhận 1 (Xét duyệt) hoặc 3 (Nghiệm thu) — rule #16.");
+            throw new ArgumentException(
+                "Loại vòng chỉ nhận 1 (Xét duyệt đề cương) hoặc 3 (Nghiệm thu) — " +
+                "quy định chỉ có hai hội đồng này.");
 
         // Find or create the template for this round type
         var template = await _repo.RubricTemplates.FirstOrDefaultAsync(t => t.TemplateType == templateType);
@@ -87,7 +89,7 @@ public class RubricCriteriaController : ControllerBase
     public async Task<IActionResult> Update(int id, [FromBody] SaveCriterionRequest request)
     {
         var criterion = await _repo.RubricCriteria.Include(c => c.Template).FirstOrDefaultAsync(c => c.Id == id)
-            ?? throw new KeyNotFoundException("Rubric criterion not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy tiêu chí chấm.");
 
         criterion.CriterionName = request.Name;
         criterion.MaxScore = request.MaxScore;
@@ -118,7 +120,7 @@ public class RubricCriteriaController : ControllerBase
     public async Task<IActionResult> Delete(int id)
     {
         var criterion = await _repo.RubricCriteria.FirstOrDefaultAsync(c => c.Id == id)
-            ?? throw new KeyNotFoundException("Rubric criterion not found.");
+            ?? throw new KeyNotFoundException("Không tìm thấy tiêu chí chấm.");
 
         criterion.IsActive = false;
         _repo.Update(criterion);
