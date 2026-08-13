@@ -4,6 +4,29 @@ namespace FURPMS.Application.Interfaces.Services;
 
 public interface ICouncilService
 {
+    /// <summary>
+    /// Danh sách hội đồng cho màn quản lý của Phòng QLKH — kèm số liệu tóm tắt và
+    /// <b>danh sách việc còn thiếu để gửi được thư mời</b>.
+    /// <para>
+    /// Trước 14/08 <b>không có endpoint nào liệt kê hội đồng</b>: chỉ có tạo, xoá, và xem hội đồng
+    /// của chính mình (dành cho người chấm). Nên màn "Hội đồng" của chuyên viên buộc phải hiện tạm
+    /// bảng ĐỀ TÀI — trùng y hệt màn "Xét duyệt đề cương", và không có chỗ nào xem được hội đồng.
+    /// </para>
+    /// </summary>
+    Task<IEnumerable<CouncilListItemDto>> GetCouncilsAsync(CouncilQueryParams query);
+
+    /// <summary>Chi tiết một hội đồng (cùng shape với một dòng trong danh sách).</summary>
+    Task<CouncilListItemDto> GetCouncilByIdAsync(Guid councilId);
+
+    /// <summary>Sửa thông tin hành chính: số quyết định, ngày thành lập, hạn họp, số thành viên.</summary>
+    Task<CouncilListItemDto> UpdateCouncilAsync(Guid councilId, UpdateCouncilRequest request);
+
+    /// <summary>
+    /// Đổi vai trò một thành viên. Chặn hai Chủ tịch / hai Thư ký trong cùng hội đồng, và chặn
+    /// hạ vai người đã chấm hoặc đã ký biên bản.
+    /// </summary>
+    Task<CouncilMemberResponse> UpdateMemberRoleAsync(Guid memberId, string memberRole);
+
     Task<CouncilResponse> CreateCouncilAsync(CreateCouncilRequest request, Guid createdBy);
     Task<CouncilMemberResponse> AddMemberAsync(Guid councilId, AddCouncilMemberRequest request);
     Task<int> SendInvitationsAsync(Guid councilId, DateTime? confirmDeadline);

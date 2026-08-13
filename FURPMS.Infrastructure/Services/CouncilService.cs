@@ -29,6 +29,210 @@ public class CouncilService : ICouncilService
         _email = email;
     }
 
+    /// <inheritdoc/>
+    public async Task<IEnumerable<CouncilListItemDto>> GetCouncilsAsync(CouncilQueryParams query)
+    {
+        var councils = await BuildListQuery()
+            .Where(c => query.Status == null || c.Status == query.Status)
+            .Where(c => query.CouncilType == null || c.CouncilType == query.CouncilType)
+            .ToListAsync();
+
+        if (query.CycleId != null)
+            councils = councils.Where(c => c.Round?.CycleTrack?.CycleId == query.CycleId).ToList();
+
+        var items = councils.Select(MapListItem).ToList();
+
+        // Lọc theo chữ và theo "còn thiếu" làm SAU khi dựng xong: cả hai dựa vào dữ liệu TÍNH RA
+        // (tên chủ tịch, danh sách việc thiếu) chứ không phải cột có sẵn trong bảng.
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var q = query.Search.Trim().ToLowerInvariant();
+            items = items.Where(i =>
+                (i.EstablishmentDecisionNo ?? "").ToLowerInvariant().Contains(q) ||
+                (i.ChairName ?? "").ToLowerInvariant().Contains(q) ||
+                (i.SecretaryName ?? "").ToLowerInvariant().Contains(q) ||
+                (i.CycleName ?? "").ToLowerInvariant().Contains(q) ||
+                (i.TrackName ?? "").ToLowerInvariant().Contains(q) ||
+                (i.RoundName ?? "").ToLowerInvariant().Contains(q)).ToList();
+        }
+
+        if (query.NotReadyOnly == true)
+            items = items.Where(i => i.MissingForInvitation.Count > 0).ToList();
+
+        // Hội đồng CHƯA sẵn sàng lên trước — đó là việc tồn đọng của chuyên viên.
+        return items
+            .OrderByDescending(i => i.MissingForInvitation.Count > 0)
+            .ThenByDescending(i => i.EstablishedAt)
+            .ToList();
+    }
+
+    /// <inheritdoc/>
+    public async Task<CouncilListItemDto> GetCouncilByIdAsync(Guid councilId)
+    {
+        var council = await BuildListQuery().FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
+        return MapListItem(council);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CouncilListItemDto> UpdateCouncilAsync(Guid councilId, UpdateCouncilRequest request)
+    {
+        var council = await _review.Query().Include(c => c.Members)
+            .FirstOrDefaultAsync(c => c.Id == councilId)
+            ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
+
+        if (request.EstablishmentDecisionNo != null)
+            council.EstablishmentDecisionNo = request.EstablishmentDecisionNo.Trim();
+        if (request.EstablishedAt.HasValue) council.EstablishedAt = request.EstablishedAt;
+        if (request.MeetingDeadline.HasValue) council.MeetingDeadline = request.MeetingDeadline;
+
+        if (request.MinMembersRequired.HasValue)
+        {
+            // QĐ543 Điều 8.2 (xét duyệt 3–5) / Điều 12.2 (nghiệm thu 5–7). Hạ mức tối thiểu để
+            // lách cửa gửi thư mời thì hội đồng không còn hợp lệ nữa.
+            if (request.MinMembersRequired < 3)
+                throw AppException.Validation(ErrorCodes.ValidationFailed,
+                    "Hội đồng phải có tối thiểu 3 thành viên (QĐ543 Điều 8.2).");
+            council.MinMembersRequired = request.MinMembersRequired.Value;
+        }
+
+        if (request.MaxMembersAllowed.HasValue)
+        {
+            if (request.MaxMembersAllowed < council.MinMembersRequired)
+                throw AppException.Validation(ErrorCodes.ValidationFailed,
+                    $"Số thành viên tối đa ({request.MaxMembersAllowed}) không được nhỏ hơn tối thiểu ({council.MinMembersRequired}).");
+            council.MaxMembersAllowed = request.MaxMembersAllowed.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Status))
+        {
+            // Hội đồng đã CHỐT thì không lùi trạng thái — kết quả đã có hiệu lực với đề tài.
+            if (council.Status == CouncilStatus.Decided && request.Status != CouncilStatus.Decided)
+                throw AppException.Conflict(ErrorCodes.AlreadyLocked,
+                    "Hội đồng đã chốt kết quả — không đổi lại trạng thái được.");
+            council.Status = request.Status;
+        }
+
+        council.UpdatedAt = DateTime.UtcNow;
+        await _review.SaveChangesAsync();
+        return await GetCouncilByIdAsync(councilId);
+    }
+
+    /// <inheritdoc/>
+    public async Task<CouncilMemberResponse> UpdateMemberRoleAsync(Guid memberId, string memberRole)
+    {
+        var allowed = new[] { CouncilMemberRole.Chair, CouncilMemberRole.Secretary,
+                              CouncilMemberRole.Opponent, CouncilMemberRole.Member };
+        if (!allowed.Contains(memberRole))
+            throw AppException.Validation(ErrorCodes.ValidationFailed,
+                $"Vai trò không hợp lệ. Chỉ nhận: {string.Join(", ", allowed)}.");
+
+        var member = await _review.CouncilMembers
+            .Include(m => m.User)
+            .FirstOrDefaultAsync(m => m.Id == memberId)
+            ?? throw new KeyNotFoundException("Không tìm thấy thành viên hội đồng.");
+
+        // Đã chấm rồi mà đổi vai là làm sai lệch hồ sơ đã lập: biên bản ghi "Chủ tịch: ông A" mà
+        // nay ông A thành uỷ viên thì không ai đối chiếu lại được.
+        if (await _review.ReviewScores.AnyAsync(sc => sc.EvaluatorMemberId == memberId))
+            throw AppException.Conflict(ErrorCodes.Conflict,
+                $"{member.User?.FullName ?? "Thành viên"} đã chấm điểm — đổi vai lúc này làm sai lệch " +
+                "biên bản đã lập. Gỡ khỏi hội đồng rồi gán lại nếu thực sự cần.");
+
+        // Mỗi hội đồng đúng MỘT Chủ tịch và MỘT Thư ký — hai người cùng vai thì không biết ai chốt.
+        if (memberRole == CouncilMemberRole.Chair || memberRole == CouncilMemberRole.Secretary)
+        {
+            var taken = await _review.CouncilMembers.AnyAsync(m =>
+                m.CouncilId == member.CouncilId && m.Id != memberId && m.MemberRole == memberRole);
+            if (taken)
+                throw AppException.Conflict(ErrorCodes.Conflict,
+                    $"Hội đồng đã có {(memberRole == CouncilMemberRole.Chair ? "Chủ tịch" : "Thư ký")} rồi. " +
+                    "Đổi vai người đó trước, rồi mới gán vai này cho người mới.");
+        }
+
+        member.MemberRole = memberRole;
+        await _review.SaveChangesAsync();
+
+        return new CouncilMemberResponse
+        {
+            Id = member.Id,
+            CouncilId = member.CouncilId,
+            UserId = member.UserId,
+            ReviewerName = member.User?.FullName ?? "",
+            ReviewerEmail = member.User?.Email ?? "",
+            MemberRole = member.MemberRole,
+            Status = member.Status,
+            InvitationSentAt = member.InvitationSentAt,
+            ConfirmedAt = member.ConfirmedAt,
+            DeclinedAt = member.DeclinedAt,
+            IsExternal = member.IsExternal
+        };
+    }
+
+    // ── Dựng danh sách ──────────────────────────────────────────────────────
+
+    private IQueryable<ReviewCouncil> BuildListQuery() => _review.Query()
+        .Include(c => c.Members).ThenInclude(m => m.User)
+        .Include(c => c.Meetings)
+        .Include(c => c.ProjectAssignments)
+        .Include(c => c.Round).ThenInclude(r => r!.CycleTrack).ThenInclude(ct => ct!.Cycle)
+        .Include(c => c.Round).ThenInclude(r => r!.CycleTrack).ThenInclude(ct => ct!.Track)
+        .AsSplitQuery();
+
+    private static CouncilListItemDto MapListItem(ReviewCouncil c)
+    {
+        static bool Is(CouncilMember m, params string[] roles) =>
+            m.MemberRole != null && roles.Any(r => m.MemberRole.Trim().Equals(r, StringComparison.OrdinalIgnoreCase));
+
+        var chair = c.Members.FirstOrDefault(m => Is(m, CouncilMemberRole.Chair, "Chairman"));
+        var secretary = c.Members.FirstOrDefault(m => Is(m, CouncilMemberRole.Secretary));
+        var nextMeeting = c.Meetings
+            .Where(m => m.Status != MeetingStatus.Completed)
+            .OrderBy(m => m.ScheduledAt)
+            .FirstOrDefault() ?? c.Meetings.OrderByDescending(m => m.ScheduledAt).FirstOrDefault();
+
+        var dto = new CouncilListItemDto
+        {
+            Id = c.Id,
+            CouncilType = c.CouncilType,
+            Status = c.Status,
+            EstablishmentDecisionNo = c.EstablishmentDecisionNo,
+            EstablishedAt = c.EstablishedAt,
+            MeetingDeadline = c.MeetingDeadline,
+            RoundId = c.RoundId,
+            RoundType = c.Round?.RoundType,
+            RoundName = c.Round?.RoundType,
+            CycleName = c.Round?.CycleTrack?.Cycle?.SemesterCode,
+            TrackName = c.Round?.CycleTrack?.Track?.Name,
+            MemberCount = c.Members.Count,
+            MinMembersRequired = c.MinMembersRequired,
+            HasChair = chair != null,
+            HasSecretary = secretary != null,
+            ChairName = chair?.User?.FullName,
+            SecretaryName = secretary?.User?.FullName,
+            InvitedCount = c.Members.Count(m => m.InvitationSentAt != null),
+            ConfirmedCount = c.Members.Count(m => m.ConfirmedAt != null),
+            DeclinedCount = c.Members.Count(m => m.DeclinedAt != null),
+            ProjectCount = c.ProjectAssignments.Count,
+            MeetingCount = c.Meetings.Count,
+            NextMeetingAt = nextMeeting?.ScheduledAt,
+            NextMeetingLocation = nextMeeting?.Location,
+            InvitationsSent = c.Members.Any(m => m.InvitationSentAt != null)
+        };
+
+        // Đúng bộ điều kiện mà SendInvitationsAsync đang chặn — nhưng trả ra thành DANH SÁCH VIỆC
+        // để chuyên viên biết phải làm gì, thay vì bấm gửi rồi ăn lỗi từng cái một.
+        if (!dto.HasChair) dto.MissingForInvitation.Add("Chưa có Chủ tịch hội đồng");
+        if (!dto.HasSecretary) dto.MissingForInvitation.Add("Chưa có Thư ký hội đồng");
+        if (dto.MeetingCount == 0) dto.MissingForInvitation.Add("Chưa đặt lịch họp (ngày giờ + địa điểm/link)");
+        if (c.MinMembersRequired > 0 && dto.MemberCount < c.MinMembersRequired)
+            dto.MissingForInvitation.Add($"Mới có {dto.MemberCount}/{c.MinMembersRequired} thành viên");
+        else if (dto.MemberCount % 2 == 0)
+            dto.MissingForInvitation.Add($"Số thành viên phải LẺ (đang {dto.MemberCount}) để không hoà phiếu");
+
+        return dto;
+    }
+
     public async Task<CouncilResponse> CreateCouncilAsync(CreateCouncilRequest request, Guid createdBy)
     {
         var reqProposal = await _proposals.Query().IgnoreQueryFilters()

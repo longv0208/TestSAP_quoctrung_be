@@ -21,6 +21,56 @@ public class CouncilsController : ControllerBase
     }
 
     // GET /api/councils/my-memberships
+    /// <summary>
+    /// Danh sách hội đồng cho Phòng QLKH — kèm số liệu tóm tắt và <b>việc còn thiếu để gửi thư mời</b>.
+    /// <para>
+    /// Trước 14/08 không có endpoint nào liệt kê hội đồng, nên màn "Hội đồng" của chuyên viên phải
+    /// hiện tạm bảng ĐỀ TÀI — trùng y hệt màn "Xét duyệt đề cương".
+    /// </para>
+    /// </summary>
+    [HttpGet]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<ActionResult<ApiResponse<IEnumerable<CouncilListItemDto>>>> GetCouncils(
+        [FromQuery] CouncilQueryParams query)
+    {
+        var result = await _service.GetCouncilsAsync(query);
+        return Ok(ApiResponse<IEnumerable<CouncilListItemDto>>.Ok(result));
+    }
+
+    [HttpGet("{councilId:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<ActionResult<ApiResponse<CouncilListItemDto>>> GetCouncil(Guid councilId)
+    {
+        var result = await _service.GetCouncilByIdAsync(councilId);
+        return Ok(ApiResponse<CouncilListItemDto>.Ok(result));
+    }
+
+    /// <summary>Sửa thông tin hành chính (số quyết định, ngày thành lập, hạn họp, số thành viên).</summary>
+    [HttpPut("{councilId:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<ActionResult<ApiResponse<CouncilListItemDto>>> UpdateCouncil(
+        Guid councilId, [FromBody] UpdateCouncilRequest request)
+    {
+        var result = await _service.UpdateCouncilAsync(councilId, request);
+        return Ok(ApiResponse<CouncilListItemDto>.Ok(result));
+    }
+
+    /// <summary>
+    /// Đổi vai trò một thành viên (Chủ tịch / Thư ký / Phản biện / Uỷ viên).
+    /// <para>
+    /// Trước đây gán sai vai thì chỉ còn cách <b>xoá khỏi hội đồng rồi thêm lại</b> — mất luôn dấu
+    /// vết đã mời và đã xác nhận, phải mời lại từ đầu.
+    /// </para>
+    /// </summary>
+    [HttpPut("/api/council-members/{memberId:guid}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<ActionResult<ApiResponse<CouncilMemberResponse>>> UpdateMemberRole(
+        Guid memberId, [FromBody] UpdateCouncilMemberRequest request)
+    {
+        var result = await _service.UpdateMemberRoleAsync(memberId, request.MemberRole);
+        return Ok(ApiResponse<CouncilMemberResponse>.Ok(result));
+    }
+
     [HttpGet("my-memberships")]
     public async Task<ActionResult<ApiResponse<IEnumerable<MyMembershipDto>>>> GetMyMemberships()
     {
