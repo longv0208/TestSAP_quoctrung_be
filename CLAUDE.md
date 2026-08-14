@@ -65,8 +65,12 @@ HTTP status codes come from `GlobalExceptionMiddleware`:
 ## Connection String
 
 ```
-Server=(localdb)\MSSQLLocalDB;Database=FURPMS_V2;Trusted_Connection=True;TrustServerCertificate=True
+Host=localhost;Port=5433;Database=furpms;Username=postgres;Password=Furpms@Strong123;SSL Mode=Disable
 ```
+
+> ⚠️ **14/08 đổi từ SQL Server sang PostgreSQL** — Railway (nơi deploy) không có SQL Server.
+> `docker compose up -d` dựng Postgres 16 ở cổng **5433** (né 5432 mặc định).
+> Chi tiết + 3 bẫy deploy đã gặp thật: **`docs/HANDOFF_HIEN_HANH.md`**.
 
 ## EF Core Notes
 
@@ -82,10 +86,13 @@ Server=(localdb)\MSSQLLocalDB;Database=FURPMS_V2;Trusted_Connection=True;TrustSe
 # Add migration (run from solution root)
 dotnet ef migrations add <Name> --project FURPMS.Infrastructure --startup-project FURPMS.API
 
-# App auto-runs db.Database.EnsureCreated() + seeder on startup (Program.cs)
+# App auto-runs Migrate() + seeder on startup — qua DatabaseStartup, CÓ THỬ LẠI
+# (mạng nội bộ Railway mất vài giây mới sẵn sàng; gọi ngay là DNS chưa phân giải được)
 ```
 
-One migration per phase. Hiện hành (Project-centric): `PhaseA_ProjectCentric` → `PhaseB_ReviewMN` → `PhaseC_ChangeRequests` → `PhaseD_SystemSettings`.
+⚠️ **14/08 — toàn bộ migration cũ (T-SQL) đã bị xoá**, thay bằng **một** migration nền cho
+PostgreSQL: `InitialPostgres`. Chuỗi `PhaseA…PhaseS` chỉ còn ý nghĩa lịch sử, không còn file.
+Migration mới từ nay đặt tên tự do, không cần theo phase.
 
 > Lưu ý: `dotnet ef migrations add` build TRƯỚC khi sinh file → phải `dotnet build` lại trước khi `dotnet run --no-build`, nếu không app báo "database is already up to date" mà bảng mới không có.
 

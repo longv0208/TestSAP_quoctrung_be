@@ -1,3 +1,20 @@
+## Cập nhật 14/08 (chiều) — đổi DB + deploy Railway
+
+| Việc | Trạng thái |
+|---|---|
+| **Đổi SQL Server → PostgreSQL** | ✅ — chỉ 5 dòng code, migration sinh lại |
+| **Deploy BE lên Railway** | ✅ — `furpmsbev2-production.up.railway.app`, DB cùng project |
+| **Bịt lỗ hổng seeder** | ✅ — DB thật không còn 9 tài khoản demo mật khẩu `password` |
+| **Mã lỗi ổn định (`errorCode`)** | ✅ — giao diện dịch theo mã, không so chuỗi |
+| Deploy FE lên Vercel | ⬜ chờ chủ repo FE |
+| Test BE | **190 xanh** |
+
+**Quét kiểm tra 14/08:** 38 màn × 4 vai trên local Postgres — sạch. 13 màn Admin nối BE deploy với DB rỗng — sạch.
+
+👉 Người/AI mới tiếp nhận: đọc **`HANDOFF_HIEN_HANH.md`** trước.
+
+---
+
 ## Cập nhật 14/08 — sau demo với thầy
 
 | Việc | Trạng thái |

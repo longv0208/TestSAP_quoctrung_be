@@ -1,5 +1,9 @@
 # HANDOFF — Chỉnh hệ thống theo họp tuần 10 (thầy Đức)
 
+> ⚠️ **PHẦN HẠ TẦNG CỦA FILE NÀY ĐÃ LỖI THỜI (14/08).** Dự án đã đổi sang **PostgreSQL** và
+> deploy lên **Railway**. Đọc **`HANDOFF_HIEN_HANH.md`** trước. File này giữ lại vì phần
+> *nghiệp vụ tuần 10* vẫn đúng.
+
 > Mục đích: 1 file **tự-chứa** để bất kỳ AI/dev nào (Codex, Cursor, Claude…) tiếp tục được mà không cần context ngoài repo. Đọc file này + `CLAUDE.md` (Business Rules #15–23) + `docs/QD543_Compliance.md` là đủ nắm.
 
 ## 0. Cấu trúc repo & CHỖ DỄ NHẦM ⚠️
