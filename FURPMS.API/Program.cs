@@ -85,31 +85,10 @@ var app = builder.Build();
 // báo lỗi khi chạy — chúng chỉ cho ra kết quả sai một cách im lặng.
 FURPMS.API.Startup.ProductionReadinessCheck.Run(app);
 
-// Auto-migrate and seed
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<FURPMSDbContext>();
-    db.Database.Migrate();
-    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-    await seeder.SeedAsync();
-
-    // E7 — kịch bản demo: 8 đề tài đứng ở 8 bước khác nhau của quy trình. Chạy SAU seeder gốc vì
-    // dựa vào master data + tài khoản mẫu ở đó. Tắt bằng setting DEMO_DATA_ENABLED khi bàn giao thật.
-    //
-    // Dữ liệu demo KHÔNG được phép chặn ứng dụng khởi động: trên bản deploy, seeder đổ là API sập,
-    // FE mất luôn backend. Hỏng thì ghi log rồi chạy tiếp với dữ liệu đang có.
-    try
-    {
-        var demoSeeder = scope.ServiceProvider.GetRequiredService<DemoScenarioSeeder>();
-        await demoSeeder.SeedAsync();
-    }
-    catch (Exception ex)
-    {
-        scope.ServiceProvider.GetRequiredService<ILoggerFactory>()
-            .CreateLogger("DemoData")
-            .LogWarning(ex, "Không dựng được dữ liệu demo — ứng dụng vẫn khởi động bình thường.");
-    }
-}
+// Migration + seed, CÓ THỬ LẠI. Mạng nội bộ của Railway mất vài giây mới sẵn sàng sau khi
+// container khởi động; gọi ngay dòng đầu là DNS chưa phân giải được ⇒ tiến trình chết ⇒
+// Railway đánh dấu Crashed, nhìn log thì tưởng sai cấu hình.
+await FURPMS.API.Startup.DatabaseStartup.MigrateAndSeedAsync(app);
 
 app.UseMiddleware<GlobalExceptionMiddleware>();
 
