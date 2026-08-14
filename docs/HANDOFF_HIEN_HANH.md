@@ -79,15 +79,23 @@ docker exec -i furpms-db-1 psql -U postgres -c "CREATE DATABASE furpms"
 |---|---|
 | BE | Railway — `https://furpmsbev2-production.up.railway.app` (project `abundant-endurance`) |
 | DB | PostgreSQL service **cùng project** (bắt buộc — mạng nội bộ `.railway.internal` không thông giữa hai project) |
-| FE | Vercel — **chưa deploy**, repo `github.com/immanhdung/FURPMS-Web`, code đầy đủ ở nhánh **`dev`** |
+| FE | Vercel — `https://furpms-web.vercel.app` (project `furpms-web`, tài khoản `trunghq54`, deploy từ **fork**) |
 | Nhánh BE đang deploy | `thu-nghiem/postgres` |
+| Nhánh FE đang deploy | **`dev`** — repo gốc `github.com/immanhdung/FURPMS-Web`. `main` đi sau `dev` **154 commit** (dừng ở 15/07), deploy nhầm `main` là ra bản của tháng trước |
+
+Fork mặc định lấy nhánh `main`, nên sau khi fork **phải đổi Production Branch sang `dev`** (GitHub →
+Settings → Default branch, hoặc Vercel → Settings → Git). Biến trên Vercel: `VITE_API_BASE_URL` =
+URL Railway + `/api` — không đặt cũng chạy vì `.env.production` đã commit sẵn giá trị đó, đặt ở
+dashboard thì **đè lên file** (đổi URL BE khỏi phải commit).
 
 Biến môi trường trên Railway (`:` trong JSON → `__`):
 
 ```
 ConnectionStrings__DefaultConnection = ${{Postgres.DATABASE_URL}}
 JwtSettings__SecretKey               (bắt buộc — khoá trong repo là khoá mẫu)
-EmailSettings__FrontendUrl           ← CHƯA ĐẶT. Link trong email đang trỏ localhost
+EmailSettings__FrontendUrl           = https://furpms-web.vercel.app   ← ĐẶT NGAY nếu chưa
+                                       (mọi nút "bấm vào đây" trong email ghép từ biến này;
+                                        bỏ trống là rơi về localhost:5173 ⇒ link chết với người nhận)
 EmailSettings__SmtpUsername / __SmtpPassword
 GeminiAI__ApiKey / __Model
 Cloudinary__CloudName / __ApiKey / __ApiSecret / __Folder   (thiếu là tệp bay mỗi lần redeploy)
@@ -98,10 +106,11 @@ cảnh báo cho từng thứ còn thiếu. Đọc Deploy Logs là biết.
 
 ---
 
-## 3. Ba cái bẫy đã gặp thật khi deploy — đừng mất thời gian lại
+## 3. Bốn cái bẫy đã gặp thật khi deploy — đừng mất thời gian lại
 
 | Triệu chứng | Nguyên nhân thật | Đã xử lý thế nào |
 |---|---|---|
+| FE: bấm menu thì chạy, **F5 giữa chừng hoặc dán link `/proposals/my` cho người khác → 404** | App dùng `BrowserRouter`; các đường dẫn đó chỉ tồn tại trong trình duyệt, trên đĩa không có file nào tên vậy. Rất dễ bỏ sót vì tự test toàn vào từ trang chủ | `vercel.json` rewrite mọi đường dẫn về `/index.html`. Rewrite chạy **sau** bước tìm file thật nên `/assets/*.js` vẫn được phục vụ đúng |
 | `Couldn't set data source` + `KeyNotFoundException` | Biến vẫn là chuỗi **SQL Server**, Npgsql không hiểu `Server=`/`Data Source=` | `PostgresConnectionString` bắt sớm, báo rõ và chỉ chỗ sửa |
 | `SocketException: Name or service not known` | Postgres ở **project khác** ⇒ DNS nội bộ không phân giải được | Phải đặt DB **cùng project** |
 | Vẫn `Name or service not known` dù cùng project | Mạng nội bộ Railway mất **vài giây** mới sẵn sàng; app gọi `Migrate()` ngay dòng đầu | `DatabaseStartup` thử lại 10 lần × 3 giây; chỉ thử lại lỗi **mạng** |
@@ -138,9 +147,9 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 
 | Việc | Ai làm |
 |---|---|
-| Đặt `EmailSettings__FrontendUrl` trên Railway | **Bạn** — chưa đặt, link email đang trỏ localhost |
-| Deploy FE lên Vercel (branch `dev`, biến `VITE_API_BASE_URL`) | Chờ chủ repo FE (`immanhdung`) |
-| Tạo tài khoản thật cho từng vai trên bản deploy | Bạn — không còn tài khoản demo |
+| Đặt `EmailSettings__FrontendUrl = https://furpms-web.vercel.app` trên Railway | **Bạn** — chưa đặt, link trong email đang trỏ localhost |
+| ~~Deploy FE lên Vercel~~ | ✅ **Xong 14/08** — `furpms-web.vercel.app`, nhánh `dev`. Đã thử thật: đăng nhập admin vào được `/dashboard`, F5 giữa chừng vẫn đúng, không lỗi console, không API ≥ 400 |
+| Tạo tài khoản thật cho từng vai trên bản deploy | Bạn — không còn tài khoản demo. DB deploy đang **rỗng**: 0 đợt, 0 đề cương, 0 hội đồng, 0 hợp đồng |
 | Đi hết luồng chính trên bản deploy | Bạn |
 
 ### Backlog còn treo (`BACKLOG_Uu_tien.md`) — đều P2/P3, không chặn luồng chính
