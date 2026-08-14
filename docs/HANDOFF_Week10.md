@@ -10,21 +10,33 @@
 ## 1. Chạy app
 
 ### Clone BE về chạy — 2 trường hợp
-BE tự `Migrate()` (áp PhaseF/G/H/I…) + seed khi boot, **miễn là chạm được SQL Server** ở connection string trong `appsettings.json` (`Server=localhost,1435;…sa/Furpms@Strong123;…`).
+⚠️ **Đổi hạ tầng CSDL (14/08):** dự án chuyển từ SQL Server sang **PostgreSQL** — Railway không có
+sẵn SQL Server, đổi để deploy được. BE tự `Migrate()` (áp toàn bộ Phase) + seed khi boot, miễn là
+chạm được Postgres ở connection string trong `appsettings.json`
+(`Host=localhost;Port=5433;Database=furpms;…`).
 
 **(a) Có Docker** — cách khuyến nghị, khớp sẵn connection string:
 ```bash
 cd FURPMS_BE
-docker compose up -d          # dựng SQL Server 2022 ở host cổng 1435 (khớp appsettings.json)
+docker compose up -d          # dựng PostgreSQL 16 ở host cổng 5433 (khớp appsettings.json)
 dotnet run --project FURPMS.API   # BE :5068 tự Migrate + seed
 ```
-> ⚠️ Compose cố ý map **`1435:1433`** (KHÔNG dùng 1433) vì nhiều máy đã cài sẵn SQL Server ở cổng mặc định 1433 → clone về bị đụng cổng hoặc lỗi `Login failed for user 'sa'` (BE nối nhầm SQL local). Cổng 1435 né hẳn. Nếu 1435 cũng bận thì đổi **cả compose + connection string** sang cổng trống khác.
+> ⚠️ Compose cố ý map **`5433:5432`** (KHÔNG dùng 5432 mặc định) — né trường hợp máy đã có Postgres
+> cài sẵn (vd pgAdmin đang quản một bản native) chiếm đúng cổng mặc định. Nếu 5433 cũng bận thì đổi
+> **cả compose + connection string** sang cổng trống khác.
+>
+> Container tên `furpms-db-1` — máy còn container SQL Server cũ từ trước đợt đổi hạ tầng thì
+> `docker rm -f furpms-db-1` trước khi `docker compose up -d`, không thì báo "container name
+> already in use" hoặc port map sai do Docker giữ lại cấu hình container cũ.
 
-**(b) Không Docker** — dùng LocalDB (Windows, có sẵn khi cài Visual Studio). Đừng sửa `appsettings.json` (đã commit). Tạo **`FURPMS.API/appsettings.Development.json`** (đã `.gitignore`, mỗi máy tự đặt — file Development đè file base khi chạy Debug):
+**(b) Không Docker** — dùng Postgres cài sẵn trên máy (native, hoặc qua pgAdmin nếu đã có). Đừng
+sửa `appsettings.json` (đã commit). Tạo **`FURPMS.API/appsettings.Development.json`** (đã
+`.gitignore`, mỗi máy tự đặt — file Development đè file base khi chạy Debug):
 ```json
-{ "ConnectionStrings": { "DefaultConnection": "Server=(localdb)\\MSSQLLocalDB;Database=FURPMS_V2;Trusted_Connection=True;TrustServerCertificate=True" } }
+{ "ConnectionStrings": { "DefaultConnection": "Host=localhost;Port=5432;Database=furpms;Username=postgres;Password=<mat-khau-may-ban>;SSL Mode=Disable" } }
 ```
-Rồi `dotnet run --project FURPMS.API` (hoặc F5 trong Visual Studio). Windows auth → không cần sa/mật khẩu, khỏi lỗi `Login failed`. `sqllocaldb info` để kiểm tra LocalDB; chưa có thì `sqllocaldb create MSSQLLocalDB`.
+Rồi `dotnet run --project FURPMS.API` (hoặc F5 trong Visual Studio). Tự tạo database `furpms`
+trước (pgAdmin hoặc `createdb furpms`) — EF Core tạo bảng nhưng **không** tự tạo database.
 
 ### (c) Bật EMAIL + AI — secret KHÔNG commit
 `appsettings.json` (đã commit) cố ý để trống `SmtpUsername`/`SmtpPassword` và không có `GeminiAI`. Nguồn đổ giá trị vào **cùng tên key**, khác nhau theo môi trường — không phải sửa code:

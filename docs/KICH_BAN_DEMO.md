@@ -8,7 +8,7 @@
 ## 0. Chuẩn bị (5 phút trước giờ demo)
 
 ```bash
-# 1. Bật SQL Server
+# 1. Bật PostgreSQL (14/08: đổi khỏi SQL Server để deploy được lên Railway)
 cd D:\capstone\FURPMS_BEv2 && docker compose up -d
 
 # 2. Bật máy chủ (tự chạy migration + seed khi khởi động)
@@ -27,9 +27,8 @@ Sẵn sàng khi: http://localhost:5068/swagger mở được **và** http://loca
 ### Muốn làm lại từ dữ liệu sạch
 
 ```bash
-docker exec -i <ten-container-sql> /opt/mssql-tools18/bin/sqlcmd \
-  -S localhost -U sa -P 'Furpms@Strong123' -C \
-  -Q "DROP DATABASE IF EXISTS FURPMS_V2"
+docker exec -i furpms-db-1 psql -U postgres -c "DROP DATABASE IF EXISTS furpms"
+docker exec -i furpms-db-1 psql -U postgres -c "CREATE DATABASE furpms"
 # rồi chạy lại `dotnet run` — seeder dựng lại toàn bộ
 ```
 

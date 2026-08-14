@@ -1,17 +1,22 @@
 services:
   db:
-    image: mcr.microsoft.com/mssql/server:2022-latest
+    image: postgres:16
     container_name: furpms-db-1
     environment:
-      ACCEPT_EULA: "Y"
-      MSSQL_SA_PASSWORD: "Furpms@Strong123"
-    # Host 1435 (không phải 1433) → khớp "Server=localhost,1435" trong appsettings.json.
-    # Cố ý né cổng SQL mặc định 1433: nhiều máy đã cài sẵn SQL Server ở 1433 → clone về
-    # bị đụng cổng / "Login failed for user 'sa'" (nối nhầm SQL local). 1435 tránh hẳn.
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Furpms@Strong123
+      POSTGRES_DB: furpms
+    # Cổng 5433 (không phải 5432 mặc định) — né trường hợp máy đã có Postgres cài sẵn
+    # (ví dụ pgAdmin đang quản một bản cài native) chiếm đúng cổng mặc định.
     ports:
-      - "1435:1433"
+      - "5433:5432"
     volumes:
-      - mssql_data:/var/opt/mssql
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 volumes:
-  mssql_data:
+  pg_data:
