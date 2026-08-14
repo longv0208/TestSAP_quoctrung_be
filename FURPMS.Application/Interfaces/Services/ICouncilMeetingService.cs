@@ -7,6 +7,16 @@ public interface ICouncilMeetingService
     Task<IEnumerable<MeetingListDto>> GetAllAsync();
     /// <summary>Lịch họp hội đồng chấm đề tài của PI này (PI phải trình bày trước hội đồng).</summary>
     Task<IEnumerable<MeetingListDto>> GetForPiAsync(Guid piUserId);
+
+    /// <summary>
+    /// Lịch họp của các hội đồng mà người này là <b>thành viên</b> (Chủ tịch/Thư ký/Phản biện/Uỷ viên).
+    /// <para>
+    /// Trước 14/08 không có đường này: menu "Lịch họp" hiện cho cả vai Hội đồng, nhưng nó gọi
+    /// <c>GET /api/meetings</c> — endpoint chỉ dành cho Admin/Staff ⇒ người chấm bấm vào là ăn
+    /// <b>403</b>. Mà họ mới chính là người cần biết họp lúc nào, ở đâu.
+    /// </para>
+    /// </summary>
+    Task<IEnumerable<MeetingListDto>> GetForCouncilMemberAsync(Guid userId);
     Task<IEnumerable<MeetingDto>> GetByCouncilAsync(Guid councilId);
     Task<MeetingDto> ScheduleAsync(Guid councilId, ScheduleMeetingRequest request);
     Task<MeetingDto> UpdateAsync(Guid meetingId, UpdateMeetingRequest request);

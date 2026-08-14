@@ -57,6 +57,25 @@ public class CouncilMeetingService : ICouncilMeetingService
 
     // Lịch họp của hội đồng đang chấm ĐỀ TÀI CỦA PI này. PI phải trình bày trước hội đồng
     // (Process_Spec) nên cần biết ngày/giờ + địa điểm hoặc link.
+    /// <inheritdoc/>
+    public async Task<IEnumerable<MeetingListDto>> GetForCouncilMemberAsync(Guid userId)
+    {
+        var meetings = await _review.Meetings
+            .Include(m => m.Council)
+                .ThenInclude(c => c!.Round)
+            .Include(m => m.Council)
+                .ThenInclude(c => c!.ProjectAssignments)
+                    .ThenInclude(a => a.Project)
+                        .ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
+            .Include(m => m.Council)
+                .ThenInclude(c => c!.Members)
+            .Where(m => m.Council!.Members.Any(mem => mem.UserId == userId))
+            .OrderByDescending(m => m.ScheduledAt)
+            .ToListAsync();
+
+        return meetings.Select(MapList);
+    }
+
     public async Task<IEnumerable<MeetingListDto>> GetForPiAsync(Guid piUserId)
     {
         var meetings = await _review.Meetings

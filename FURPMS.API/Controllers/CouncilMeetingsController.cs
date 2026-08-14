@@ -18,12 +18,29 @@ public class CouncilMeetingsController : ControllerBase
         _service = service;
     }
 
-    // GET /api/meetings  — all meetings (admin view)
+    /// <summary>
+    /// Danh sách lịch họp — <b>phạm vi tuỳ vai</b>.
+    ///
+    /// <para>
+    /// Admin/Staff thấy toàn bộ (họ là người xếp lịch). Thành viên hội đồng chỉ thấy lịch của
+    /// <b>hội đồng mình tham gia</b>.
+    /// </para>
+    /// <para>
+    /// Trước 14/08 endpoint này khoá cứng <c>Roles = "Admin,Staff"</c>, trong khi menu "Lịch họp"
+    /// ở giao diện lại hiện cho cả vai Hội đồng ⇒ người chấm bấm vào là ăn <b>403</b> và màn báo
+    /// lỗi đỏ. Mà họ mới chính là người cần biết họp lúc nào, ở đâu.
+    /// </para>
+    /// </summary>
     [HttpGet("api/meetings")]
-    [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> GetAll()
     {
-        var result = await _service.GetAllAsync();
+        var isManager = User.IsInRole("Admin") || User.IsInRole("Staff");
+        var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        var result = isManager
+            ? await _service.GetAllAsync()
+            : await _service.GetForCouncilMemberAsync(userId);
+
         return Ok(ApiResponse<IEnumerable<MeetingListDto>>.Ok(result));
     }
 
