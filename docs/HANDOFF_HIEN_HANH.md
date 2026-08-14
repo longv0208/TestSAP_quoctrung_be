@@ -164,9 +164,24 @@ cd core/FURPMS-Web && npx tsc -p tsconfig.app.json --noEmit && npm run build
 > ⚠️ `npx tsc --noEmit` ở thư mục gốc FE **không kiểm gì cả** (`tsconfig.json` có `"files": []` +
 > references). **Phải** dùng `-p tsconfig.app.json`.
 
-Quét giao diện bằng trình duyệt: xem `.e2e/sweep2.mjs` trong repo FE (gitignore) — đăng nhập lần
-lượt 4 vai, đi hết các màn, bắt console error + HTTP ≥ 400. Nhớ **xoá localStorage giữa các vai**,
-không thì còn token cũ nên vào `/login` bị chuyển thẳng về `/dashboard`.
+### Quét giao diện bằng trình duyệt
+
+Script nằm ở `.e2e/` trong repo FE (thư mục này **gitignore**, phải viết lại nếu clone mới).
+Cách làm đúng — đã trả giá để rút ra:
+
+1. **Lấy danh sách route từ `src/constants/nav.ts`**, đừng tự gõ. Tôi từng quét `/cycles`,
+   `/tracks`, `/statistics`, `/proposals/my` — **không route nào tồn tại**, và trang 404 render
+   sạch nên báo "OK". Kết quả sạch giả.
+2. Khi bóc `nav.ts`, **bỏ qua dòng comment** — vài mục bị ẩn cố ý (`budget-categories`,
+   `financial-config` theo rule #15; `documents` chưa dùng). Không bỏ thì báo 404 giả.
+3. **Xoá `localStorage` giữa các vai.** Còn token cũ thì vào `/login` bị chuyển thẳng về
+   `/dashboard`, kịch bản kẹt ở vai đầu tiên.
+4. **Phân biệt bốn kết cục**, đừng chỉ hỏi "có lỗi không": *ok* · *404 route không tồn tại* ·
+   *bị chặn quyền* · *lỗi thật*. Gộp lại là mất hẳn loại 2 và 3.
+5. **Đừng `await r.text()` trong handler `response`** của Playwright — nó chặn luồng, làm mọi
+   điều hướng sau đó treo.
+
+Kết quả lần chạy 14/08: **40 route × 4 vai — 0 vấn đề** (local, PostgreSQL).
 
 ---
 
