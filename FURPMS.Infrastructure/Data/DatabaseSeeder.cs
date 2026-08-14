@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using FURPMS.Application.Constants;
 using FURPMS.Domain.Entities.Contracts;
 using FURPMS.Domain.Entities.Cycles;
@@ -25,13 +28,43 @@ public class DatabaseSeeder
 
     private readonly FURPMSDbContext _db;
 
-    public DatabaseSeeder(FURPMSDbContext db)
+    private readonly IHostEnvironment _env;
+    private readonly IConfiguration _config;
+    private readonly ILogger<DatabaseSeeder> _log;
+
+    public DatabaseSeeder(
+        FURPMSDbContext db, IHostEnvironment env, IConfiguration config, ILogger<DatabaseSeeder> log)
     {
         _db = db;
+        _env = env;
+        _config = config;
+        _log = log;
     }
 
+    /// <summary>
+    /// Dựng dữ liệu nền khi khởi động.
+    ///
+    /// <para>
+    /// Chia làm hai phần rõ ràng:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><b>Bắt buộc</b> — vai trò, quản trị viên, danh mục, cấu hình, bộ tiêu chí. Thiếu là
+    ///   hệ thống không chạy được, nên chạy ở MỌI môi trường.</item>
+    ///   <item><b>Demo</b> — tài khoản mẫu, đề tài mẫu, kịch bản đã duyệt. Chỉ chạy ở
+    ///   <b>Development</b>.</item>
+    /// </list>
+    ///
+    /// <para>
+    /// <b>Vì sao phải tách.</b> Trước 14/08 tất cả chạy chung ở mọi môi trường ⇒ deploy lên máy chủ
+    /// là DB thật có ngay <b>9 tài khoản demo</b>, và <c>ResetDemoPasswordsAsync</c> đặt tất cả về
+    /// mật khẩu <c>password</c> — <b>kể cả admin@furpms.edu.vn</b>. Danh sách email đó nằm sẵn
+    /// trong tài liệu của repo, nên ai đọc repo cũng đăng nhập được bằng quyền quản trị. Không ai
+    /// bấm gì sai cả; chỉ cần deploy.
+    /// </para>
+    /// </summary>
     public async Task SeedAsync()
     {
+        // ── Bắt buộc ở mọi môi trường ───────────────────────────────────────
         await SeedRolesAsync();
         await SeedAdminAsync();
         await SeedPersonnelRoleTypesAsync();
@@ -42,10 +75,14 @@ public class DatabaseSeeder
         await SeedDisbursementTemplatesAsync();
         await RemoveObsoleteSettingsAsync();
         await FixAppliedOrderingUnitFlagAsync();
+        await SeedRubricCriteriaAsync();
+
+        // ── Chỉ môi trường phát triển ───────────────────────────────────────
+        if (!_env.IsDevelopment()) return;
+
         await SeedDemoProposalAsync();
         await EnsureDemoCycleOpenAsync();
         await SeedDemoAccountsAsync();
-        await SeedRubricCriteriaAsync();
         await SeedApprovedScenarioAsync();
         await ResetDemoPasswordsAsync();
     }
@@ -429,6 +466,27 @@ public class DatabaseSeeder
         await _db.SaveChangesAsync();
     }
 
+
+    /// <summary>
+    /// Mật khẩu ban đầu của tài khoản quản trị.
+    /// <para>Development ⇒ mật khẩu demo. Ngoài ra ⇒ cấu hình, hoặc sinh ngẫu nhiên rồi ghi log.</para>
+    /// </summary>
+    private string ResolveAdminPassword()
+    {
+        if (_env.IsDevelopment()) return DemoPassword;
+
+        var configured = _config["SeedAdminPassword"];
+        if (!string.IsNullOrWhiteSpace(configured)) return configured;
+
+        var generated = Convert.ToBase64String(
+            System.Security.Cryptography.RandomNumberGenerator.GetBytes(18)).TrimEnd('=');
+        _log.LogWarning(
+            "═══ Đã tạo tài khoản quản trị với mật khẩu NGẪU NHIÊN: {Password} ═══", generated);
+        _log.LogWarning(
+            "Ghi lại ngay và đổi sau lần đăng nhập đầu — mật khẩu này chỉ hiện MỘT LẦN trong log. " +
+            "Đặt biến SeedAdminPassword để tự chọn mật khẩu ban đầu.");
+        return generated;
+    }
     private async Task SeedAdminAsync()
     {
         const string adminEmail = "admin@furpms.edu.vn";
@@ -442,7 +500,11 @@ public class DatabaseSeeder
             Id = Guid.NewGuid(),
             Email = adminEmail,
             FullName = "System Administrator admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(DemoPassword, workFactor: 12),
+            // Ở Development dùng mật khẩu demo cho tiện. Ngoài Development thì KHÔNG:
+            // mật khẩu đó nằm trong mã nguồn, ai đọc repo cũng đăng nhập được bằng quyền quản trị.
+            // Lấy từ cấu hình `SeedAdminPassword`; không đặt thì sinh ngẫu nhiên và ghi log MỘT LẦN
+            // để người triển khai đổi ngay — thà bắt họ đi tìm còn hơn để cửa mở.
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(ResolveAdminPassword(), workFactor: 12),
             Status = UserStatus.Active,
             IsExternal = false,
             CreatedAt = DateTime.UtcNow,
@@ -688,8 +750,11 @@ public class DatabaseSeeder
             new SystemSetting
             {
                 Key = SystemSettingKeys.DemoDataEnabled,
-                Value = SystemSettingKeys.DefaultDemoDataEnabled.ToString().ToLowerInvariant(),
-                RecommendedValue = SystemSettingKeys.DefaultDemoDataEnabled.ToString().ToLowerInvariant(),
+                // Giá trị ban đầu theo MÔI TRƯỜNG, không phải một hằng số. Trước đây luôn ghi
+                // "true", nên dòng cấu hình này tự vô hiệu hoá mọi phép kiểm môi trường khác:
+                // lần khởi động đầu tiên trên máy chủ là DB thật có ngay 10 đề tài giả.
+                Value = _env.IsDevelopment() ? "true" : "false",
+                RecommendedValue = "false",
                 Description = "Seed bộ dữ liệu kịch bản demo (8 đề tài ở 8 bước của quy trình). " +
                               "Đặt false trước khi bàn giao bản chạy thật để không dính đề tài giả."
             }

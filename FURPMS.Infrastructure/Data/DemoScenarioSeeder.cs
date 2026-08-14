@@ -11,6 +11,7 @@ using FURPMS.Domain.Entities.Proposals;
 using FURPMS.Domain.Entities.Review;
 using FURPMS.Domain.Entities.Users;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace FURPMS.Infrastructure.Data;
@@ -35,10 +36,13 @@ public class DemoScenarioSeeder
     private readonly IDocumentExportService _export;
     private readonly ILogger<DemoScenarioSeeder> _log;
 
+    private readonly IHostEnvironment _env;
+
     public DemoScenarioSeeder(
         FURPMSDbContext db, IFileStorage storage, IDocumentExportService export,
-        ILogger<DemoScenarioSeeder> log)
+        ILogger<DemoScenarioSeeder> log, IHostEnvironment env)
     {
+        _env = env;
         _db = db;
         _storage = storage;
         _export = export;
@@ -220,12 +224,38 @@ public class DemoScenarioSeeder
             .Where(u => u != null).Select(u => u!).ToList();
     }
 
+    /// <summary>
+    /// Có đổ dữ liệu demo không.
+    ///
+    /// <para>
+    /// <b>Mặc định phụ thuộc MÔI TRƯỜNG</b>, không phải một hằng số:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><b>Development</b> — bật. Máy dev cần sẵn 10 đề tài ở 10 bước quy trình để đi thử.</item>
+    ///   <item><b>Mọi môi trường khác</b> — TẮT. Trước đây mặc định bật ở mọi nơi, nghĩa là lần
+    ///   khởi động đầu tiên trên máy chủ là DB thật có ngay 10 đề tài giả, hợp đồng giả, tài khoản
+    ///   giả — và không ai bấm gì sai cả, chỉ cần deploy.</item>
+    /// </list>
+    /// <para>
+    /// Vẫn bật lại được trên máy chủ bằng cách đặt <c>DEMO_DATA_ENABLED = true</c> trong Cài đặt —
+    /// hữu ích khi cần dựng bản demo cho hội đồng xem.
+    /// </para>
+    /// </summary>
     private async Task<bool> IsEnabledAsync()
     {
         var setting = await _db.SystemSettings
             .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.DemoDataEnabled);
-        if (setting == null) return true; // chưa có setting → coi như bật (môi trường dev)
-        return !string.Equals(setting.Value?.Trim(), "false", StringComparison.OrdinalIgnoreCase);
+
+        if (setting != null)
+            return string.Equals(setting.Value?.Trim(), "true", StringComparison.OrdinalIgnoreCase);
+
+        var enabled = _env.IsDevelopment();
+        if (!enabled)
+            _log.LogInformation(
+                "Bỏ qua dữ liệu demo vì đang chạy ở môi trường {Env}. " +
+                "Đặt DEMO_DATA_ENABLED = true trong Cài đặt nếu thực sự muốn đổ dữ liệu mẫu.",
+                _env.EnvironmentName);
+        return enabled;
     }
 
     private async Task<ResearchCycle> GetOrCreateCycleAsync(

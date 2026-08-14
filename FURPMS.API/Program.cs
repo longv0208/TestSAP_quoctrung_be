@@ -80,6 +80,11 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Tự soi cấu hình và kêu to những thứ chỉ hỏng trên máy chủ (link email trỏ localhost, thiếu
+// Cloudinary nên tệp bay mỗi lần redeploy, khoá JWT vẫn là khoá mẫu trong repo…). Không cái nào
+// báo lỗi khi chạy — chúng chỉ cho ra kết quả sai một cách im lặng.
+FURPMS.API.Startup.ProductionReadinessCheck.Run(app);
+
 // Auto-migrate and seed
 using (var scope = app.Services.CreateScope())
 {
