@@ -20,7 +20,9 @@ public static class DependencyInjection
     {
         services.AddDbContext<FURPMSDbContext>(options =>
             options
-                .UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
+                // Chấp nhận cả chuỗi dạng URI mà Railway/Render/Heroku phơi ra
+                // (postgresql://…) lẫn dạng khoá=giá trị của Npgsql — xem PostgresConnectionString.
+                .UseNpgsql(PostgresConnectionString.Resolve(configuration))
                 .UseSnakeCaseNamingConvention()
                 .ConfigureWarnings(w => w.Ignore(
                     CoreEventId.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning)));
