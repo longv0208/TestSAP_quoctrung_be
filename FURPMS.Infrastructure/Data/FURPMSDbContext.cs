@@ -285,7 +285,7 @@ public class FURPMSDbContext : DbContext
         // ── Project (gốc — Review 2 điểm a) ──
         modelBuilder.Entity<Project>(b =>
         {
-            b.HasIndex(p => p.ProjectCode).IsUnique().HasFilter("[project_code] IS NOT NULL");
+            b.HasIndex(p => p.ProjectCode).IsUnique().HasFilter("\"project_code\" IS NOT NULL");
             b.HasOne(p => p.CycleTrack)
                 .WithMany()
                 .HasForeignKey(p => p.CycleTrackId)
@@ -380,7 +380,7 @@ public class FURPMSDbContext : DbContext
         modelBuilder.Entity<ProposalBudgetLaborDetail>(b =>
         {
             b.Property(x => x.TotalAmount)
-                .HasComputedColumnSql("[total_research_hours] * [hourly_rate]", stored: true);
+                .HasComputedColumnSql("\"total_research_hours\" * \"hourly_rate\"", stored: true);
             b.HasOne(x => x.Proposal)
                 .WithMany()
                 .HasForeignKey(x => x.ProposalId)
@@ -682,7 +682,7 @@ public class FURPMSDbContext : DbContext
         modelBuilder.Entity<Notification>(b =>
         {
             b.ToTable(t => t.HasCheckConstraint("CK_notifications_priority",
-                "[priority] IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')"));
+                "\"priority\" IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')"));
         });
 
         // ── Indexes for polymorphic tables ──

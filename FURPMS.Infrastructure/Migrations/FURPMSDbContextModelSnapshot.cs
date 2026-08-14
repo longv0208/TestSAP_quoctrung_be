@@ -3,8 +3,8 @@ using System;
 using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
@@ -18,30 +18,30 @@ namespace FURPMS.Infrastructure.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasAnnotation("ProductVersion", "8.0.11")
-                .HasAnnotation("Relational:MaxIdentifierLength", 128);
+                .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
-            SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+            NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("FURPMS.Domain.Entities.AI.Document", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("DocumentCategory")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("document_category");
 
                     b.Property<string>("EntityId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_id");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_type");
 
                     b.Property<long>("FileSizeBytes")
@@ -49,44 +49,44 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("file_size_bytes");
 
                     b.Property<bool>("IsConfidential")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_confidential");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("MimeType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("mime_type");
 
                     b.Property<string>("OriginalFileName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("original_file_name");
 
                     b.Property<string>("StorageBlobName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("storage_blob_name");
 
                     b.Property<string>("StorageContainer")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("storage_container");
 
                     b.Property<string>("StorageUrl")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("storage_url");
 
                     b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("uploaded_at");
 
                     b.Property<Guid>("UploadedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("uploaded_by");
 
                     b.HasKey("Id")
@@ -105,69 +105,69 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("Content")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("content");
 
                     b.Property<string>("EntityId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_id");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_type");
 
                     b.Property<DateTime>("GeneratedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("generated_at");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<bool>("IsReviewedByHuman")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_reviewed_by_human");
 
                     b.Property<int?>("LatencyMs")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("latency_ms");
 
                     b.Property<string>("ModelUsed")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("model_used");
 
                     b.Property<string>("OutputType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("output_type");
 
                     b.Property<string>("PromptVersion")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("prompt_version");
 
                     b.Property<string>("ReviewNotes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("review_notes");
 
                     b.Property<Guid?>("ReviewedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewed_by");
 
                     b.Property<int?>("TokensInput")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("tokens_input");
 
                     b.Property<int?>("TokensOutput")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("tokens_output");
 
                     b.HasKey("Id")
@@ -186,55 +186,55 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("ActionUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("action_url");
 
                     b.Property<string>("Body")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("body");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<bool>("IsRead")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_read");
 
                     b.Property<string>("NotificationType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("notification_type");
 
                     b.Property<string>("Priority")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("priority");
 
                     b.Property<DateTime?>("ReadAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("read_at");
 
                     b.Property<string>("RelatedEntityId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("related_entity_id");
 
                     b.Property<string>("RelatedEntityType")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("related_entity_type");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("title");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -245,7 +245,7 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.ToTable("notifications", null, t =>
                         {
-                            t.HasCheckConstraint("CK_notifications_priority", "[priority] IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')");
+                            t.HasCheckConstraint("CK_notifications_priority", "\"priority\" IN ('LOW', 'NORMAL', 'HIGH', 'URGENT')");
                         });
                 });
 
@@ -253,41 +253,41 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ContentHash")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("content_hash");
 
                     b.Property<string>("ContentSnapshot")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("content_snapshot");
 
                     b.Property<string>("ElasticsearchDocId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("elasticsearch_doc_id");
 
                     b.Property<string>("EntityId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_id");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_type");
 
                     b.Property<string>("IndexStatus")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("index_status");
 
                     b.Property<DateTime>("LastIndexedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_indexed_at");
 
                     b.HasKey("Id")
@@ -304,28 +304,28 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("ContractNumber")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("contract_number");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<string>("EcontractId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("econtract_id");
 
                     b.Property<string>("EcontractUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("econtract_url");
 
                     b.Property<DateOnly>("EndDate")
@@ -333,7 +333,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("end_date");
 
                     b.Property<int>("MaxExtensionMonths")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("max_extension_months");
 
                     b.Property<DateOnly>("OriginalEndDate")
@@ -341,19 +341,19 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("original_end_date");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<string>("ScopeTitle")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("scope_title");
 
                     b.Property<string>("SideARepresentative")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("side_a_representative");
 
                     b.Property<DateTime?>("SignedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("signed_at");
 
                     b.Property<DateOnly>("StartDate")
@@ -362,19 +362,19 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("TerminatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("terminated_at");
 
                     b.Property<Guid?>("TerminatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("terminated_by");
 
                     b.Property<string>("TerminatedReason")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("terminated_reason");
 
                     b.Property<decimal>("TotalAmount")
@@ -382,7 +382,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("total_amount");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -408,46 +408,46 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal?>("ActualAmount")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("actual_amount");
 
                     b.Property<string>("BankReference")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("bank_reference");
 
                     b.Property<string>("ConditionDescription")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("condition_description");
 
                     b.Property<DateTime?>("ConditionMetAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("condition_met_at");
 
                     b.Property<Guid?>("ConditionMetBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("condition_met_by");
 
                     b.Property<Guid>("ContractId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("contract_id");
 
                     b.Property<int?>("DeliverableId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("deliverable_id");
 
                     b.Property<DateTime?>("DisbursedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("disbursed_at");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("notes");
 
                     b.Property<decimal>("Percentage")
@@ -455,7 +455,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("percentage");
 
                     b.Property<int?>("PhaseId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("phase_id");
 
                     b.Property<decimal>("PlannedAmount")
@@ -463,16 +463,16 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("planned_amount");
 
                     b.Property<Guid?>("ProcessedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("processed_by");
 
                     b.Property<int>("RoundNumber")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("round_number");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -501,17 +501,17 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<Guid>("ContractId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("contract_id");
 
                     b.Property<DateOnly?>("EndDate")
@@ -520,11 +520,11 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<int>("PhaseNo")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("phase_no");
 
                     b.Property<DateOnly?>("StartDate")
@@ -533,7 +533,7 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -550,10 +550,10 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateOnly?>("AccountingClearedAt")
                         .HasColumnType("date")
@@ -564,19 +564,19 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("assets_cleared_at");
 
                     b.Property<Guid>("ContractId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("contract_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("notes");
 
                     b.Property<string>("ProductsSubmittedSummary")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("products_submitted_summary");
 
                     b.Property<DateOnly?>("SettlementDeadline")
@@ -584,11 +584,11 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("settlement_deadline");
 
                     b.Property<DateTime?>("SettlementSignedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("settlement_signed_at");
 
                     b.Property<Guid?>("SideASigneeId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("side_a_signee_id");
 
                     b.Property<decimal>("TotalContractedAmount")
@@ -620,21 +620,21 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("CycleId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("cycle_id");
 
                     b.Property<bool>("IsOpen")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_open");
 
                     b.Property<int>("TrackId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("track_id");
 
                     b.HasKey("Id")
@@ -654,15 +654,15 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<DateOnly>("NewDeadline")
@@ -674,17 +674,17 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("old_deadline");
 
                     b.Property<string>("Reason")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("reason");
 
                     b.Property<string>("TargetId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("target_id");
 
                     b.Property<string>("TargetType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("target_type");
 
                     b.HasKey("Id")
@@ -703,25 +703,25 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<int>("CycleYear")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("cycle_year");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<DateOnly?>("OrderCollectionDeadline")
@@ -729,7 +729,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("order_collection_deadline");
 
                     b.Property<int>("ResearchTypeId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("research_type_id");
 
                     b.Property<DateOnly>("ReviewDeadline")
@@ -737,12 +737,12 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("review_deadline");
 
                     b.Property<string>("SemesterCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("semester_code");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<DateOnly>("SubmissionDeadline")
@@ -754,7 +754,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("submission_open_date");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -773,56 +773,56 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal?>("BudgetCap")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("budget_cap");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<int>("CycleId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("cycle_id");
 
                     b.Property<string>("ExpectedProducts")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("expected_products");
 
                     b.Property<bool>("IsDefault")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_default");
 
                     b.Property<Guid?>("MatchedProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("matched_project_id");
 
                     b.Property<int>("OrderingUnitId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("ordering_unit_id");
 
                     b.Property<string>("ProblemDescription")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("problem_description");
 
                     b.Property<string>("ResearchArea")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("research_area");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -847,23 +847,23 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("CategoryCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("category_code");
 
                     b.Property<string>("CategoryName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("category_name");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal>("MaxPercentage")
@@ -871,7 +871,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("max_percentage");
 
                     b.Property<int>("ResearchTypeId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("research_type_id");
 
                     b.HasKey("Id")
@@ -887,10 +887,10 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)")
@@ -898,7 +898,7 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("CouncilType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("council_type");
 
                     b.Property<DateOnly>("EffectiveDate")
@@ -906,12 +906,12 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("effective_date");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("RoleInCouncil")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("role_in_council");
 
                     b.HasKey("Id")
@@ -924,18 +924,18 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ConditionDescription")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("condition_description");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal>("Percentage")
@@ -943,11 +943,11 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("percentage");
 
                     b.Property<int>("ResearchTypeId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("research_type_id");
 
                     b.Property<int>("RoundNumber")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("round_number");
 
                     b.HasKey("Id")
@@ -963,18 +963,18 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("CriterionName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("criterion_name");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal>("MaxScore")
@@ -982,11 +982,11 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("max_score");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<int>("TemplateId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("template_id");
 
                     b.HasKey("Id")
@@ -1002,21 +1002,21 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<bool>("AppliesApplied")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("applies_applied");
 
                     b.Property<bool>("AppliesBasic")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("applies_basic");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal>("MaxTotalScore")
@@ -1025,20 +1025,20 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<int?>("OrderId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("order_id");
 
                     b.Property<string>("TemplateType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("template_type");
 
                     b.Property<int?>("TrackId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("track_id");
 
                     b.HasKey("Id")
@@ -1051,21 +1051,21 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("CycleId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("cycle_id");
 
                     b.Property<int>("TemplateId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("template_id");
 
                     b.Property<int>("TrackId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("track_id");
 
                     b.HasKey("Id")
@@ -1085,45 +1085,45 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<string>("Action")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("action");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("EntityId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_id");
 
                     b.Property<string>("EntityType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("entity_type");
 
                     b.Property<string>("IpAddress")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("ip_address");
 
                     b.Property<string>("NewValues")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("new_values");
 
                     b.Property<string>("OldValues")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("old_values");
 
                     b.Property<string>("UserAgent")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("user_agent");
 
                     b.Property<Guid?>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -1142,50 +1142,50 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("EmailType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("email_type");
 
                     b.Property<string>("ErrorMessage")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("error_message");
 
                     b.Property<string>("ProviderMessageId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("provider_message_id");
 
                     b.Property<string>("RecipientEmail")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("recipient_email");
 
                     b.Property<Guid?>("RecipientUserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("recipient_user_id");
 
                     b.Property<DateTime?>("SentAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("sent_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<string>("Subject")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("subject");
 
                     b.Property<string>("TemplateName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("template_name");
 
                     b.HasKey("Id")
@@ -1201,23 +1201,23 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -1230,18 +1230,18 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal?>("MaxPercentage")
@@ -1250,11 +1250,11 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.HasKey("Id")
@@ -1271,33 +1271,33 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ConfigCode")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("config_code");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("ModelName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("model_name");
 
                     b.Property<string>("Provider")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("provider");
 
                     b.Property<string>("SystemPrompt")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("system_prompt");
 
                     b.Property<decimal>("Temperature")
@@ -1318,14 +1318,14 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<decimal?>("DefaultCoefficient")
@@ -1333,12 +1333,12 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("default_coefficient");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -1355,23 +1355,23 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.HasKey("Id")
@@ -1384,31 +1384,31 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<Guid?>("OwnerId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("owner_id");
 
                     b.HasKey("Id")
@@ -1425,18 +1425,18 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal>("MaxBudgetCap")
@@ -1445,15 +1445,15 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<bool>("RequireOrderingUnit")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("require_ordering_unit");
 
                     b.Property<bool>("RequirePublication")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("require_publication");
 
                     b.HasKey("Id")
@@ -1470,18 +1470,18 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<DateOnly>("EffectiveDate")
@@ -1489,7 +1489,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("effective_date");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<decimal>("Value")
@@ -1510,39 +1510,39 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<string>("Key")
                         .IsRequired()
                         .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)")
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("key");
 
                     b.Property<string>("RecommendedValue")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("recommended_value");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid?>("UpdatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("updated_by");
 
                     b.Property<string>("Value")
                         .IsRequired()
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("value");
 
                     b.HasKey("Id")
@@ -1559,16 +1559,16 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<int>("CategoryId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("category_id");
 
                     b.Property<string>("ChangeDescription")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("change_description");
 
                     b.Property<decimal?>("ChangePercentage")
@@ -1576,49 +1576,49 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("change_percentage");
 
                     b.Property<Guid>("ContractId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("contract_id");
 
                     b.Property<string>("Justification")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("justification");
 
                     b.Property<string>("NewValue")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("new_value");
 
                     b.Property<string>("OldValue")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("old_value");
 
                     b.Property<DateTime>("RequestedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("requested_at");
 
                     b.Property<Guid>("RequestedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("requested_by");
 
                     b.Property<bool>("RequiresRectorApproval")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("requires_rector_approval");
 
                     b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("reviewed_at");
 
                     b.Property<Guid?>("ReviewedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewed_by");
 
                     b.Property<string>("ReviewerComments")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("reviewer_comments");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -1643,7 +1643,7 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateOnly?>("ArchivalDeadline")
@@ -1651,7 +1651,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("archival_deadline");
 
                     b.Property<DateTime?>("ArchivedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("archived_at");
 
                     b.Property<DateOnly?>("Deadline")
@@ -1659,41 +1659,41 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("deadline");
 
                     b.Property<DateTime?>("FinalSubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("final_submitted_at");
 
                     b.Property<string>("Language")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("language");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<string>("ReportFileUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("report_file_url");
 
                     b.Property<string>("RevisionNotes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("revision_notes");
 
                     b.Property<DateTime?>("RevisionRequestedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("revision_requested_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.Property<string>("SummaryFileUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("summary_file_url");
 
                     b.HasKey("Id")
@@ -1710,20 +1710,20 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("CompletedContent")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("completed_content");
 
                     b.Property<Guid>("ContractId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("contract_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<DateOnly?>("DueDate")
@@ -1731,19 +1731,19 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("due_date");
 
                     b.Property<DateTime?>("EvaluatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("evaluated_at");
 
                     b.Property<Guid?>("EvaluatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("evaluated_by");
 
                     b.Property<string>("EvaluationComments")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("evaluation_comments");
 
                     b.Property<string>("EvaluationResult")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("evaluation_result");
 
                     b.Property<decimal>("ExpenditureToDate")
@@ -1751,11 +1751,11 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("expenditure_to_date");
 
                     b.Property<string>("MeetingLink")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("meeting_link");
 
                     b.Property<string>("NextPeriodPlan")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("next_period_plan");
 
                     b.Property<decimal>("OverallCompletionPct")
@@ -1763,19 +1763,19 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("overall_completion_pct");
 
                     b.Property<string>("PendingContent")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("pending_content");
 
                     b.Property<string>("PiRecommendations")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("pi_recommendations");
 
                     b.Property<string>("ReportFileUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("report_file_url");
 
                     b.Property<int>("ReportRound")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("report_round");
 
                     b.Property<DateOnly>("ReportingPeriodEnd")
@@ -1787,24 +1787,24 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("reporting_period_start");
 
                     b.Property<string>("RoundName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("round_name");
 
                     b.Property<DateTime?>("ScheduledMeetingAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("scheduled_meeting_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -1824,13 +1824,13 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("ActivityId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("activity_id");
 
                     b.Property<decimal>("CompletionRate")
@@ -1839,19 +1839,19 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("CompletionStatus")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("completion_status");
 
                     b.Property<string>("EvidenceDescription")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("evidence_description");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("notes");
 
                     b.Property<Guid>("ReportId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("report_id");
 
                     b.HasKey("Id")
@@ -1870,39 +1870,39 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<int>("CycleTrackId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("cycle_track_id");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
                     b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
                     b.Property<int>("HostingUnitId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("hosting_unit_id");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
                     b.Property<int>("OrderId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("order_id");
 
                     b.Property<Guid>("PiUserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("pi_user_id");
 
                     b.Property<DateOnly>("PlannedEndDate")
@@ -1914,29 +1914,29 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("planned_start_date");
 
                     b.Property<string>("ProjectCode")
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("project_code");
 
                     b.Property<int>("ResearchTypeId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("research_type_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<string>("TitleEn")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("title_en");
 
                     b.Property<string>("TitleVi")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("title_vi");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -1957,7 +1957,7 @@ namespace FURPMS.Infrastructure.Migrations
                     b.HasIndex("ProjectCode")
                         .IsUnique()
                         .HasDatabaseName("ix_projects_project_code")
-                        .HasFilter("[project_code] IS NOT NULL");
+                        .HasFilter("\"project_code\" IS NOT NULL");
 
                     b.HasIndex("ResearchTypeId")
                         .HasDatabaseName("ix_projects_research_type_id");
@@ -1969,29 +1969,29 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AcceptanceStatus")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("acceptance_status");
 
                     b.Property<int?>("CategoryId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("category_id");
 
                     b.Property<Guid?>("ContractId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("contract_id");
 
                     b.Property<int?>("ContractPhaseId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("contract_phase_id");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<DateOnly?>("DueDate")
@@ -1999,44 +1999,44 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("due_date");
 
                     b.Property<string>("FileUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("file_url");
 
                     b.Property<bool>("IsCompleted")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_completed");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("notes");
 
                     b.Property<string>("ProductName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("product_name");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<string>("QualityAssessment")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("quality_assessment");
 
                     b.Property<string>("ScientificRequirements")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("scientific_requirements");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.Property<string>("TrialEvidenceUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("trial_evidence_url");
 
                     b.HasKey("Id")
@@ -2061,38 +2061,38 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AcademicTitle")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("academic_title");
 
                     b.Property<string>("Email")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("email");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("full_name");
 
                     b.Property<bool>("IsPi")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_pi");
 
                     b.Property<bool>("IsSecretary")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_secretary");
 
                     b.Property<string>("MemberRoleCode")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("member_role_code");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<decimal?>("SalaryCoefficient")
@@ -2100,20 +2100,20 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("salary_coefficient");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<string>("UnitName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("unit_name");
 
                     b.Property<Guid?>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.Property<string>("WorkContent")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("work_content");
 
                     b.Property<decimal>("WorkMonths")
@@ -2136,49 +2136,49 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("AdminNote")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("admin_note");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<string>("NewValue")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("new_value");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<DateTime>("RequestedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("requested_at");
 
                     b.Property<Guid>("RequestedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("requested_by");
 
                     b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("reviewed_at");
 
                     b.Property<Guid?>("ReviewedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewed_by");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<int>("Type")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("type");
 
                     b.HasKey("Id")
@@ -2200,72 +2200,72 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("AbstractEn")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("abstract_en");
 
                     b.Property<string>("AbstractVi")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("abstract_vi");
 
                     b.Property<string>("ApplicationPotential")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("application_potential");
 
                     b.Property<DateTime?>("ApprovedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("approved_at");
 
                     b.Property<Guid?>("ApprovedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("approved_by");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<int>("DurationMonths")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("duration_months");
 
                     b.Property<string>("ExpectedOutput")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("expected_output");
 
                     b.Property<string>("FacilitiesEquipment")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("facilities_equipment");
 
                     b.Property<string>("FundingMethod")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("funding_method");
 
                     b.Property<bool>("IsCurrent")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_current");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
                     b.Property<string>("LiteratureReview")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("literature_review");
 
                     b.Property<string>("Methodology")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("methodology");
 
                     b.Property<string>("NoveltyOriginality")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("novelty_originality");
 
                     b.Property<string>("OverallIntro")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("overall_intro");
 
                     b.Property<DateOnly>("PlannedEndDate")
@@ -2277,62 +2277,62 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("planned_start_date");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<string>("RejectionReason")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("rejection_reason");
 
                     b.Property<string>("ResearchApproach")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("research_approach");
 
                     b.Property<string>("ResearchObjectives")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("research_objectives");
 
                     b.Property<DateTime?>("ReviewedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("reviewed_at");
 
                     b.Property<DateTime?>("RevisionDeadline")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("revision_deadline");
 
                     b.Property<DateTime?>("RevisionRequestedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("revision_requested_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.Property<string>("TitleEn")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("title_en");
 
                     b.Property<string>("TitleVi")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("title_vi");
 
                     b.Property<string>("TransferPotential")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("transfer_potential");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<int>("VersionNo")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("version_no");
 
                     b.HasKey("Id")
@@ -2352,27 +2352,27 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ActivityName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("activity_name");
 
                     b.Property<string>("ActivityType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("activity_type");
 
                     b.Property<int>("ContentId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("content_id");
 
                     b.Property<int>("EndMonth")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("end_month");
 
                     b.Property<decimal>("EstimatedCost")
@@ -2381,27 +2381,27 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.Property<string>("ExpectedResult")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("expected_result");
 
                     b.Property<Guid>("ProposalId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("proposal_id");
 
                     b.Property<bool>("RequiresApproval")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("requires_approval");
 
                     b.Property<string>("ResponsiblePerson")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("responsible_person");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<int>("StartMonth")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("start_month");
 
                     b.HasKey("Id")
@@ -2420,10 +2420,10 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("ConferenceAmount")
                         .HasColumnType("decimal(18,2)")
@@ -2450,7 +2450,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("office_supplies_amount");
 
                     b.Property<Guid>("ProposalId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("proposal_id");
 
                     b.Property<decimal>("TotalAmount")
@@ -2471,29 +2471,29 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal>("Amount")
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("amount");
 
                     b.Property<int>("CategoryId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("category_id");
 
                     b.Property<string>("Note")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("note");
 
                     b.Property<Guid>("ProposalId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("proposal_id");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<decimal>("SourceKhoan")
@@ -2528,10 +2528,10 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<decimal?>("Coefficient")
                         .HasColumnType("decimal(18,2)")
@@ -2546,26 +2546,26 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("hourly_rate");
 
                     b.Property<int>("ProjectMemberId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("project_member_id");
 
                     b.Property<int?>("ProposalBudgetId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("proposal_budget_id");
 
                     b.Property<Guid>("ProposalId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("proposal_id");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<decimal>("TotalAmount")
                         .ValueGeneratedOnAddOrUpdate()
                         .HasColumnType("decimal(18,2)")
                         .HasColumnName("total_amount")
-                        .HasComputedColumnSql("[total_research_hours] * [hourly_rate]", true);
+                        .HasComputedColumnSql("\"total_research_hours\" * \"hourly_rate\"", true);
 
                     b.Property<decimal>("TotalResearchHours")
                         .HasColumnType("decimal(18,2)")
@@ -2594,30 +2594,30 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("ContentNumber")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("content_number");
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<Guid>("ProposalId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("proposal_id");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("title");
 
                     b.HasKey("Id")
@@ -2633,38 +2633,38 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<Guid>("CouncilId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("council_id");
 
                     b.Property<Guid>("EvaluatorMemberId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("evaluator_member_id");
 
                     b.Property<string>("FailReason")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("fail_reason");
 
                     b.Property<bool>("IsValidBallot")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_valid_ballot");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<string>("Result")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("result");
 
                     b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.HasKey("Id")
@@ -2678,7 +2678,7 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.HasIndex("CouncilId", "ProjectId", "EvaluatorMemberId")
                         .IsUnique()
-                        .HasDatabaseName("ix_acceptance_evaluations_council_id_project_id_evaluator_member_id");
+                        .HasDatabaseName("ix_acceptance_evaluations_council_id_project_id_evaluator_memb");
 
                     b.ToTable("acceptance_evaluations", (string)null);
                 });
@@ -2687,13 +2687,13 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int>("AttendingMembers")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("attending_members");
 
                     b.Property<decimal?>("AverageScore")
@@ -2701,60 +2701,60 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("average_score");
 
                     b.Property<Guid?>("ChairUserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("chair_user_id");
 
                     b.Property<string>("CouncilComments")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("council_comments");
 
                     b.Property<Guid>("CouncilId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("council_id");
 
                     b.Property<DateTime?>("FinalizedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("finalized_at");
 
                     b.Property<int>("InvalidBallots")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("invalid_ballots");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<string>("Recommendations")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("recommendations");
 
                     b.Property<string>("Result")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("result");
 
                     b.Property<string>("RevisionRequestNote")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("revision_request_note");
 
                     b.Property<DateTime?>("RevisionRequestedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("revision_requested_at");
 
                     b.Property<Guid?>("RevisionRequestedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("revision_requested_by");
 
                     b.Property<Guid?>("SecretaryUserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("secretary_user_id");
 
                     b.Property<int>("TotalMembers")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("total_members");
 
                     b.Property<int>("ValidBallots")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("valid_ballots");
 
                     b.HasKey("Id")
@@ -2780,73 +2780,73 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTime?>("ActualEndAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("actual_end_at");
 
                     b.Property<DateTime?>("ActualStartAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("actual_start_at");
 
                     b.Property<string>("Agenda")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("agenda");
 
                     b.Property<string>("AgendaDocuments")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("agenda_documents");
 
                     b.Property<string>("CalendarEventId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("calendar_event_id");
 
                     b.Property<string>("CancellationReason")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("cancellation_reason");
 
                     b.Property<Guid>("CouncilId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("council_id");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<int>("DurationMinutes")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("duration_minutes");
 
                     b.Property<string>("ExternalMeetingId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("external_meeting_id");
 
                     b.Property<string>("Location")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("location");
 
                     b.Property<string>("MeetingLink")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("meeting_link");
 
                     b.Property<string>("Platform")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("platform");
 
                     b.Property<DateTime>("ScheduledAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("scheduled_at");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<string>("Title")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("title");
 
                     b.HasKey("Id")
@@ -2862,57 +2862,57 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTime?>("ConfirmedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("confirmed_at");
 
                     b.Property<Guid>("CouncilId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("council_id");
 
                     b.Property<string>("DeclineReason")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("decline_reason");
 
                     b.Property<DateTime?>("DeclinedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("declined_at");
 
                     b.Property<DateTime?>("InvitationSentAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("invitation_sent_at");
 
                     b.Property<string>("InvitationToken")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("invitation_token");
 
                     b.Property<bool>("IsExternal")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_external");
 
                     b.Property<string>("MemberRole")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("member_role");
 
                     b.Property<Guid?>("RespondedOnBehalfBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("responded_on_behalf_by");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<DateTime?>("TokenExpiresAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("token_expires_at");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -2931,30 +2931,30 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AcademicComment")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("academic_comment");
 
                     b.Property<string>("BudgetComment")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("budget_comment");
 
                     b.Property<int>("DecisionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("decision_id");
 
                     b.Property<string>("MemberName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("member_name");
 
                     b.Property<int>("Order")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("order");
 
                     b.HasKey("Id")
@@ -2970,33 +2970,33 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<Guid>("CouncilId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("council_id");
 
                     b.Property<Guid?>("MeetingId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("meeting_id");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<int?>("SlotDurationMinutes")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("slot_duration_minutes");
 
                     b.Property<int?>("SlotOrder")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("slot_order");
 
                     b.Property<DateTime?>("SlotStartAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("slot_start_at");
 
                     b.HasKey("Id")
@@ -3016,30 +3016,30 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Answer")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("answer");
 
                     b.Property<string>("AskedBy")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("asked_by");
 
                     b.Property<int>("DecisionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("decision_id");
 
                     b.Property<int>("Order")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("order");
 
                     b.Property<string>("Question")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("question");
 
                     b.HasKey("Id")
@@ -3055,42 +3055,42 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AbsenceReason")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("absence_reason");
 
                     b.Property<bool?>("ActuallyAttended")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("actually_attended");
 
                     b.Property<DateTime?>("JoinedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("joined_at");
 
                     b.Property<DateTime?>("LeftAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("left_at");
 
                     b.Property<Guid>("MeetingId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("meeting_id");
 
                     b.Property<Guid>("MemberId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("member_id");
 
                     b.Property<DateTime?>("RsvpAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("rsvp_at");
 
                     b.Property<string>("RsvpStatus")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("rsvp_status");
 
                     b.HasKey("Id")
@@ -3110,30 +3110,30 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<DateTime?>("FinalizedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("finalized_at");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<string>("Result")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("result");
 
                     b.Property<Guid>("RoundId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("round_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -3153,45 +3153,45 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AiFeedbackSuggestion")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("ai_feedback_suggestion");
 
                     b.Property<Guid>("CouncilId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("council_id");
 
                     b.Property<Guid>("EvaluatorMemberId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("evaluator_member_id");
 
                     b.Property<string>("GeneralComments")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("general_comments");
 
                     b.Property<bool>("IsValidBallot")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_valid_ballot");
 
                     b.Property<string>("OtherRecommendations")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("other_recommendations");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.Property<int>("TemplateId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("template_id");
 
                     b.HasKey("Id")
@@ -3208,7 +3208,7 @@ namespace FURPMS.Infrastructure.Migrations
 
                     b.HasIndex("CouncilId", "ProjectId", "EvaluatorMemberId")
                         .IsUnique()
-                        .HasDatabaseName("ix_proposal_review_scores_council_id_project_id_evaluator_member_id");
+                        .HasDatabaseName("ix_proposal_review_scores_council_id_project_id_evaluator_memb");
 
                     b.ToTable("proposal_review_scores", (string)null);
                 });
@@ -3217,20 +3217,20 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("CouncilType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("council_type");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<Guid>("CreatedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
                     b.Property<DateOnly?>("EstablishedAt")
@@ -3238,11 +3238,11 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("established_at");
 
                     b.Property<string>("EstablishmentDecisionNo")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("establishment_decision_no");
 
                     b.Property<int>("MaxMembersAllowed")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("max_members_allowed");
 
                     b.Property<DateOnly?>("MeetingDeadline")
@@ -3250,28 +3250,28 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("meeting_deadline");
 
                     b.Property<int>("MinMembersRequired")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("min_members_required");
 
                     b.Property<int>("QuorumDenominator")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("quorum_denominator");
 
                     b.Property<int>("QuorumNumerator")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("quorum_numerator");
 
                     b.Property<Guid?>("RoundId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("round_id");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -3290,54 +3290,54 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<DateTime?>("ClosedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("closed_at");
 
                     b.Property<int>("CycleTrackId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("cycle_track_id");
 
                     b.Property<string>("Dimension")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("dimension");
 
                     b.Property<DateTime?>("OpenedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("opened_at");
 
                     b.Property<Guid?>("PrerequisiteRoundId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("prerequisite_round_id");
 
                     b.Property<string>("Result")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("result");
 
                     b.Property<int>("RoundNumber")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("round_number");
 
                     b.Property<string>("RoundType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("round_type");
 
                     b.Property<int?>("RubricTemplateId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("rubric_template_id");
 
                     b.Property<int>("Sequence")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sequence");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.HasKey("Id")
@@ -3360,17 +3360,17 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Comments")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("comments");
 
                     b.Property<int>("CriterionId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("criterion_id");
 
                     b.Property<decimal>("GivenScore")
@@ -3378,7 +3378,7 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("given_score");
 
                     b.Property<int>("ScoreId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("score_id");
 
                     b.HasKey("Id")
@@ -3397,49 +3397,49 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<int?>("ActualVsExpectedScore")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("actual_vs_expected_score");
 
                     b.Property<Guid>("CouncilId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("council_id");
 
                     b.Property<string>("OtherComments")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("other_comments");
 
                     b.Property<string>("OverallAssessment")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("overall_assessment");
 
                     b.Property<int?>("PracticalSignificanceScore")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("practical_significance_score");
 
                     b.Property<Guid>("ProjectId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("project_id");
 
                     b.Property<Guid>("ReviewerMemberId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("reviewer_member_id");
 
                     b.Property<int?>("ScientificContributionScore")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("scientific_contribution_score");
 
                     b.Property<DateTime?>("SubmittedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("submitted_at");
 
                     b.Property<int?>("UrgencyScore")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("urgency_score");
 
                     b.HasKey("Id")
@@ -3462,25 +3462,25 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("AcademicTitle")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("academic_title");
 
                     b.Property<string>("BankAccountNumber")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("bank_account_number");
 
                     b.Property<string>("BankName")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("bank_name");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<DateOnly?>("DateOfBirth")
@@ -3488,63 +3488,63 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("date_of_birth");
 
                     b.Property<string>("DegreeLevel")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("degree_level");
 
                     b.Property<int>("DomesticConferenceCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("domestic_conference_count");
 
                     b.Property<int>("DomesticJournalCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("domestic_journal_count");
 
                     b.Property<string>("Gender")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("gender");
 
                     b.Property<string>("GsPgsInstitution")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("gs_pgs_institution");
 
                     b.Property<int?>("GsPgsYear")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("gs_pgs_year");
 
                     b.Property<string>("Hometown")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("hometown");
 
                     b.Property<string>("Institution")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("institution");
 
                     b.Property<string>("InstitutionAddress")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("institution_address");
 
                     b.Property<int>("IntlConferenceCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("intl_conference_count");
 
                     b.Property<int>("IntlJournalCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("intl_journal_count");
 
                     b.Property<bool>("IsEligiblePi")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_eligible_pi");
 
                     b.Property<int>("IsiScopusCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("isi_scopus_count");
 
                     b.Property<int>("MasterSupervisedCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("master_supervised_count");
 
                     b.Property<string>("NationalId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("national_id");
 
                     b.Property<DateOnly?>("NationalIdIssuedDate")
@@ -3552,43 +3552,43 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnName("national_id_issued_date");
 
                     b.Property<string>("NationalIdIssuedPlace")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("national_id_issued_place");
 
                     b.Property<string>("Nationality")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("nationality");
 
                     b.Property<int>("PatentsCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("patents_count");
 
                     b.Property<int>("PhdSupervisedCount")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("phd_supervised_count");
 
                     b.Property<string>("ScientificRank")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("scientific_rank");
 
                     b.Property<string>("Specialization")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("specialization");
 
                     b.Property<string>("SpecializationAreas")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("specialization_areas");
 
                     b.Property<int>("TotalInvitations")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("total_invitations");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.HasKey("Id")
@@ -3605,94 +3605,94 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("Authors")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("authors");
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("category");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<string>("Identifier")
                         .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)")
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("identifier");
 
                     b.Property<string>("Note")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("note");
 
                     b.Property<string>("Pages")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("pages");
 
                     b.Property<string>("Role")
                         .HasMaxLength(30)
-                        .HasColumnType("nvarchar(30)")
+                        .HasColumnType("character varying(30)")
                         .HasColumnName("role");
 
                     b.Property<int>("SortOrder")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sort_order");
 
                     b.Property<int?>("StartYear")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("start_year");
 
                     b.Property<string>("Status")
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("title");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.Property<string>("Url")
                         .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)")
+                        .HasColumnType("character varying(1000)")
                         .HasColumnName("url");
 
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.Property<string>("Venue")
                         .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)")
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("venue");
 
                     b.Property<string>("Volume")
                         .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)")
+                        .HasColumnType("character varying(50)")
                         .HasColumnName("volume");
 
                     b.Property<string>("WorkType")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("nvarchar(20)")
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("work_type");
 
                     b.Property<int?>("Year")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("year");
 
                     b.HasKey("Id")
@@ -3708,40 +3708,40 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Code")
                         .IsRequired()
-                        .HasColumnType("nvarchar(450)")
+                        .HasColumnType("text")
                         .HasColumnName("code");
 
                     b.Property<Guid?>("HeadUserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("head_user_id");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_active");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<int?>("ParentId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("parent_id");
 
                     b.Property<int?>("SortOrder")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("sort_order");
 
                     b.Property<string>("UnitType")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("unit_type");
 
                     b.HasKey("Id")
@@ -3764,22 +3764,22 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("id");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
                     b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("description");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("name");
 
                     b.Property<string>("PermissionsJson")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("permissions_json");
 
                     b.HasKey("Id")
@@ -3792,83 +3792,83 @@ namespace FURPMS.Infrastructure.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("id");
 
                     b.Property<string>("AvatarUrl")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("avatar_url");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
                     b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("deleted_at");
 
                     b.Property<Guid?>("DeletedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("deleted_by");
 
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("nvarchar(255)")
+                        .HasColumnType("character varying(255)")
                         .HasColumnName("email");
 
                     b.Property<string>("FptEmployeeId")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("fpt_employee_id");
 
                     b.Property<string>("FptSsoSub")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("fpt_sso_sub");
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("full_name");
 
                     b.Property<bool>("IsDeleted")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
                     b.Property<bool>("IsExternal")
-                        .HasColumnType("bit")
+                        .HasColumnType("boolean")
                         .HasColumnName("is_external");
 
                     b.Property<DateTime?>("LastLoginAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("last_login_at");
 
                     b.Property<string>("PasswordHash")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("password_hash");
 
                     b.Property<DateTime?>("PasswordResetExpiresAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("password_reset_expires_at");
 
                     b.Property<string>("PasswordResetTokenHash")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("password_reset_token_hash");
 
                     b.Property<string>("Phone")
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("phone");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)")
+                        .HasColumnType("text")
                         .HasColumnName("status");
 
                     b.Property<int?>("UnitId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("unit_id");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
                     b.HasKey("Id")
@@ -3890,19 +3890,19 @@ namespace FURPMS.Infrastructure.Migrations
             modelBuilder.Entity("FURPMS.Domain.Entities.Users.UserRole", b =>
                 {
                     b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
                     b.Property<int>("RoleId")
-                        .HasColumnType("int")
+                        .HasColumnType("integer")
                         .HasColumnName("role_id");
 
                     b.Property<DateTime>("AssignedAt")
-                        .HasColumnType("datetime2")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("assigned_at");
 
                     b.Property<Guid?>("AssignedBy")
-                        .HasColumnType("uniqueidentifier")
+                        .HasColumnType("uuid")
                         .HasColumnName("assigned_by");
 
                     b.HasKey("UserId", "RoleId")
@@ -4524,13 +4524,13 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasForeignKey("ProjectMemberId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
-                        .HasConstraintName("fk_proposal_budget_labor_details_project_members_project_member_id");
+                        .HasConstraintName("fk_proposal_budget_labor_details_project_members_project_membe");
 
                     b.HasOne("FURPMS.Domain.Entities.Proposals.ProposalBudget", null)
                         .WithMany("LaborDetails")
                         .HasForeignKey("ProposalBudgetId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .HasConstraintName("fk_proposal_budget_labor_details_proposal_budgets_proposal_budget_id");
+                        .HasConstraintName("fk_proposal_budget_labor_details_proposal_budgets_proposal_bud");
 
                     b.HasOne("FURPMS.Domain.Entities.Proposals.Proposal", "Proposal")
                         .WithMany()

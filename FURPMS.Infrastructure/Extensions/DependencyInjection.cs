@@ -20,7 +20,7 @@ public static class DependencyInjection
     {
         services.AddDbContext<FURPMSDbContext>(options =>
             options
-                .UseSqlServer(configuration.GetConnectionString("DefaultConnection"))
+                .UseNpgsql(configuration.GetConnectionString("DefaultConnection"))
                 .UseSnakeCaseNamingConvention()
                 .ConfigureWarnings(w => w.Ignore(
                     CoreEventId.PossibleIncorrectRequiredNavigationWithQueryFilterInteractionWarning)));
