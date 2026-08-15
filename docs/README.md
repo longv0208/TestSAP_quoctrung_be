@@ -11,6 +11,8 @@
 > 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `core/FURPMS-Web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
 >
 > 📋 **Rà soát hệ thống + backlog (thừa / chưa ổn / ý tưởng để sau):** **`SYSTEM_REVIEW.md`** — chốt lại đánh giá để không quên (IDOR endpoint con, đa vai, sản phẩm/kỳ báo cáo tự tạo, rich text, lịch/thông báo…). Cập nhật tuần 11.
+>
+> 🔎 **MỚI 14/08 — `RA_SOAT_LUONG_HAPPY_CASE.md`**: user tự đi lại toàn bộ luồng happy case từ trải nghiệm và ghi ra mọi chỗ thấy "cấn"; file này **kiểm chứng từng nghi ngờ với code thật + QĐ543**. Kết quả: **8 chỗ hoá ra ĐÃ CÓ** (PI xem được lịch họp, Chủ tịch trả biên bản về Thư ký, lưu biên bản chỉ cần quorum 2/3 nên vắng 1 người không kẹt, giải ngân đã đúng Điều 16…) và **12 lỗ hổng THẬT**, nặng nhất là **AI vòng nghiệm thu vẫn đọc đề cương gốc thay vì sản phẩm** và **thư mời không nói mời chấm đề tài nào**. Có §4 xếp thứ tự nên làm theo đau÷công. **Chưa sửa code.**
 
 > Điểm vào cho thư mục `docs/`. Cập nhật: 2026-08-04.
 > Lưu ý: KHÔNG đổi tên / di chuyển các file (CLAUDE.md + docs khác đang tham chiếu path) — file này để tra cứu + theo dõi việc dở.
