@@ -30,7 +30,7 @@ Hệ thống Quản lý Đề tài Nghiên cứu Khoa học cấp Trường Đ�
 
 Mã Capstone	SU26SE053
 Phiên bản Schema	V1.3 (Enterprise SaaS — Configuration Driven)
-Database Engine	MS SQL Server 2022 | Collation: Vietnamese_CI_AS
+Database Engine	PostgreSQL 16 (đổi khỏi MS SQL Server 14/08 để deploy được lên Railway)
 Căn cứ pháp lý	QĐ 543/QĐ-ĐHFPT ngày 14/5/2025 (Hiệu trưởng Nguyễn Khắc Thành)
 Yêu cầu hệ thống	File DOCX SU26SE053 — 9 Task Packages
 Supervisor	Phạm Minh Trí (tripm14@fe.edu.vn) | Đặng Ngọc Minh Đức (DucDNM2@fe.edu.vn)

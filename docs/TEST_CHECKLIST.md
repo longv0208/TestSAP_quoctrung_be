@@ -10,7 +10,7 @@
 ## 0. Chuẩn bị
 
 ```bash
-docker compose up -d db          # SQL Server
+docker compose up -d              # PostgreSQL 16 (cổng 5433)
 dotnet run --project FURPMS.API  # http://localhost:5068
 npm run dev                      # FE, http://localhost:5173
 ```

@@ -82,7 +82,7 @@ flowchart TB
         CTX[(EF Core DbContext)]
     end
 
-    DB[(SQL Server)]
+    DB[(PostgreSQL 16)]
     GEMINI[[Gemini AI]]
     EMAIL[[SMTP/Email]]
 
@@ -126,7 +126,7 @@ flowchart TB
 
     subgraph cloud["Hạ tầng triển khai"]
         API["Backend API — .NET 8<br/>Render · Docker"]
-        DB[("SQL Server<br/>site4now")]
+        DB[("PostgreSQL 16<br/>Railway")]
     end
 
     subgraph third["Dịch vụ bên thứ 3"]

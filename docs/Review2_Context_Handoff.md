@@ -6,7 +6,7 @@
 
 ## 1. Dự án
 - FURPMS = Hệ thống quản lý đề tài NCKH cấp trường (FPTU). Capstone SU26SE053, theo QĐ 543/QĐ-ĐHFPT.
-- Kiến trúc code: **N-tier .NET 8** (Controller → Service → Repository → DbContext), **React/TypeScript** (web), **SQL Server**. Có **Mobile app** (chỉ PI/Staff).
+- Kiến trúc code: **N-tier .NET 8** (Controller → Service → Repository → DbContext), **React/TypeScript** (web), **PostgreSQL 16** (đổi khỏi SQL Server 14/08). Có **Mobile app** (chỉ PI/Staff).
 - Actor: **Admin** (Trưởng phòng QLKH), **Staff** (CB phòng), **PI** (Giảng viên chủ nhiệm), **Reviewer** (thành viên hội đồng). TUYỆT ĐỐI không dùng "System User".
 
 ## 2. Mô hình thực thể CHỐT (thầy, tuần 7) — quan trọng nhất

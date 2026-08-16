@@ -6,9 +6,9 @@ Tài liệu giúp test nhanh hệ thống mà không phải mò: tài khoản s�
 
 ## 1. Khởi động
 
-**Database** (Docker — SQL Server):
+**Database** (Docker — PostgreSQL 16):
 ```bash
-docker compose up -d db        # hoặc dùng container db-1 sẵn có (port 1433)
+docker compose up -d           # container furpms-db-1, PostgreSQL 16, cổng 5433
 ```
 
 **Backend**:

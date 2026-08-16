@@ -12,6 +12,8 @@
 >
 > 📋 **Rà soát hệ thống + backlog (thừa / chưa ổn / ý tưởng để sau):** **`SYSTEM_REVIEW.md`** — chốt lại đánh giá để không quên (IDOR endpoint con, đa vai, sản phẩm/kỳ báo cáo tự tạo, rich text, lịch/thông báo…). Cập nhật tuần 11.
 >
+> 📄 **MỚI 16/08 — `RA_SOAT_BAO_CAO_RP1-7.md`**: soi cả 7 báo cáo Capstone, đối chiếu **mẫu FLM + SEP490 StudentGuide + Cẩm nang tránh lỗi**. Kết quả: **RP6 đã hoàn thiện xong** (8 workflow, 19 ảnh chụp thật giao diện tiếng Anh, caption + cross-ref + danh mục hình/bảng tự động); **RP7 phần V và VI còn RỖNG HOÀN TOÀN** mà lại chiếm 32% OGA + 35% TDA; **RP5 có 3 con số mâu thuẫn nhau** (doc ghi 99 unit test, Excel ghi 39, repo thật 190); **thiếu hẳn `Report3_Project Tracking.xlsx` + báo cáo tuần + lịch dự án**; và **2 sơ đồ MAIN FLOW vẽ chức năng hệ thống không có** (AI tìm reviewer, AI insight). Có bảng việc xếp theo điểm÷công.
+>
 > 🔎 **MỚI 14/08 — `RA_SOAT_LUONG_HAPPY_CASE.md`**: user tự đi lại toàn bộ luồng happy case từ trải nghiệm và ghi ra mọi chỗ thấy "cấn"; file này **kiểm chứng từng nghi ngờ với code thật + QĐ543**. Kết quả: **8 chỗ hoá ra ĐÃ CÓ** (PI xem được lịch họp, Chủ tịch trả biên bản về Thư ký, lưu biên bản chỉ cần quorum 2/3 nên vắng 1 người không kẹt, giải ngân đã đúng Điều 16…) và **12 lỗ hổng THẬT**, nặng nhất là **AI vòng nghiệm thu vẫn đọc đề cương gốc thay vì sản phẩm** và **thư mời không nói mời chấm đề tài nào**. Có §4 xếp thứ tự nên làm theo đau÷công. **Chưa sửa code.**
 
 > Điểm vào cho thư mục `docs/`. Cập nhật: 2026-08-04.
@@ -62,7 +64,7 @@
 - ✅ **BE thêm 3 endpoint dashboard** `GET /api/analytics/dashboard/{staff|faculty|reviewer}` (FE đang phải mock vì BE thiếu — lệch sống duy nhất phát hiện được). Kèm fix authz: nhiều `[Authorize]` là AND → hạ class-level xuống `[Authorize]`, role đặt per-endpoint (trước đó Faculty/Reviewer bị 403).
 - ✅ **Smoke test headless (Playwright script) 4 role × ~25 trang qua BE local thật (mock OFF): 0 API ≥400, 0 console error.** Login admin/staff/pi/reviewer đều OK, dashboard 3 role render dữ liệu thật.
 - ⚠️ **FE mới còn thiếu (việc của FE, BE đã sẵn):** luồng biên bản Thư ký→Chủ tịch (minutes) — hiện chỉ có scores + `rounds/close` legacy; màn Review Board cấp track (§8.1); các mảng contracts/deliverables/disbursements/progress/final-reports/change-requests/documents chưa có service. Endpoint FE gọi mà BE **cố tình chưa làm**: `/ai/search`, `/ai/similarity-check`, `/ai/suggest-reviewers`, `/integrations/google-meet/generate` (mock-only, cần Gemini key hoặc để mock).
-- Lưu ý vận hành: DB dev = **SQL Server Docker** (`furpms-db-1`, port 1433) — Docker Desktop tắt là BE 500/không start (lỗi 10061). Port 5173 do container `furpms-frontend-1` (FE cũ đóng docker) chiếm → FE mới dev chạy 5174 (CORS BE = AllowAnyOrigin nên OK).
+- Lưu ý vận hành: DB dev = **PostgreSQL 16 Docker** (`furpms-db-1`, cổng **5433**) — phải `docker compose up -d` TRƯỚC khi chạy BE, nếu không BE thử lại 10 lần × 3 giây rồi thoát. FE dev chạy `localhost:5173` (CORS BE = AllowAnyOrigin nên OK).
 - ✅ **Fix seed (16/07):** loại đề tài APPLIED trước seed nhầm `RequireOrderingUnit=false` → sai rule #8 (Applied phải đi theo danh mục đặt hàng). Đã sửa giá trị mới + thêm `FixAppliedOrderingUnitFlagAsync` chạy mỗi lần khởi động (idempotent) để DB cũ tự đúng. FE dựa cờ này phân biệt 2 luồng nộp (đặt hàng vs tự đề xuất). 54/54 test.
 - 🎨 **FE mới — cải thiện wizard nộp proposal (repo FURPMS-Web của Dũng, 16/07):** validation đảo đúng chiều BE (bắt buộc titleVI + objectives, không phải titleEN); Funding Method thành Select WHOLE/PARTIAL; copy 2 loại đề tài đúng nghiệp vụ; Step 2 ghi rõ "optional"; Step 3 chia section; **Research Field scope theo đợt** (`GET /cycles/{id}/tracks`) nên hết lòi track mồ côi; thêm nút "Fill with sample data" + trang **Settings** (toggle bật/tắt, zustand persist). Cài skill `frontend-design` (Anthropic) để làm. Đã verify sống bằng Playwright + build xanh.
 
@@ -78,7 +80,7 @@
 ### C. Vận hành / môi trường
 - **Docker BE**: restart để nạp fix mới nhất (ResearchType create Code-optional, track chống trùng mã, appsettings.json có lại connection dev) — `docker compose restart backend`.
 - **`appsettings.Development.json` bị mất** → Gemini AI key cũng mất theo → tính năng AI trích xuất báo "chưa cấu hình" (không crash, vẫn nhập tay được). Muốn AI chạy lại: tạo lại file với `GeminiAI:ApiKey`, hoặc set qua env.
-- **Deploy BE (Render + site4now)**: push code mới → redeploy → test login trong Swagger; set env var (`ConnectionStrings__DefaultConnection`, `JwtSettings__SecretKey`, `GeminiAI__ApiKey`). **Đổi secret đã lộ** (JWT/SMTP/SQL password — từng commit trong git history).
+- **Deploy BE (Railway + PostgreSQL cùng project)**: push code mới → redeploy → test login trong Swagger; set env var (`ConnectionStrings__DefaultConnection`, `JwtSettings__SecretKey`, `GeminiAI__ApiKey`). **Đổi secret đã lộ** (JWT/SMTP/SQL password — từng commit trong git history).
 - **Nhiều thay đổi BE+FE+docs trong phiên này chưa commit** (xem `git status` cả 2 repo): BE (ResearchType CRUD + fix create + appsettings), FE (i18n + track→Lĩnh vực + màn quản lý loại + dropdown reload fix), docs (§2b System Overview, §6b Logical ERD, fix erDiagram labels, README này, cập nhật handoff).
 
 ### D. Nhóm tự làm (tài liệu Review 2)

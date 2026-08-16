@@ -30,7 +30,7 @@
 | Định dạng | JSON, UTF-8 |
 | Xác thực | JWT Bearer (header `Authorization: Bearer <token>`) |
 | CORS | cho phép origin `http://localhost:5173` |
-| Stack | ASP.NET Core 8, EF Core, SQL Server |
+| Stack | ASP.NET Core 8, EF Core, **PostgreSQL 16** (đổi khỏi SQL Server 14/08 — Railway không cung cấp SQL Server) |
 
 ---
 
@@ -521,7 +521,8 @@ Key hiện có:
 | GET | `/api/review-scoring/councils/{councilId}/scores/my` | Authenticated | Phiếu của tôi (null nếu chưa chấm) |
 | GET | `/api/review-scoring/councils/{councilId}/scores` | Admin, Staff, **thành viên hội đồng** | Tất cả phiếu (tham khảo) — Thư ký cần để lập biên bản |
 | POST | `/api/review-scoring/councils/{councilId}/minutes` | Thư ký | **Soạn/sửa biên bản (nháp)** — chưa khóa, chưa đổi status |
-| POST | `/api/review-scoring/councils/{councilId}/minutes/approve` | Chủ tịch | **Duyệt = khóa biên bản** + cập nhật status |
+| POST | `/api/review-scoring/councils/{councilId}/minutes/approve` | Chủ tịch | **Duyệt = khóa biên bản** + cập nhật status |
+
 | POST | `/api/review-scoring/councils/{councilId}/minutes/request-revision` | **Chủ tịch** hội đồng | **Trả biên bản cho Thư ký sửa** kèm ghi chú. Body `{ note }` — bắt buộc, rỗng → 400. Không đổi trạng thái khoá; biên bản **đã chốt** → 409. Thư ký nhận thông báo `MINUTES_REVISION_REQUESTED`. Căn cứ QĐ543 Điều 8.3.c |
 | GET | `/api/review-scoring/councils/{councilId}/decision` | Authenticated | Xem quyết định/biên bản |
 | ~~POST~~ | ~~`/api/review-scoring/councils/{councilId}/decision`~~ | — | **NGỪNG DÙNG** → luôn trả `409`. Dùng luồng biên bản (minutes) bên dưới |
