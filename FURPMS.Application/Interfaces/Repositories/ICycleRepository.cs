@@ -14,4 +14,5 @@ public interface ICycleRepository : IRepository<ResearchCycle>
     void RemoveOrder(ResearchOrder order);
     Task AddOrderAsync(ResearchOrder order);
     Task AddDeadlineExtensionAsync(DeadlineExtension extension);
+    void RemoveDeadlineExtension(DeadlineExtension extension);
 }

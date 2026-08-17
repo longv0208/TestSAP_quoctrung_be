@@ -18,4 +18,5 @@ public class CycleRepository : Repository<ResearchCycle>, ICycleRepository
     public void RemoveOrder(ResearchOrder order) => _db.ResearchOrders.Remove(order);
     public async Task AddOrderAsync(ResearchOrder order) => await _db.ResearchOrders.AddAsync(order);
     public async Task AddDeadlineExtensionAsync(DeadlineExtension extension) => await _db.DeadlineExtensions.AddAsync(extension);
+    public void RemoveDeadlineExtension(DeadlineExtension extension) => _db.DeadlineExtensions.Remove(extension);
 }

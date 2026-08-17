@@ -56,6 +56,8 @@ HTTP status codes come from `GlobalExceptionMiddleware`:
 - `InvalidOperationException` → 409
 - Everything else → 500
 
+> **Câu trong `throw` của 400/409 là văn bản NGƯỜI DÙNG ĐỌC** — FE hiện nguyên văn (`errorCode` của 2 nhóm này chỉ là thùng chứa chung `VALIDATION_FAILED`/`CONFLICT`, không có bản dịch riêng). Viết đủ 2 ý: **vướng cái gì** (nêu tên/số liệu cụ thể, không nói chung chung) và **làm gì để thoát**. Không nhét mã quy tắc nội bộ ("rule #7") vào câu, và **không viện dẫn điều khoản QĐ543 nếu chưa mở file ra kiểm** — xem rule #7 để biết vì sao.
+
 ## Auth
 
 - JWT Bearer, configured in `appsettings.json → JwtSettings`
@@ -170,6 +172,7 @@ Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
 
 ### Chu kỳ & loại đề tài
 7. **1 đợt (`research_cycle`) = đúng 1 loại đề tài** (Applied *hoặc* Basic — field `ResearchTypeId` đã có). "Mở cả 2 loại" = tạo **2 cycle độc lập**, mỗi cái có timeline + funding cap riêng. KHÔNG gộp vào 1 cycle. Bỏ khái niệm "hạng quý".
+   **KHÔNG suy ra "mỗi năm chỉ một đợt cho mỗi loại".** QĐ543 **không có** điều khoản nào giới hạn số đợt trong năm — Điều 6 chỉ nói Phòng QLKH nhận hồ sơ vào quý I (ứng dụng) / quý II (cơ bản) hằng năm, tức mô tả **nhịp thường lệ**, không phải điều cấm. Trường vẫn có thể mở **đợt bổ sung** khi đợt đầu không tuyển đủ. `CycleService.ValidateCycleAsync` chỉ chặn **trùng tên trong cùng năm** (17/08 đã gỡ ràng buộc `(năm, loại)` tự bịa trước đó).
 
 ### 2 luồng nộp đề tài — khác nhau hoàn toàn
 8. **Ứng dụng (Applied):** Staff upload **danh mục đề tài / đặt hàng** (`ResearchOrder`) → nhiều PI đăng ký cùng 1 đề tài (nhiều-nhiều) → xét duyệt ra **0/1/nhiều** PI được duyệt. Hội đồng có thêm **người đặt hàng** (`OrderingUnit`). (Schema: `ResearchOrder` + `Proposal.OrderId` đã có; multi-winner là epic tương lai.)

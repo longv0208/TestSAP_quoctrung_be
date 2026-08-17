@@ -69,6 +69,8 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 
 > ⚠️ **Đổi từ 20/07/2026:** trước đây lỗi phân quyền cũng trả 401, khiến FE tưởng hết phiên và **tự đăng xuất người dùng** khi họ bấm vào chức năng không thuộc quyền mình. Nay đã tách: **401 = đăng nhập lại**, **403 = báo lỗi tại chỗ, đừng logout**. FE phải xử lý 403 riêng, không gộp chung với 401.
 
+> ⚠️ **Đổi từ 17/08/2026 — `errorCode` chung KHÔNG được nuốt `message`.** 4 mã `CONFLICT`, `VALIDATION_FAILED`, `NOT_FOUND`, `UNEXPECTED` chỉ là **thùng chứa** theo kiểu exception, không phải loại lỗi cụ thể — mọi `InvalidOperationException` toàn hệ thống đều ra `CONFLICT`. FE (`axiosClient.resolveMessage`) trước đây ưu tiên bản dịch của `errorCode` nên **mọi lỗi 409/400 đều hiện đúng một câu chung vô nghĩa**, che mất câu BE viết kỹ. Nay: mã **cụ thể** → dùng bản dịch; mã **thùng chứa** → dùng `message` của BE. ⇒ BE viết `message` cho 400/409 phải coi như **văn bản người dùng đọc trực tiếp**: nêu vướng gì + làm gì để thoát.
+
 ### 2.3. Vai trò (roles)
 4 vai trò, khớp với `Role.Name` trong DB: **`Admin`**, **`Staff`**, **`Faculty`**, **`ReviewCommittee`**.
 - `[Authorize]` (mặc định ở hầu hết controller) = cần đăng nhập (vai trò bất kỳ).
@@ -204,8 +206,9 @@ identifier?, volume?, pages?, status?, url?, note?, sortOrder }`
 |---|---|---|---|
 | GET | `/api/cycles` | * | Danh sách đợt nộp (kèm `trackCount`) |
 | GET | `/api/cycles/{id}` | * | Chi tiết đợt (kèm `tracks[]` đã gắn) |
-| POST | `/api/cycles` | Admin, Staff | Tạo đợt |
-| PUT | `/api/cycles/{id}` | Admin, Staff | Sửa đợt |
+| POST | `/api/cycles` | Admin, Staff | Tạo đợt — **409 nếu trùng TÊN trong cùng năm**. Cùng năm + cùng loại nhưng khác tên thì **cho phép** (đợt bổ sung): QĐ543 không giới hạn số đợt/năm |
+| PUT | `/api/cycles/{id}` | Admin, Staff | Sửa đợt — kiểm cùng bộ luật với tạo (409 khi đổi thành tên đã có trong năm đó) |
+| DELETE | `/api/cycles/{id}` | Admin, Staff | Xoá đợt lỡ tạo nhầm — **409 nếu đã có đề tài / vòng chấm / danh mục đặt hàng do Staff tạo**. Lĩnh vực đã gắn, danh mục mặc định và **log gia hạn** bị xoá theo (không còn là lý do chặn từ 17/08). Đợt đã dùng thật thì **đóng**, không xoá |
 | POST | `/api/cycles/{id}/open` | Admin, Staff | Mở đợt (→ `OPEN`) |
 | POST | `/api/cycles/{id}/close` | Admin, Staff | Đóng đợt (→ `CLOSED`) |
 | POST | `/api/cycles/{id}/extend-deadline` | Admin, Staff | **Gia hạn deadline đợt** (rule tuần 10) `{ newDeadline: "yyyy-MM-dd", reason? }` — ghi log, **KHÔNG ghi đè** `SubmissionDeadline` gốc; phải sau deadline hiện tại (else 400) |

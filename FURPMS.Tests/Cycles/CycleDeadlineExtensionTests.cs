@@ -64,4 +64,26 @@ public class CycleDeadlineExtensionTests
             svc.ExtendCycleDeadlineAsync(cycle.Id, new ExtendDeadlineRequest { NewDeadline = "2026-02-01" }, Guid.NewGuid()));
         Assert.Equal(0, await db.DeadlineExtensions.CountAsync());
     }
+
+    [Fact]
+    public async Task Dot_chi_co_lich_su_gia_han_thi_VAN_xoa_duoc()
+    {
+        // Đợt tạo thử, bấm thử nút gia hạn, rồi muốn xoá đi. Trước 17/08 chỗ này chặn vì "đã có
+        // lịch sử gia hạn" — đợt không đề tài, không vòng chấm mà kẹt vĩnh viễn. Rule #19 nói
+        // gia hạn không được ghi đè deadline gốc; nó không bắt log phải sống lâu hơn chính đợt.
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var cycle = MakeCycle();
+        db.ResearchCycles.Add(cycle);
+        await db.SaveChangesAsync();
+
+        var svc = MakeSvc(db);
+        await svc.ExtendCycleDeadlineAsync(cycle.Id, new ExtendDeadlineRequest { NewDeadline = "2026-04-01" }, Guid.NewGuid());
+        Assert.Equal(1, await db.DeadlineExtensions.CountAsync());
+
+        await svc.DeleteCycleAsync(cycle.Id);
+
+        Assert.Null(await db.ResearchCycles.FindAsync(cycle.Id));
+        // Log phải đi theo đợt, không để lại bản ghi mồ côi trỏ vào đợt đã xoá.
+        Assert.Equal(0, await db.DeadlineExtensions.CountAsync());
+    }
 }

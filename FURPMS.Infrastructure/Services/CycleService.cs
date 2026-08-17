@@ -294,19 +294,24 @@ public class CycleService : ICycleService
                 $"Hạn nộp ({deadline:dd/MM/yyyy}) phải SAU ngày mở nhận ({openDate:dd/MM/yyyy}) — " +
                 "đặt ngược thì không ai nộp đề cương vào đợt này được.");
 
-        // Rule #7: 1 đợt = đúng 1 loại đề tài. Mở cả hai loại thì tạo 2 đợt độc lập. Trùng
-        // (năm + loại) là dấu hiệu bấm tạo hai lần, hoặc quên mất đợt đã có — chặn để khỏi có
-        // hai đợt song song mà PI không biết nộp vào đâu.
-        var duplicate = await _cycles.Query().AnyAsync(c =>
+        // Trùng TÊN trong cùng một năm mới là lỗi thật: hai đợt cùng hiện "D01 · 2026" thì
+        // Staff chọn nhầm, PI nộp nhầm, và không màn nào phân biệt được.
+        //
+        // ⚠ KHÔNG chặn theo (năm + loại). Trước 17/08 chỗ này cấm mỗi năm quá một đợt cho mỗi
+        // loại và viện dẫn "QĐ543 Điều 6" — dẫn sai: QĐ543 không có khái niệm "đợt", Điều 6 chỉ
+        // nói Phòng QLKH nhận hồ sơ vào quý I (ứng dụng) / quý II (cơ bản) hằng năm. Đó là mô tả
+        // NHỊP THƯỜNG LỆ, không phải điều cấm. Không điều khoản nào giới hạn số đợt trong năm,
+        // nên chặn cứng là tự bịa luật — và nó chặn luôn ca có thật: mở đợt BỔ SUNG khi đợt đầu
+        // không tuyển đủ. Muốn nhắc "năm nay đã có đợt cùng loại" thì để giao diện cảnh báo mềm.
+        var nameTaken = await _cycles.Query().AnyAsync(c =>
             c.CycleYear == cycleYear &&
-            c.ResearchTypeId == researchTypeId &&
+            c.SemesterCode == name &&
             (excludeCycleId == null || c.Id != excludeCycleId));
 
-        if (duplicate)
+        if (nameTaken)
             throw new InvalidOperationException(
-                $"Đã có đợt năm {cycleYear} cho loại đề tài này. Mỗi năm chỉ mở MỘT đợt cho mỗi loại " +
-                "— hãy sửa đợt đang có, hoặc chọn loại đề tài khác. " +
-                "Muốn mở cả hai loại thì tạo hai đợt riêng.");
+                $"Năm {cycleYear} đã có một đợt tên \"{name}\". Đặt tên khác để phân biệt " +
+                $"(ví dụ \"{name} đợt 2\") — trùng tên thì Staff và PI không biết đâu với đâu.");
     }
 
     public async Task<CycleDto> UpdateCycleAsync(int cycleId, CreateCycleRequest request)
@@ -381,9 +386,12 @@ public class CycleService : ICycleService
         // Danh mục mặc định do hệ thống tự sinh thì xoá theo được; danh mục Staff tạo tay thì không.
         if (await _cycles.Orders.AnyAsync(o => o.CycleId == cycleId && !o.IsDefault))
             blockers.Add("danh mục đặt hàng");
-        var cycleKey = cycleId.ToString();
-        if (await _cycles.DeadlineExtensions.AnyAsync(e => e.TargetType == "CYCLE" && e.TargetId == cycleKey))
-            blockers.Add("lịch sử gia hạn");
+
+        // ⚠ Lịch sử gia hạn KHÔNG còn là lý do chặn. Rule #19 ("gia hạn = log, không ghi đè") nói về
+        // việc không được đè lên deadline gốc — nó không bắt bản ghi log phải sống mãi. Một đợt
+        // chưa có đề tài lẫn vòng chấm thì lần gia hạn của nó chẳng gia hạn cho ai: giữ log lại chỉ
+        // khiến đợt tạo-thử-rồi-bấm-thử-gia-hạn kẹt vĩnh viễn, không xoá được mà cũng không hiểu vì
+        // sao. Có đề tài/vòng chấm thì hai kiểm tra ở trên đã chặn rồi — log đi theo đợt là đúng.
 
         if (blockers.Count > 0)
             throw new InvalidOperationException(
@@ -395,6 +403,14 @@ public class CycleService : ICycleService
         foreach (var o in defaults) _cycles.RemoveOrder(o);
         var links = await _cycles.CycleTracks.Where(ct => ct.CycleId == cycleId).ToListAsync();
         foreach (var l in links) _cycles.RemoveCycleTrack(l);
+
+        // Log gia hạn trỏ tới đợt bằng chuỗi TargetId nên không có khoá ngoại dọn hộ — bỏ sót là
+        // để lại bản ghi mồ côi trỏ vào đợt không còn tồn tại.
+        var cycleKey = cycleId.ToString();
+        var extensions = await _cycles.DeadlineExtensions
+            .Where(e => e.TargetType == "CYCLE" && e.TargetId == cycleKey)
+            .ToListAsync();
+        foreach (var e in extensions) _cycles.RemoveDeadlineExtension(e);
 
         _cycles.Remove(cycle);
         await _cycles.SaveChangesAsync();
