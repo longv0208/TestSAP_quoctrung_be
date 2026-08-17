@@ -552,8 +552,13 @@ public class DocumentExportService : IDocumentExportService
             AppendParagraph(body, $"CHỦ NHIỆM ĐỀ TÀI: {pi?.FullName ?? Blank}");
             AppendParagraph(body, $"Đơn vị công tác: {c.Project?.HostingUnit?.Name ?? Blank}");
 AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? "………………"}          Email: {pi?.Email ?? "………………"}");
-            // BM05 có mục "Địa chỉ" của Bên B — hệ thống chưa lưu địa chỉ cá nhân nên để trống điền tay.
-            AppendParagraph(body, $"Địa chỉ: {Blank}");
+            // BM05 có mục "Địa chỉ" của Bên B. Trước 17/08 dòng này để CỨNG dấu chấm lửng kèm ghi
+            // chú "hệ thống chưa lưu địa chỉ" — nhưng lý lịch khoa học ĐÃ CÓ `InstitutionAddress`,
+            // và chính file này đã dùng nó ở bảng lý lịch phía trên. Người dùng khai xong vẫn thấy
+            // ô trống thì tưởng hệ thống nuốt mất dữ liệu.
+            // Dùng địa chỉ cơ quan: chủ nhiệm ký với tư cách cán bộ của trường, không phải cá nhân.
+            var piAddress = pi?.AcademicProfile?.InstitutionAddress;
+            AppendParagraph(body, $"Địa chỉ: {(string.IsNullOrWhiteSpace(piAddress) ? Blank : piAddress)}");
             // C3 — tài khoản ngân hàng & CCCD của Bên B do CHÍNH CHỦ tự khai trong hồ sơ cá nhân.
             // Đây là chỗ DUY NHẤT số đầy đủ rời khỏi hệ thống; mọi đường đọc qua API đều bị che.
             // Chưa khai thì để dấu chấm lửng đúng như bản giấy, ký ngoài điền tay — TUỲ CHỌN, không
@@ -774,7 +779,7 @@ AppendParagraph(body,
     public async Task<(byte[] Content, string FileName)> ExportSettlementDocAsync(Guid contractId)
     {
         var c = await _contracts.Query()
-            .Include(x => x.Project).ThenInclude(p => p.PiUser)
+            .Include(x => x.Project).ThenInclude(p => p.PiUser).ThenInclude(u => u.AcademicProfile)
             .Include(x => x.Project).ThenInclude(p => p.HostingUnit)
             .FirstOrDefaultAsync(x => x.Id == contractId)
             ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
@@ -830,7 +835,17 @@ AppendParagraph(body,
             AppendParagraph(body, $"Chủ nhiệm đề tài: {pi?.FullName ?? Blank}");
             AppendParagraph(body, $"Đơn vị công tác: {c.Project?.HostingUnit?.Name ?? Blank}");
             AppendParagraph(body, $"Điện thoại: {pi?.Phone ?? Blank}    Email: {pi?.Email ?? Blank}");
-            AppendParagraph(body, $"Số tài khoản: {Blank} tại Ngân hàng {Blank}");
+            // Trước 17/08 hai ô này để CỨNG dấu chấm lửng — biên bản thanh lý in ra luôn thiếu số
+            // tài khoản dù lý lịch khoa học đã khai, mà đây lại đúng là chỗ dùng để chuyển nốt tiền.
+            // Lấy cùng nguồn với hợp đồng BM05 để hai văn bản không lệch nhau.
+            var idn = pi?.AcademicProfile;
+            var stk = string.IsNullOrWhiteSpace(idn?.BankAccountNumber) ? Blank : idn!.BankAccountNumber!;
+            // Mẫu in sẵn chữ "tại Ngân hàng …" mà người khai thường gõ cả cụm "Ngân hàng TMCP …"
+            // ⇒ bỏ tiền tố trùng, tránh ra "tại Ngân hàng Ngân hàng TMCP…".
+            var bank = idn?.BankName?.Trim();
+            if (!string.IsNullOrWhiteSpace(bank) && bank!.StartsWith("Ngân hàng", StringComparison.OrdinalIgnoreCase))
+                bank = bank["Ngân hàng".Length..].TrimStart();
+            AppendParagraph(body, $"Số tài khoản: {stk} tại Ngân hàng {(string.IsNullOrWhiteSpace(bank) ? Blank : bank)}");
             AppendParagraph(body, "");
 
             AppendParagraph(body,

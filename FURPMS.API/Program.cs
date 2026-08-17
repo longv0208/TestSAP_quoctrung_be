@@ -1,5 +1,6 @@
 using System.Text;
 using FURPMS.API.Middleware;
+using FURPMS.API.Serialization;
 using FURPMS.Application.Settings;
 using FURPMS.Infrastructure.Data;
 using FURPMS.Infrastructure.Extensions;
@@ -12,7 +13,13 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
 
-builder.Services.AddControllers();
+// Ngày giờ client gửi lên phải về UTC trước khi chạm EF — Npgsql từ chối Kind=Unspecified trên cột
+// timestamptz, mà ô datetime-local của trình duyệt gửi đúng kiểu đó. Xem UtcDateTimeConverter.
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.Converters.Add(new UtcDateTimeConverter());
+    o.JsonSerializerOptions.Converters.Add(new NullableUtcDateTimeConverter());
+});
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>

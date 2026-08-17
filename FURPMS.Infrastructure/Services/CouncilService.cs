@@ -812,9 +812,11 @@ public class CouncilService : ICouncilService
             return $"Còn {unscheduled} đề tài chưa có khung giờ mà buổi họp đã kín " +
                    $"({assigned}/{meetingMinutes} phút). Kéo dài buổi họp hoặc tách sang buổi khác.";
 
-        if (unscheduled > 0)
-            return $"Còn {unscheduled} đề tài chưa có khung giờ, buổi họp còn trống {remaining} phút.";
-
+        // Còn đề tài chưa xếp NHƯNG buổi họp vẫn còn chỗ ⇒ không có gì sai, Staff chỉ đang làm dở.
+        // Trước 17/08 chỗ này trả "Còn N đề tài chưa có khung giờ, buổi họp còn trống X phút" —
+        // hiện ngay khi vừa mở bảng, lúc chưa ai kịp nhập gì. Cảnh báo nào cũng bật thì thành
+        // tiếng ồn, tới lúc có vấn đề thật (hai nhánh trên) người dùng đã quen bỏ qua.
+        // Số liệu vẫn nằm ở UnscheduledCount / RemainingMinutes cho giao diện tự bày nếu cần.
         return null;
     }
 

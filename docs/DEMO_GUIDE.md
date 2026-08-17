@@ -57,6 +57,9 @@ Mục đích **không phải** "màn nào cũng có chữ", mà là **mỗi bư�
 - **Ứng dụng 2026** (`UD26`) — đang **mở nhận** đề cương.
 - **Cơ bản 2026** (`CB26`) — đã **đóng nhận**, đang xét duyệt / thực hiện.
 
+> **Nhớ nhanh ai là chủ nhiệm:** PI 2 (`pi2.demo`) giữ đúng **3** đề tài — `002` (mới nộp),
+> `005` (chờ ký hợp đồng), `008` (đã hoàn thành). **Bảy đề tài còn lại đều của PI 1** (`pi.demo`).
+
 | Mã | Đề tài | Trạng thái | PI | Demo được gì |
 |---|---|---|---|---|
 | `NCKH-2026-001` | Phát hiện đạo văn bằng học sâu | **Nháp** | PI 1 | Wizard nộp đề cương · **upload file → AI trích xuất** (cố ý chưa có file đính kèm) |
@@ -65,16 +68,22 @@ Mục đích **không phải** "màn nào cũng có chữ", mà là **mỗi bư�
 | `NCKH-2026-004` | Học liệu thích ứng | **Yêu cầu chỉnh sửa** | PI 1 | PI sửa & nộp lại, vòng mở lại (rule #1) |
 | `NCKH-2026-005` | Đánh giá giảng dạy bằng NLP | **Đã duyệt**, chưa có HĐ | PI 2 | Staff **lập hợp đồng** + **xuất Word BM05** |
 | `NCKH-2026-006` | Tối ưu lịch thi | HĐ **đang chạy**, báo cáo kỳ 1 **chờ duyệt** | PI 1 | Staff **duyệt báo cáo tiến độ** · PI **xin gia hạn** |
-| `NCKH-2026-007` | Nhận dạng chữ viết tay | **Đang nghiệm thu** | PI 1 | Hội đồng **nghiệm thu** Đạt/Không đạt (BM11) · hồ sơ nghiệm thu |
-| `NCKH-2026-008` | Khuyến nghị môn học | **Hoàn thành** | PI 2 | Vòng đời trọn vẹn: timeline, giải ngân đủ đợt, **quyết toán** |
+| `NCKH-2026-007` | Nhận dạng chữ viết tay | **Đang nghiệm thu** ⭐ | PI 1 | **Màn chính vòng 2**: `reviewer3` (Phản biện) chấm **BM10** · cả 5 người bỏ phiếu **BM11** Đạt/Không đạt · hồ sơ nghiệm thu ở cột trái. Có sẵn **lịch sử vòng 1** (hội đồng, phiếu chấm, biên bản đã chốt, kết quả Đạt) |
+| `NCKH-2026-008` | Khuyến nghị môn học | **Hoàn thành** | PI 2 | Vòng đời trọn vẹn: **cả 2 vòng đều Đạt**, timeline, giải ngân đủ đợt, **quyết toán**, **1 phụ lục gia hạn 3 tháng đã duyệt**, xuất **BM13** biên bản thanh lý |
 
 Kèm theo:
 - **3 hội đồng**, mỗi hội đồng **5 người** — số **LẺ** và nằm trong 3–5 (xét duyệt, Điều 8.2) /
   5–7 (nghiệm thu, Điều 12.2), đủ Chủ tịch/Thư ký/Phản biện, **tất cả đã xác nhận lời mời**, đã có lịch họp.
 - **#3, #4, #5 chấm chung MỘT hội đồng, một buổi họp, ba slot con 45 phút** → mới có gì để xem ở
   màn "lịch chấm"; hội đồng nào cũng chỉ 1 đề tài thì tính năng đó vô hình.
-- **Bộ tiêu chí đúng BM03**: 10+20+40+20+10 = **Cộng 100** — bộ không cộng đủ `maxTotalScore` thì
-  không nộp phiếu chấm được.
+- **Hai bộ tiêu chí, hai vòng khác nhau** (rule #24):
+  · vòng xét duyệt **BM03** 10+20+40+20+10 = **Cộng 100**, **mọi** thành viên chấm (Điều 8.3.b);
+  · vòng nghiệm thu **BM10** 4 tiêu chí × 5 = **20**, **chỉ Phản biện** chấm (Điều 12.3.b).
+  Bộ không cộng đủ `maxTotalScore` thì không nộp phiếu chấm được.
+- **Nút "Điền nhanh cả phiếu"** ở màn chấm — đổ sẵn điểm mức Khá + nhận xét cho toàn bộ tiêu chí,
+  sửa lại được, **không tự nộp**. Đỡ phải gõ tay 5 lần khi diễn cảnh "5 người cùng chấm".
+- **Lý lịch khoa học đủ cho mọi tài khoản** (CCCD, nơi/ngày cấp, số tài khoản, ngân hàng, điện thoại)
+  ⇒ **xuất hợp đồng Word (BM05) ra là điền sẵn**, không phải gõ tay từng ô.
 - **File Word thuyết minh sinh sẵn** cho 6 đề tài (#2→#7), nội dung khớp từng đề tài → demo
   **AI đọc file → tóm tắt → đối chiếu biểu mẫu** chạy thật, không phải upload tay tại chỗ.
 

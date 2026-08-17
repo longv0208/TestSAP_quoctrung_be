@@ -23,6 +23,30 @@
 
 ## 🔧 Việc còn lại / đang dang dở (backlog)
 
+### A0. Đã TẠM ẨN khỏi giao diện (code còn nguyên, bật lại dễ)
+
+> Ẩn chứ không xoá — mỗi mục ghi rõ **ẩn ở đâu** và **vì sao**, để lôi ra lại không phải dò.
+
+| Ẩn ngày | Cái gì | Ẩn ở đâu | Vì sao |
+|---|---|---|---|
+| 17/08 | **3 thẻ AI bên PI** — Đối chiếu form↔file, Tóm tắt, Góp ý | `features/pi/proposals/ProposalDetailPage.tsx` (chú thích khối render + khối import) | Qua các đợt thử chưa lần nào giúp PI ra quyết định gì: PI đã biết rõ đề tài của mình, tóm tắt do máy viết không thêm thông tin. **AI vẫn chạy và vẫn hữu ích ở màn NGƯỜI CHẤM** (`ProposalReviewWorkspace` → `AiSummaryCard` với `councilId`+`autoGenerate`) — ở đó người đọc chưa từng thấy đề tài. Endpoint/hook/component giữ nguyên. |
+| 17/08 | **Nút Bắt đầu / Kết thúc họp** | `features/staff/meetings/columns.tsx` · `features/staff/proposal-reviews/MeetingsPanel.tsx` | Không luồng nào chờ `IN_PROGRESS`; Chủ tịch chốt biên bản thì `ReviewScoringService` đã tự đóng buổi họp. Endpoint BE giữ lại. |
+| 17/08 | **Ô "Phản biện ngoài"** khi thêm thành viên hội đồng | `features/staff/proposal-reviews/AddCouncilMemberDialog.tsx` | Cờ `IsExternal` chỉ được lưu rồi trả về, không luồng nào rẽ nhánh theo nó — mức thù lao riêng cho người ngoài trường đã bỏ cùng toàn bộ phần tính tiền (rule #15). Cột DB giữ nguyên, vẫn gửi `false`. |
+| 17/08 | **"Tìm kiếm bằng AI"** ở menu PI | `constants/nav.ts` (chú thích dòng `nav.aiSearch`) | Route `ROUTES.AI_SEARCH` và `SemanticSearchPage` vẫn còn, chỉ gỡ khỏi menu. |
+| 17/08 | **Tab "Chấm điểm" ở vòng NGHIỆM THU** | `features/reviewer/proposal-review/ProposalReviewWorkspace.tsx` | **QĐ543 Biểu mẫu 11 không có tiêu chí lẫn thang điểm** — chỉ ĐẠT / KHÔNG ĐẠT + lý do; BM12 chỉ đếm phiếu Đạt/Không đạt/Xuất sắc. Tab "Nghiệm thu" (`AcceptanceEvaluationForm`, `PASS`/`FAIL`) đã làm đúng BM11. Bày tab chấm điểm chỉ ra ô trống "Chưa cấu hình tiêu chí chấm". Vòng XÉT DUYỆT vẫn chấm theo thang bình thường. |
+| 17/08 | **Menu người chấm: "Thành viên hội đồng" + "Chấm điểm"** | `constants/nav.ts` | Cả hai chỉ là **cách bày khác** của "Đề tài được phân công": cùng `useMyMembershipsQuery`, và **cả ba điều hướng tới đúng một đích** `assigned-reviews/{councilId}`. "Chấm điểm" = tập con (lọc thêm `roundStatus === OPEN`); "Thành viên hội đồng" = cùng dữ liệu đổi thẻ thành bảng. Ba lối vào một màn khiến người chấm tưởng còn việc ở tab kia. |
+| 17/08 | **File đề cương + thẻ AI ở vòng NGHIỆM THU** | `reviewer/proposal-review/ProposalReviewWorkspace.tsx` | Cả hai xoay quanh **đề cương** (bản kế hoạch đầu kỳ): `ProposalDocumentViewer` mở file thuyết minh, `AiSummaryCard` → `SuggestScoresAsync` đọc `Proposals` + file đề cương, **không đọc sản phẩm/báo cáo tổng kết**. Vòng 2 phải kết luận đề tài *làm ra được gì*, nên chìa bản kế hoạch ra là sai hướng. Hồ sơ đúng nằm ở tab "Hồ sơ nghiệm thu". Vòng XÉT DUYỆT giữ nguyên cả hai. |
+| 17/08 | **Đoạn văn tóm tắt** trong thẻ AI hỗ trợ chấm | `features/pi/proposals/AiSummaryCard.tsx` | Chỉ diễn đạt lại tab "Thông tin đề tài" ngay bên cạnh. Giữ Ưu điểm / Nhược điểm — đó mới là nhận định, và là chỗ AI đối chiếu file đính kèm với biểu mẫu. `summaryText` vẫn sinh & lưu ở máy chủ. |
+
+### A1. Xem chi tiết sản phẩm / báo cáo tiến độ (17/08)
+
+Trước đây cả Staff lẫn thành viên hội đồng chỉ thấy **tên + ngày nộp + trạng thái**. Mọi thứ chủ nhiệm thực sự gõ — yêu cầu khoa học, mô tả sản phẩm, nội dung đã làm / còn tồn, kế hoạch kỳ sau, kiến nghị, bảng tiến độ theo hoạt động (BM06), link Drive — **đã có sẵn trong phản hồi máy chủ** nhưng không màn nào bày ra.
+
+- Component dùng chung: `components/shared/DossierDetailSheet.tsx` (`DeliverableDetailSheet` + `ProgressReportDetailSheet`) — panel trượt phải, **chỉ xem**, nút duyệt vẫn ở chỗ cũ.
+- Gắn ở: hội đồng `reviewer/proposal-review/AcceptanceDossierPanel.tsx` · Staff `staff/contracts/DeliverablesPanel.tsx` + `ProgressReportsPanel.tsx`.
+- BE: `DeliverableResponse` thêm `scientificRequirements` + `notes`.
+- Link demo: mọi minh chứng trong `DemoScenarioSeeder` trỏ về **một thư mục Drive có thật** (`DemoEvidenceFolderUrl`) — trước đó là đường dẫn bịa `.../1demo-.../view`, bấm vào ra trang lỗi Google nên lúc demo trông như hỏng.
+
 ### A. Code chưa làm / làm dở
 - **Phase 5 — Versioning + pin biểu mẫu chấm (RubricTemplate)**: chưa làm. Cần migration + rewire chỗ resolve template khi chấm (FE `RubricForm` đang lấy template active đầu tiên). Rủi ro vừa → làm phiên riêng.
 - **i18n incremental**: mới key qua `t()` ở 2 màn (CycleManagement, TrackWorkspace). Các màn khác đã Việt hoá "track"→"lĩnh vực" **inline** → chuyển dần sang key i18n.

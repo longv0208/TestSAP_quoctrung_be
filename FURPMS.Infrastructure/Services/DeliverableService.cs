@@ -319,6 +319,8 @@ public class DeliverableService : IDeliverableService
         CategoryName = d.Category?.Name,
         ProductName = d.ProductName,
         Description = d.Description,
+        ScientificRequirements = d.ScientificRequirements,
+        Notes = d.Notes,
         DueDate = d.DueDate,
         AcceptanceStatus = d.AcceptanceStatus,
         IsCompleted = d.IsCompleted,

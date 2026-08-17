@@ -31,6 +31,17 @@ namespace FURPMS.Infrastructure.Data;
 /// </summary>
 public class DemoScenarioSeeder
 {
+    /// <summary>
+    /// Thư mục Drive dùng chung cho MỌI link minh chứng trong dữ liệu demo.
+    /// <para>
+    /// Trước đây mỗi chỗ ghi một đường dẫn bịa (<c>.../1demo-san-pham-nghiem-thu/view</c>) — bấm
+    /// vào ra trang lỗi của Google, nên lúc demo trông như hệ thống hỏng. Trỏ hết về một thư mục
+    /// CÓ THẬT thì mọi nút "Mở link" đều mở được. Đổi link demo chỉ cần sửa đúng một chỗ này.
+    /// </para>
+    /// </summary>
+    private const string DemoEvidenceFolderUrl =
+        "https://drive.google.com/drive/folders/1_upAOnWZKIvEZ44l-4BV-K7Xyzx3p88D?usp=sharing";
+
     private readonly FURPMSDbContext _db;
     private readonly IFileStorage _storage;
     private readonly IDocumentExportService _export;
@@ -671,7 +682,7 @@ public class DemoScenarioSeeder
             ExpenditureToDate = 38_000_000m,
             NextPeriodPlan = "Tối ưu hiệu năng, chạy đối chứng trên học kỳ Xuân 2027 và viết bài báo hội nghị.",
             PiRecommendations = "Đề nghị Phòng Khảo thí cung cấp thêm dữ liệu lịch sử 2 học kỳ để mở rộng tập kiểm thử.",
-            ReportFileUrl = "https://drive.google.com/file/d/1demo-bao-cao-ky-1/view",
+            ReportFileUrl = DemoEvidenceFolderUrl,
             SubmittedAt = now.AddDays(-5),
             Status = ProgressReportStatus.Submitted,
             DueDate = DateOnly.FromDateTime(now).AddDays(-2),
@@ -735,7 +746,7 @@ public class DemoScenarioSeeder
         foreach (var d in deliverables)
         {
             d.SubmittedAt = now.AddDays(-20);
-            d.FileUrl = "https://drive.google.com/file/d/1demo-san-pham-nghiem-thu/view";
+            d.FileUrl = DemoEvidenceFolderUrl;
             d.IsCompleted = true;
             d.AcceptanceStatus = AcceptanceStatus.Pending;
         }
@@ -776,13 +787,17 @@ public class DemoScenarioSeeder
         _db.FinalReports.Add(new FinalReport
         {
             ProjectId = project.Id,
-            ReportFileUrl = "https://drive.google.com/file/d/1demo-bao-cao-tong-ket/view",
+            ReportFileUrl = DemoEvidenceFolderUrl,
             Language = "VI",
             SubmittedAt = now.AddDays(-18),
             Deadline = DateOnly.FromDateTime(now).AddDays(12),
             Status = FinalReportStatus.Submitted
         });
         await _db.SaveChangesAsync();
+
+        // LỊCH SỬ VÒNG 1 trước đã — đề tài không thể tới nghiệm thu mà chưa qua xét duyệt.
+        await SeedPriorReviewHistoryAsync(ctx, project, await GetOrCreateReviewRoundAsync(ctx),
+            approvedAt: now.AddDays(-350), meetingRoom: "Phòng họp A302, Toà Alpha, Cơ sở Hoà Lạc");
 
         // Vòng nghiệm thu + hội đồng 5 người (Điều 12.2 cho 5–7), có phản biện.
         var round = new ReviewRound
@@ -870,8 +885,8 @@ public class DemoScenarioSeeder
         foreach (var d in deliverables)
         {
             d.SubmittedAt = now.AddDays(-200);
-            d.FileUrl = "https://drive.google.com/file/d/1demo-san-pham-hoan-thanh/view";
-            d.TrialEvidenceUrl = "https://drive.google.com/file/d/1demo-minh-chung-thu-nghiem/view";
+            d.FileUrl = DemoEvidenceFolderUrl;
+            d.TrialEvidenceUrl = DemoEvidenceFolderUrl;
             d.IsCompleted = true;
             d.AcceptanceStatus = AcceptanceStatus.Passed;
             d.QualityAssessment = "Đạt yêu cầu khoa học, đã được hội đồng nghiệm thu thông qua.";
@@ -938,8 +953,8 @@ public class DemoScenarioSeeder
         _db.FinalReports.Add(new FinalReport
         {
             ProjectId = project.Id,
-            ReportFileUrl = "https://drive.google.com/file/d/1demo-bao-cao-tong-ket-hoan-thanh/view",
-            SummaryFileUrl = "https://drive.google.com/file/d/1demo-bao-cao-tom-tat/view",
+            ReportFileUrl = DemoEvidenceFolderUrl,
+            SummaryFileUrl = DemoEvidenceFolderUrl,
             Language = "VI",
             SubmittedAt = now.AddDays(-200),
             FinalSubmittedAt = now.AddDays(-150),
@@ -961,6 +976,37 @@ public class DemoScenarioSeeder
             Notes = "Đã quyết toán đủ, không có khoản phải hoàn trả."
         });
         await _db.SaveChangesAsync();
+
+        // Một PHỤ LỤC GIA HẠN đã duyệt — trước đây bảng `amendment_requests` rỗng hoàn toàn nên
+        // tab "Điều chỉnh" của mọi hợp đồng đều trống, không demo được luồng xin gia hạn.
+        // 3 tháng nằm trong trần 1/2 thời gian thực hiện (QĐ543 Điều 10.4: 12 tháng ⇒ tối đa 6).
+        var extensionCat = await _db.AmendmentCategories.FirstOrDefaultAsync(c => c.Code == "EXTENSION");
+        if (extensionCat != null && !await _db.AmendmentRequests.AnyAsync(a => a.ContractId == contract.Id))
+        {
+            _db.AmendmentRequests.Add(new AmendmentRequest
+            {
+                Id = Guid.NewGuid(),
+                ContractId = contract.Id,
+                CategoryId = extensionCat.Id,
+                ChangeDescription = "Gia hạn thời gian thực hiện đề tài thêm 03 tháng.",
+                OldValue = "12",
+                NewValue = "3",
+                Justification = "Việc thu thập dữ liệu khảo sát người dùng phụ thuộc lịch đăng ký môn học của sinh viên, "
+                              + "rơi đúng kỳ nghỉ nên chậm hơn kế hoạch khoảng một quý.",
+                RequestedBy = ctx.Pi2.Id,
+                RequestedAt = now.AddDays(-300),
+                RequiresRectorApproval = false,
+                ReviewedBy = ctx.Staff.Id,
+                ReviewedAt = now.AddDays(-295),
+                Status = "APPROVED",
+                ReviewerComments = "Đồng ý gia hạn 03 tháng; đề nghị chủ nhiệm bám sát mốc mới, không gia hạn tiếp."
+            });
+            await _db.SaveChangesAsync();
+        }
+
+        // LỊCH SỬ VÒNG 1 — đề tài hoàn thành phải xem lại được cả chặng xét duyệt đầu tiên.
+        await SeedPriorReviewHistoryAsync(ctx, project, await GetOrCreateReviewRoundAsync(ctx),
+            approvedAt: now.AddDays(-530), meetingRoom: "Phòng họp A201, Toà Alpha, Cơ sở Hoà Lạc");
 
         // Hội đồng nghiệm thu đã chốt "Đạt" — để tab nghiệm thu của đề tài hoàn thành không trống.
         var round8 = new ReviewRound
@@ -1022,6 +1068,70 @@ public class DemoScenarioSeeder
 
     private Task<bool> ExistsAsync(string code) =>
         _db.Projects.IgnoreQueryFilters().AnyAsync(p => p.ProjectCode == code);
+
+
+    /// <summary>
+    /// Dựng <b>lịch sử vòng XÉT DUYỆT đã kết thúc</b> cho một đề tài đang/đã qua nghiệm thu.
+    ///
+    /// <para>
+    /// Trước 17/08 kịch bản #7 (đang nghiệm thu) và #8 (đã hoàn thành) <b>chỉ có vòng ACCEPTANCE</b>
+    /// — không vòng REVIEW, không hội đồng xét duyệt, không biên bản. Tức là hai đề tài tự nhiên
+    /// xuất hiện ở nghiệm thu mà chưa từng được duyệt đề cương: mở màn "Hội đồng &amp; Chấm" ra là
+    /// thấy trống, và không ai giải thích được vì sao chúng có hợp đồng.
+    /// </para>
+    /// <para>
+    /// Dùng CHUNG vòng REVIEW của lĩnh vực (một vòng phủ nhiều đề tài — đúng mô hình Phase B),
+    /// nhưng lập <b>hội đồng riêng</b> đã họp xong trong quá khứ: đủ 5 người, phiếu chấm đầy đủ,
+    /// biên bản đã chốt, kết quả ĐẠT. Nhờ vậy Staff mở vòng 1 ra thấy đúng "đã xong, ai chấm, họp
+    /// ngày nào", còn dòng thời gian của đề tài liền mạch từ xét duyệt → hợp đồng → nghiệm thu.
+    /// </para>
+    /// </summary>
+    private async Task SeedPriorReviewHistoryAsync(
+        Ctx ctx, Project project, ReviewRound reviewRound, DateTime approvedAt, string meetingRoom)
+    {
+        // Đã có kết quả vòng 1 rồi thì thôi — hàm chạy lại nhiều lần vẫn an toàn.
+        if (await _db.ProjectRounds.AnyAsync(pr => pr.ProjectId == project.Id && pr.RoundId == reviewRound.Id))
+            return;
+
+        _db.ProjectRounds.Add(new ProjectRound
+        {
+            ProjectId = project.Id,
+            RoundId = reviewRound.Id,
+            Status = ReviewRoundStatus.Passed
+        });
+        await _db.SaveChangesAsync();
+
+        // Họp TRƯỚC ngày phê duyệt — mốc thời gian phải xuôi, nếu không timeline đọc ra vô lý.
+        var council = await CreateCouncilAsync(ctx, reviewRound, "REVIEW", minMembers: 3, maxMembers: 5,
+            meetingTitle: "Họp Hội đồng xét duyệt đề cương đề tài cấp Trường",
+            location: meetingRoom,
+            scheduledAt: approvedAt.AddDays(-7), durationMinutes: 90,
+            meetingStatus: MeetingStatus.Completed, actuallyAttended: true);
+
+        _db.CouncilProjectAssignments.Add(new CouncilProjectAssignment
+        {
+            CouncilId = council.Council.Id,
+            ProjectId = project.Id,
+            MeetingId = council.Meeting.Id,
+            SlotStartAt = council.Meeting.ScheduledAt,
+            SlotDurationMinutes = 90,
+            SlotOrder = 1
+        });
+        await _db.SaveChangesAsync();
+
+        // Cả 5 thành viên đều chấm (Điều 8.3.b: mọi thành viên dự họp đánh giá theo BM03).
+        await AddScoreBallotsAsync(ctx, council.Council, council.Members, project.Id,
+            skipMemberIndexes: Array.Empty<int>(), baseQuality: 0.85m, submittedAt: approvedAt.AddDays(-7));
+
+        await AddDecisionAsync(council.Council, council.Members, project.Id,
+            ReviewResult.Approved,
+            "Hội đồng nhất trí thông qua đề cương. Mục tiêu rõ ràng, phương pháp phù hợp, sản phẩm đăng ký khả thi trong thời gian và kinh phí đề xuất.",
+            "Đề nghị chủ nhiệm bổ sung mốc kiểm tra giữa kỳ và làm rõ tiêu chí nghiệm thu cho từng sản phẩm.",
+            approvedAt);
+
+        await SetProjectRoundAsync(project.Id, reviewRound.Id,
+            ReviewRoundStatus.Passed, ReviewResult.Approved, approvedAt);
+    }
 
     private sealed record CouncilBundle(ReviewCouncil Council, List<CouncilMember> Members, CouncilMeeting Meeting);
 

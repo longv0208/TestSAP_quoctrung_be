@@ -19,6 +19,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\FURPMS.Infrastructure\FURPMS.Infrastructure.csproj" />
+    <!-- Cần cho test bộ chuyển ngày giờ sang UTC (tầng đọc JSON nằm ở FURPMS.API). -->
+    <ProjectReference Include="..\FURPMS.API\FURPMS.API.csproj" />
   </ItemGroup>
 
   <ItemGroup>

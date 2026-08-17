@@ -83,6 +83,7 @@ public class DatabaseSeeder
         await SeedDemoProposalAsync();
         await EnsureDemoCycleOpenAsync();
         await SeedDemoAccountsAsync();
+        await SeedAcademicProfilesAsync();
         await SeedApprovedScenarioAsync();
         await ResetDemoPasswordsAsync();
     }
@@ -296,6 +297,11 @@ public class DatabaseSeeder
     // Bộ tiêu chí chấm (rubric) cho vòng xét duyệt — để reviewer chấm điểm được.
     private async Task SeedRubricCriteriaAsync()
     {
+        // Mỗi bộ tự kiểm tồn tại RIÊNG. Trước đây hàm này `return` ngay khi thấy bộ REVIEW, nên
+        // bộ nghiệm thu thêm sau đó KHÔNG BAO GIỜ được seed trên cơ sở dữ liệu đã chạy — chỉ máy
+        // nào tạo DB mới mới có. Bỏ chung một cửa kiểm là dính lại đúng bẫy đó.
+        await SeedAcceptanceRubricAsync();
+
         if (await _db.RubricTemplates.AnyAsync(t => t.TemplateType == "REVIEW"))
             return;
 
@@ -321,8 +327,155 @@ public class DatabaseSeeder
         await _db.SaveChangesAsync();
     }
 
+    /// <summary>
+    /// Bộ tiêu chí cho vòng NGHIỆM THU — chép nguyên <b>QĐ543 Biểu mẫu 10</b>
+    /// ("Nhận xét đề tài NCKH — dùng cho người phản biện").
+    ///
+    /// <para>
+    /// Nghiệm thu chấm KHÁC xét duyệt, và khác cả về ai chấm (Điều 12.3.b):
+    /// <list type="bullet">
+    ///   <item>Chỉ <b>phản biện</b> phải nhận xét bằng văn bản theo BM10 — thang <b>1–5</b> mỗi mục
+    ///         (1 Yếu · 2 Trung bình · 3 Khá · 4 Tốt · 5 Xuất sắc).</item>
+    ///   <item><b>Mọi thành viên có mặt</b> bỏ phiếu theo BM11: chỉ <b>Đạt / Không đạt</b>, không
+    ///         điểm số. Phần đó đã có ở <c>AcceptanceEvaluationForm</c>, không dùng bộ này.</item>
+    /// </list>
+    /// </para>
+    /// <para>
+    /// <b>Vì sao 4 mục chứ không phải 5:</b> BM10 liệt kê 5 đề mục, nhưng mục thứ năm là
+    /// "Những nhận xét khác" — lời bình tự do, không phải một chiều đo để cho điểm. Bốn mục đầu
+    /// mới là "nội dung đánh giá" mà câu "Thang điểm: Từ 1 đến 5 cho mỗi nội dung đánh giá" nhắm
+    /// tới. Tổng vì thế là <b>20</b>. "Những nhận xét khác" và "Đánh giá chung" nhập ở ô nhận xét
+    /// chung của phiếu chấm.
+    /// </para>
+    /// </summary>
+    private async Task SeedAcceptanceRubricAsync()
+    {
+        if (await _db.RubricTemplates.AnyAsync(t => t.TemplateType == "ACCEPTANCE"))
+            return;
+
+        var template = new RubricTemplate
+        {
+            TemplateType = "ACCEPTANCE",   // khớp ReviewRound.RoundType; BE chưa có hằng số riêng
+            Name = "Phiếu nhận xét nghiệm thu (BM10 — dành cho phản biện)",
+            MaxTotalScore = 20m,
+            IsActive = true,
+            AppliesBasic = true,
+            AppliesApplied = true
+        };
+        _db.RubricTemplates.Add(template);
+        await _db.SaveChangesAsync();
+
+        _db.RubricCriteria.AddRange(
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính cấp thiết của đề tài nghiên cứu",                        MaxScore = 5m, Sequence = 1, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Đóng góp khoa học",                                            MaxScore = 5m, Sequence = 2, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Ý nghĩa thực tiễn",                                            MaxScore = 5m, Sequence = 3, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Kết quả thực tế đạt được so với sản phẩm dự kiến trong đề cương", MaxScore = 5m, Sequence = 4, IsActive = true }
+        );
+        await _db.SaveChangesAsync();
+    }
+
     // Kịch bản "đã duyệt + đang thực hiện hợp đồng" (idempotent theo ProjectCode DEMO-2026-002)
     // để demo các màn sau duyệt: hợp đồng (có PHASE), giải ngân, sản phẩm/nghiệm thu.
+    /// <summary>
+    /// Lý lịch khoa học (BM02) cho toàn bộ tài khoản demo.
+    ///
+    /// <para>
+    /// Trước 17/08 chỉ mỗi <c>pi.demo</c> có hồ sơ, và cũng thiếu đúng những trường mà **hợp đồng
+    /// cần**: số căn cước, nơi cấp, số tài khoản, ngân hàng. Vì vậy xuất hợp đồng Word (BM05) ra
+    /// toàn dấu "…" phải điền tay, còn màn lý lịch của pi2 và các thành viên hội đồng thì trống.
+    /// </para>
+    /// <para>
+    /// Số liệu công bố để mức hợp lý theo học vị, không phải con số gây chú ý — QĐ543 không quy
+    /// định ngưỡng công bố để làm chủ nhiệm, nên đây thuần tuý là dữ liệu demo.
+    /// Chạy lại nhiều lần an toàn: chỉ thêm cho người CHƯA có hồ sơ.
+    /// </para>
+    /// </summary>
+    private async Task SeedAcademicProfilesAsync()
+    {
+        var rows = new (string Email, string Title, string Degree, string Spec, int Year,
+                        int Isi, int Intl, int Dom, int Patents, int Phd, int Master)[]
+        {
+            ("pi.demo@furpms.edu.vn",        "TS",    "Tiến sĩ",  "Khoa học máy tính",         1980, 6,  4, 11, 1, 2, 9),
+            ("pi2.demo@furpms.edu.vn",       "ThS",   "Thạc sĩ",  "Hệ thống thông tin",        1987, 1,  2,  7, 0, 0, 4),
+            ("reviewer1.demo@furpms.edu.vn", "PGS.TS","Tiến sĩ",  "Trí tuệ nhân tạo",          1972, 21, 14, 30, 3, 7, 26),
+            ("reviewer2.demo@furpms.edu.vn", "TS",    "Tiến sĩ",  "Khoa học dữ liệu",          1983, 9,  6, 15, 1, 1, 12),
+            ("reviewer3.demo@furpms.edu.vn", "TS",    "Tiến sĩ",  "Xử lý ngôn ngữ tự nhiên",   1981, 12, 7, 18, 2, 3, 15),
+            ("reviewer4.demo@furpms.edu.vn", "TS",    "Tiến sĩ",  "Công nghệ phần mềm",        1985, 7,  5, 13, 0, 1, 10),
+            ("reviewer5.demo@furpms.edu.vn", "ThS",   "Thạc sĩ",  "Kỹ thuật máy tính",         1989, 2,  3,  8, 0, 0, 3),
+            ("staff.demo@furpms.edu.vn",     "ThS",   "Thạc sĩ",  "Quản lý khoa học",          1986, 0,  1,  5, 0, 0, 2),
+        };
+
+        var emails = rows.Select(r => r.Email).ToList();
+        var users = await _db.Users.IgnoreQueryFilters()
+            .Where(u => emails.Contains(u.Email)).ToListAsync();
+        var existing = await _db.AcademicProfiles
+            .Where(a => users.Select(u => u.Id).Contains(a.UserId)).ToListAsync();
+
+        var added = 0;
+        var seq = 0;
+        foreach (var r in rows)
+        {
+            var user = users.FirstOrDefault(u => u.Email == r.Email);
+            if (user == null) continue;
+            seq++;
+
+            // Số điện thoại nằm ở bảng users — hợp đồng BM05 in "Điện thoại: …" lấy từ đây.
+            if (string.IsNullOrWhiteSpace(user.Phone))
+                user.Phone = $"09{(12 + seq):D2}{(100000 + seq * 7777) % 1000000:D6}";
+
+            // Hồ sơ CÓ SẴN thì chỉ bù trường còn trống, KHÔNG ghi đè thứ người dùng đã nhập.
+            // (pi.demo được tạo từ trước với hồ sơ thiếu đúng phần hợp đồng cần.)
+            var current = existing.FirstOrDefault(a => a.UserId == user.Id);
+            if (current != null)
+            {
+                current.NationalId ??= $"0010{DateTime.UtcNow.Year % 100:D2}{seq:D6}";
+                current.NationalIdIssuedDate ??= new DateOnly(2021, 6, 1).AddDays(seq * 11);
+                current.NationalIdIssuedPlace ??= "Cục Cảnh sát QLHC về TTXH";
+                current.BankAccountNumber ??= $"19{seq:D2}8800{seq:D4}";
+                current.BankName ??= "Ngân hàng TMCP Kỹ Thương Việt Nam (Techcombank) — CN Hoà Lạc";
+                if (current.IsiScopusCount == 0) current.IsiScopusCount = r.Isi;
+                if (current.DomesticJournalCount == 0) current.DomesticJournalCount = r.Dom;
+                current.UpdatedAt = DateTime.UtcNow;
+                continue;
+            }
+
+            _db.AcademicProfiles.Add(new AcademicProfile
+            {
+                UserId = user.Id,
+                AcademicTitle = r.Title,
+                DegreeLevel = r.Degree,
+                Specialization = r.Spec,
+                SpecializationAreas = r.Spec,
+                DateOfBirth = new DateOnly(r.Year, 3 + (seq % 9), 5 + (seq % 20)),
+                Gender = seq % 3 == 0 ? "Nữ" : "Nam",
+                Hometown = "Hà Nội",
+                Nationality = "Việt Nam",
+                Institution = "Trường Đại học FPT",
+                InstitutionAddress = "Khu Công nghệ cao Hoà Lạc, Thạch Thất, Hà Nội",
+                IsiScopusCount = r.Isi,
+                IntlJournalCount = r.Intl,
+                DomesticJournalCount = r.Dom,
+                IntlConferenceCount = r.Intl + 2,
+                DomesticConferenceCount = r.Dom + 3,
+                PatentsCount = r.Patents,
+                PhdSupervisedCount = r.Phd,
+                MasterSupervisedCount = r.Master,
+                IsEligiblePi = true,
+                // Những trường dưới đây là thứ BM05 (hợp đồng) bốc ra để điền sẵn.
+                NationalId = $"0010{DateTime.UtcNow.Year % 100:D2}{seq:D6}",
+                NationalIdIssuedDate = new DateOnly(2021, 6, 1).AddDays(seq * 11),
+                NationalIdIssuedPlace = "Cục Cảnh sát QLHC về TTXH",
+                BankAccountNumber = $"19{seq:D2}8800{seq:D4}",
+                BankName = "Ngân hàng TMCP Kỹ Thương Việt Nam (Techcombank) — CN Hoà Lạc",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            });
+            added++;
+        }
+
+        await _db.SaveChangesAsync();
+    }
+
     private async Task SeedApprovedScenarioAsync()
     {
         const string code = "DEMO-2026-002";
@@ -716,6 +869,18 @@ public class DatabaseSeeder
                 Value = SystemSettingKeys.DefaultCouncilInviteDeadlineDays.ToString(),
                 RecommendedValue = SystemSettingKeys.DefaultCouncilInviteDeadlineDays.ToString(),
                 Description = "Số ngày reviewer được phép xác nhận/từ chối lời mời trước khi quá hạn (1–60)."
+            },
+            // Công tắc này đã có hằng số + đã được CouncilService đọc từ lâu, nhưng chưa bao giờ
+            // được seed ⇒ không có dòng nào trong bảng ⇒ màn Cấu hình hệ thống không bày ra được.
+            // Tính năng vẫn chạy theo giá trị mặc định, chỉ là Admin không tắt được bằng giao diện.
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.CouncilAllowRespondOnBehalf,
+                Value = SystemSettingKeys.DefaultCouncilAllowRespondOnBehalf.ToString().ToLowerInvariant(),
+                RecommendedValue = SystemSettingKeys.DefaultCouncilAllowRespondOnBehalf.ToString().ToLowerInvariant(),
+                Description = "Cho phép chuyên viên xác nhận/từ chối thư mời THAY thành viên hội đồng " +
+                              "(thầy trả lời qua điện thoại, chuyên viên ghi nhận hộ). Tắt = chỉ thành viên tự trả lời. " +
+                              "Dù bật, hệ thống luôn ghi lại ai đã bấm hộ."
             },
             new SystemSetting
             {

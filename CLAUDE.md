@@ -81,6 +81,7 @@ Host=localhost;Port=5433;Database=furpms;Username=postgres;Password=Furpms@Stron
 - Check constraints: `b.ToTable(t => t.HasCheckConstraint("name", "sql"))`
 - Unique nullable: `HasIndex(x => x.Col).IsUnique().HasFilter("[col] IS NOT NULL")`
 - Circular FK → always set `OnDelete(DeleteBehavior.NoAction)` on the non-owning side
+- **Ngày giờ luôn UTC.** Cột PostgreSQL là `timestamptz`; Npgsql **ném lỗi** khi ghi `DateTime` có `Kind = Unspecified` → 500. `UtcDateTimeConverter` (đăng ký ở `Program.cs`) chuẩn hoá mọi `DateTime` đọc từ JSON, nên service không cần tự `ToUniversalTime()`. FE quy đổi ô `datetime-local` bằng `fromDateTimeLocalInput`/`toDateTimeLocalInput`, **không** `.slice(0, 16)`.
 
 ## Migration Workflow
 
@@ -189,6 +190,19 @@ Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
 11. **PI là actor DUY NHẤT tương tác** với hệ thống thay cho đề tài; thành viên đề tài chỉ là **data junction** (không đăng nhập, không tự nộp). **Reviewer** = mọi thành viên hội đồng; chức danh (Chủ tịch/Thư ký/Phản biện/Thành viên) chỉ là **field** khi gán — không tách actor.
 
 ### Hội đồng & chấm điểm
+
+24. **Hai vòng chấm KHÁC NHAU về cơ chế lẫn về ai chấm** (nguồn: QĐ543 Điều 8.3.b · Điều 12.2–12.3.b · BM03/BM04/BM10/BM11/BM12 — rà lại 17/08):
+
+| | Vòng XÉT DUYỆT (Điều 8) | Vòng NGHIỆM THU (Điều 12) |
+|---|---|---|
+| Quy mô hội đồng | **03–05** thành viên | **05–07** thành viên |
+| Ai chấm điểm | **mọi** thành viên dự họp | **chỉ phản biện** |
+| Biểu mẫu chấm | **BM03** — 5 tiêu chí, tổng **100** (10/20/40/20/10) | **BM10** — 4 tiêu chí, thang **1–5** mỗi mục, tổng **20** |
+| Kết luận | biên bản **BM04** | mọi thành viên có mặt bỏ phiếu **BM11 = Đạt/Không đạt** → biên bản **BM12** |
+
+- **Vai "Phản biện" CHỈ tồn tại ở vòng nghiệm thu.** Toàn văn QĐ543 nhắc "phản biện" đúng 5 lần, tất cả thuộc Điều 12/BM10/BM12; BM04 (biên bản xét duyệt) chỉ có "Ý kiến của các thành viên Hội đồng", không mục phản biện. BM12 còn đánh số "Phản biện 1 / Phản biện 2" tách khỏi "các thành viên".
+- **BM10 seed 4 tiêu chí chứ không phải 5:** mục thứ năm "Những nhận xét khác" là lời bình tự do, không phải chiều đo cho điểm ⇒ nhập ở ô nhận xét chung. (Diễn giải của nhóm — nếu thầy chốt khác thì sửa `SeedAcceptanceRubricAsync`.)
+- Phản biện làm **cả hai**: chấm BM10 *và* bỏ phiếu BM11.
 12. **Kết quả = QUYẾT ĐỊNH của Chủ tịch** sau khi hội đồng họp kín & thống nhất (cập nhật theo ghi âm thầy tuần 7 — KHÁC bản cũ "số phiếu đa số"). Hệ thống **hiển thị điểm/phiếu chỉ để tham khảo, KHÔNG tự đếm phiếu chốt**. Biên bản: **Thư ký soạn (nháp) → Chủ tịch duyệt = khóa → mới cập nhật status đề tài** (thành viên khác chỉ xem). Đã code: `ReviewScoringService.SaveMinutesAsync` (Thư ký) + `ApproveMinutesAsync` (Chủ tịch), cờ khóa = `CouncilDecision.FinalizedAt`.
 
 ### Mời reviewer & biểu mẫu

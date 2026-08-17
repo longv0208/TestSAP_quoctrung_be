@@ -71,6 +71,18 @@ Ngoài ra ASP.NET tự trả **400** cho lỗi model-binding (sai kiểu dữ li
 
 > ⚠️ **Đổi từ 17/08/2026 — `errorCode` chung KHÔNG được nuốt `message`.** 4 mã `CONFLICT`, `VALIDATION_FAILED`, `NOT_FOUND`, `UNEXPECTED` chỉ là **thùng chứa** theo kiểu exception, không phải loại lỗi cụ thể — mọi `InvalidOperationException` toàn hệ thống đều ra `CONFLICT`. FE (`axiosClient.resolveMessage`) trước đây ưu tiên bản dịch của `errorCode` nên **mọi lỗi 409/400 đều hiện đúng một câu chung vô nghĩa**, che mất câu BE viết kỹ. Nay: mã **cụ thể** → dùng bản dịch; mã **thùng chứa** → dùng `message` của BE. ⇒ BE viết `message` cho 400/409 phải coi như **văn bản người dùng đọc trực tiếp**: nêu vướng gì + làm gì để thoát.
 
+### 2.2b. Ngày giờ — luôn gửi/nhận UTC
+
+Mọi cột ngày giờ trong PostgreSQL là `timestamptz`. **Từ 17/08/2026** tầng đọc JSON (`UtcDateTimeConverter`) chuẩn hoá mọi `DateTime` nhận vào về UTC:
+
+| Client gửi | BE hiểu |
+|---|---|
+| `"2026-08-26T04:04:00Z"` | 04:04 UTC (khuyến nghị — FE dùng `toISOString()`) |
+| `"2026-08-26T11:04:00+07:00"` | 04:04 UTC |
+| `"2026-08-26T11:04:00"` (không múi giờ) | **11:04 UTC** — giữ nguyên con số, không đoán múi giờ máy chủ |
+
+> ⚠️ Trước đó chuỗi không múi giờ khiến Npgsql ném lỗi → **500 "Hệ thống gặp sự cố ngoài dự kiến"** ở mọi endpoint nhận ngày giờ (đặt lịch họp, khung giờ hội đồng, hạn xác nhận thư mời, mốc hợp đồng…). FE phải quy đổi ô `<input type="datetime-local">` bằng `fromDateTimeLocalInput` / `toDateTimeLocalInput` (`src/utils/format.ts`), **không** cắt chuỗi bằng `.slice(0, 16)` — cắt như vậy lệch đúng bằng chênh múi giờ.
+
 ### 2.3. Vai trò (roles)
 4 vai trò, khớp với `Role.Name` trong DB: **`Admin`**, **`Staff`**, **`Faculty`**, **`ReviewCommittee`**.
 - `[Authorize]` (mặc định ở hầu hết controller) = cần đăng nhập (vai trò bất kỳ).
@@ -506,8 +518,10 @@ Key hiện có:
 | POST | `/api/councils/{councilId}/meetings` | Admin, Staff | Tạo lịch họp |
 | PUT | `/api/meetings/{id}` | Admin, Staff | **Sửa lịch họp (mới 05/08)** — `UpdateMeetingRequest` (cùng bộ trường với lúc tạo). Rule #17 cho đổi lịch **bất kỳ lúc nào** nên không khoá theo trạng thái; buổi đã diễn ra thì bỏ ràng buộc "phải ở tương lai" (vẫn sửa được địa điểm/link ghi nhầm). Offline mà trống địa điểm → 400; `durationMinutes <= 0` → 400. Đổi sang online thì BE **tự xoá** `location`, và ngược lại. |
 | DELETE | `/api/meetings/{id}` | Admin, Staff | **Xoá buổi họp (mới 05/08)** — chỉ khi `status = SCHEDULED`, ngược lại **409**. Đã có điểm danh (`ActuallyAttended != null`) cũng **409**. Xoá thì dọn dòng điểm danh và **gỡ slot đề tài** đang trỏ tới buổi họp (`CouncilProjectAssignment.MeetingId/SlotStartAt` về null). |
-| POST | `/api/meetings/{id}/start` | Admin, Staff | Bắt đầu họp |
-| POST | `/api/meetings/{id}/end` | Admin, Staff | Kết thúc họp |
+| POST | `/api/meetings/{id}/start` | Admin, Staff | Bắt đầu họp — ⚠️ **đã gỡ khỏi giao diện 17/08** (endpoint giữ lại) |
+| POST | `/api/meetings/{id}/end` | Admin, Staff | Kết thúc họp — ⚠️ **đã gỡ khỏi giao diện 17/08** (endpoint giữ lại) |
+
+> ⚠️ **Bỏ nút Bắt đầu/Kết thúc họp trên UI (17/08).** Không luồng nào chờ trạng thái `IN_PROGRESS` (điểm danh, chấm điểm, biên bản đều không kiểm), và **Chủ tịch chốt biên bản thì `ReviewScoringService` tự đóng mọi buổi họp của hội đồng** → hai nút này chỉ tạo bẫy: bấm Bắt đầu rồi Kết thúc là buổi họp "xong" trước cả khi họp thật. Endpoint vẫn còn cho kịch bản test/tự động.
 
 **ScheduleMeetingRequest**: `{ title?, platform="IN_PERSON", meetingLink?, location?, scheduledAt, durationMinutes=120, agenda? }`
 
@@ -604,7 +618,13 @@ Key hiện có:
 | POST | `/api/disbursements/{id}/evidence` | Admin, Staff | Upload minh chứng (multipart `file`) — tái dùng `Document` polymorphic (EntityType="Disbursement"); siết dung lượng/đuôi theo `system_settings` |
 | GET | `/api/disbursements/{id}/evidence/{documentId}/download` | Admin, Staff | Tải/mở file minh chứng (cần Bearer) |
 
+> **Phụ lục hợp đồng (17/08):** `GET /api/amendments/{id}/export-word` (**Admin/Staff, hoặc chính chủ nhiệm** của hợp đồng) — xuất **phụ lục** ra Word để ký ngoài, **409** nếu đề nghị chưa duyệt. Endpoint có từ trước nhưng **giao diện chưa hề gọi**; nay có nút ở tab "Điều chỉnh" (Staff) và ở màn **"Điều chỉnh & gia hạn"** của PI — chỉ hiện khi trạng thái ĐÃ DUYỆT.
+>
+> **Quyền xuất văn bản hợp đồng nới cho PI (17/08):** `GET /api/contracts/{id}/export-word`, `…/export-settlement-word` và `…/amendments/{id}/export-word` **bỏ chặn cứng theo vai**, thay bằng **kiểm quyền sở hữu**: Admin/Staff xem mọi hợp đồng, chủ nhiệm chỉ xem hợp đồng của mình, người khác → **403**. Lý do: PI chính là bên ký, trước đó phải nhắn chuyên viên gửi hộ. `DocumentExportService` **không** tự kiểm quyền — kiểm nằm ở controller, đừng bỏ khi thêm endpoint xuất mới. Căn cứ **BM05 Điều 6.1**: sửa đổi phải *"lập thành văn bản phụ lục có đầy đủ chữ ký của các bên"* — hợp đồng gốc **không bị sinh lại**.
+
 ### Sản phẩm — `/api/deliverables`
+
+> **Mới 17/08:** `DeliverableResponse` thêm **`scientificRequirements`** và **`notes`** — hai trường chủ nhiệm đã khai từ lâu nhưng DTO không trả nên không màn nào hiện được. FE dùng chúng trong panel chi tiết sản phẩm (dùng chung Staff ↔ hội đồng, chỉ xem).
 | POST | `/api/deliverables/{id}/submit` | * (PI) | Nộp sản phẩm (`{ fileUrl, trialEvidenceUrl?, description? }`). **Chuẩn hoá URL (tuần 12):** chỉ nhận đường dẫn nội bộ (`/…` do BE sinh sau upload) hoặc link http(s); thiếu scheme thì BE **tự thêm `https://`**, không parse được → 400 — trước đây nhận nguyên xi mọi chuỗi (vd `abc.com`) nên người nghiệm thu bấm vào ra trang trống. **409 nếu sản phẩm đã nghiệm thu ĐẠT (mới 06/08)** — nộp lại sẽ đặt `acceptanceStatus` về `PENDING`, tức **xoá mất kết quả nghiệm thu** và khoá lại đợt giải ngân vốn đã mở nhờ sản phẩm đó. |
 | POST | `/api/deliverables/{id}/evaluate` | Admin, Staff | Đánh giá (`{ acceptanceStatus: "PASSED"|"FAILED", qualityAssessment? }`) |
 
@@ -764,10 +784,11 @@ Có vì thứ tự thao tác thực tế: Staff đặt lịch họp trước, **
 hội đồng. Trước đây không có gì nhắc, nên buổi họp 90 phút gán 5 đề tài vẫn lưu được và chỉ vỡ ra
 vào đúng hôm họp.
 
-Ba trường hợp `warning` khác `null`:
+**Hai** trường hợp `warning` khác `null` (từ 17/08):
 1. Tổng khung đã chia **vượt** thời lượng buổi họp
 2. Còn đề tài **chưa có khung giờ** mà buổi họp đã kín
-3. Còn đề tài chưa có khung giờ, kèm số phút còn trống
+
+> ⚠️ **Bỏ trường hợp 3 (17/08):** *"Còn N đề tài chưa có khung giờ, buổi họp còn trống X phút"* — nó bật ngay khi vừa mở bảng, lúc Staff chưa kịp nhập gì, tức là báo động cho một trạng thái **hoàn toàn bình thường**. Cảnh báo nào cũng kêu thì thành tiếng ồn và người dùng bỏ qua luôn hai cảnh báo thật ở trên. Số liệu vẫn còn ở `unscheduledCount` / `remainingMinutes` nếu FE muốn tự bày.
 
 ⚠️ **Cảnh báo chứ KHÔNG chặn** — rule #17 cho đổi lịch bất kỳ lúc nào, khoá cứng sẽ cản đúng thao
 tác hợp lệ. Và cố ý **không tự đặt ra "mỗi đề tài tối thiểu bao nhiêu phút"**: QĐ543 không quy định
