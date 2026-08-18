@@ -23,6 +23,35 @@
 
 ## 🔧 Việc còn lại / đang dang dở (backlog)
 
+### A-18/08b. Bẫy môi trường đã gỡ + việc còn treo (kiểm lại 18/08)
+
+**Đã gỡ — skill `fe-e2e` trỏ sai cả ba thứ.** File `.claude/skills/fe-e2e/SKILL.md` (có ở cả repo
+này lẫn repo BE cũ, và một bản ở `.agents/`) ghi BE nằm ở `…\FURPMS\FURPMS_BE` (**repo đã chết từ
+02/08**), cần **SQL Server cổng 1435** (đã bỏ từ 14/08 khi sang PostgreSQL 5433), và mật khẩu demo
+`Admin@123456` / `Staff@123456` / `Faculty@123456` (**thực tế tất cả đều là `password`** từ lần
+siết seeder 14/08). Chạy theo bản cũ là dựng nhầm repo lên một DB không tồn tại. Cả ba bản đã sửa
+và đồng bộ.
+
+**Đã kiểm lại — KHÔNG còn là lỗi** (đừng mất công sửa lại):
+- Form "Sửa lại" báo cáo tiến độ của PI **có** prefill đầy đủ, kể cả `items`
+  (`CreateProgressReportSheet.tsx` gọi `useProgressReportQuery` + `useEffect` reset). Từng nghi là
+  lỗi mất dữ liệu, hoá ra đã sửa từ trước.
+- Xuất phụ lục hợp đồng ra Word **đã có** (`ExportAmendmentDocAsync` + endpoint), không phải chưa làm.
+
+**Còn treo thật:**
+
+| Mức | Việc | Chỗ |
+|---|---|---|
+| Vừa | `ChangeRequestService.CreateAsync` (loại 1 = gia hạn) **không chặn biên** cho `NewValue`; `ReviewAsync` chỉ đổi trạng thái, **không áp dụng** thay đổi nào | `ChangeRequestService.cs` |
+| Nhỏ | Xuất BM07 (yêu cầu thay đổi) ra Word — chưa làm | `DocumentExportService.cs` |
+| Nhỏ | Chú thích sai "QĐ543: gia hạn tối đa 6 tháng" — Điều 10.4 nói **≤ 1/2 thời gian đã duyệt**, không phải con số cố định | `MyAmendmentsPage.tsx` |
+| Nhỏ | Khoá i18n mồ côi `startMeeting` / `endMeeting` / `undoStartMeeting` (nút đã ẩn 17/08) | `vi.ts` · `en.ts` |
+
+**Trước khi nộp:** quét toàn repo tìm khoá/mật khẩu. Đã kiểm `appsettings.json` (đã commit) —
+**sạch**: `JwtSettings.SecretKey` là chuỗi placeholder, `EmailSettings` rỗng. Key thật
+(`GeminiAI:ApiKey`) nằm ở `appsettings.Development.json` đã gitignore đúng cách.
+
+
 ### A-18/08. Bốn lỗi bạn trong nhóm báo — ĐÃ SỬA
 
 Chi tiết + kết quả kiểm chứng chạy thật: `PROGRESS.md` §"Cập nhật 18/08".

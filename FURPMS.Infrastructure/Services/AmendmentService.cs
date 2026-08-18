@@ -178,7 +178,9 @@ public class AmendmentService : IAmendmentService
         int totalExtension = alreadyGranted + extensionMonths;
         if (totalExtension > contract.MaxExtensionMonths)
             throw new ArgumentException(
-                $"Total extension ({totalExtension} months) exceeds maximum allowed ({contract.MaxExtensionMonths} months).");
+                $"Tổng thời gian gia hạn ({totalExtension} tháng) vượt mức tối đa cho phép của hợp đồng "
+                + $"({contract.MaxExtensionMonths} tháng). Đã gia hạn {alreadyGranted} tháng, lần này xin thêm "
+                + $"{extensionMonths} tháng — hãy giảm xuống tối đa {contract.MaxExtensionMonths - alreadyGranted} tháng.");
 
         contract.EndDate = contract.OriginalEndDate.AddMonths(totalExtension);
         contract.UpdatedAt = DateTime.UtcNow;

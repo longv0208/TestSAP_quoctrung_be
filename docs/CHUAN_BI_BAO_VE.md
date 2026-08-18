@@ -85,19 +85,39 @@ Hệ quả về cấu trúc: mỗi luồng cần **đúng 1 slide dẫn** (nói 
 | Có chức năng đã làm nhưng **quên demo** | Phần mạnh nhất là **nghiệm thu 2 tầng** — đừng để nó rơi vào phút cuối rồi hết giờ |
 | Phải ngồi nhập liệu tại chỗ | Dữ liệu đã seed sẵn 8 đề tài ở 8 bước — **không nhập gì trong lúc demo** trừ khi đang minh hoạ thao tác |
 
-### 2.3. Phân vai 5 người
+### 2.3. Phân vai — **4 người** (cập nhật 18/08)
+
+Nhóm còn **4 người**: Chinh nghỉ vì lý do cá nhân (báo tối 18/08). **Thứ gánh luôn phần của Chinh.**
 
 Bám theo **RP6 — Software User Guides**, vốn đã chia sẵn 8 workflow:
 
 | Người | Workflow (RP6) | Điểm nhấn |
 |---|---|---|
-| 1 | Mở đầu + WF1 + WF8 | Đóng khung: mở đợt ở đầu, toàn cảnh ở cuối |
-| 2 | WF2 | AI trích xuất từ file Word |
-| 3 | WF3 | Cảnh báo trùng lịch · gate gửi thư mời |
-| 4 | WF4 | AI gợi ý điểm · Thư ký soạn → **Chủ tịch chốt** |
-| 5 | WF5 → WF6 → WF7 | Một mạch liền: ký HĐ → tiến độ/gia hạn → nghiệm thu |
+| **① Dũng** | Mở đầu + WF1 + WF8 | Đóng khung: mở đợt ở đầu, toàn cảnh portfolio ở cuối |
+| **② Phát** | WF2 | AI trích xuất từ file Word |
+| **③ Thứ** | WF3 + **WF4** | Cảnh báo trùng lịch · gate gửi thư mời → AI gợi ý điểm · Thư ký soạn → **Chủ tịch chốt** |
+| **④ Trung** | WF5 → WF6 → WF7 | Một mạch liền: ký HĐ → tiến độ/gia hạn → nghiệm thu |
 
-**Người nói sau chuẩn bị sẵn màn của mình trong lúc người trước đang nói** — không để hội đồng ngồi nhìn màn hình loading.
+**Ai nói thì người đó bấm demo.** Không tách một người "lái máy" cho bốn người còn lại nói: cẩm nang
+§9 chấm **theo từng cá nhân**, và §8.1 cảnh báo tình huống hội đồng yêu cầu mở source ngay tại chỗ —
+người vừa thuyết trình xong mà không dám chạm vào máy sẽ rất khó đỡ. Thầy hướng dẫn cũng dặn *"trình
+bày flow xong thì demo cái đó luôn"*, tức nói và demo dính liền nhau.
+
+Cách khử rủi ro đổi người:
+- **Một máy duy nhất, một lần chia sẻ màn hình.** Đổi laptop giữa chừng mới là chỗ vỡ.
+- **Ngồi sẵn theo đúng thứ tự trình bày**, cạnh nhau. Đổi người = đổi ghế, 5 giây.
+- **Mở sẵn toàn bộ cửa sổ ẩn danh trước khi vào phòng**, mỗi vai một cửa sổ. Không ai đăng nhập
+  trong lúc demo. Việc này cũng đồng thời chứng minh phân quyền — cẩm nang §7.1 nêu riêng lỗi
+  *"dùng chung một tài khoản cho nhiều vai khi demo"*.
+- **Người nói sau mở sẵn màn của mình** trong lúc người trước đang nói.
+
+> ⚠️ **Khúc của Thứ (WF3→WF4) nặng nhất** — phải đổi qua lại 4 phiên: phản biện A, phản biện B, Thư
+> ký, Chủ tịch. Gợi ý: mở **hai cửa sổ đặt cạnh nhau** cho hai phản biện thay vì chuyển tab, và
+> chuẩn bị sẵn phiên Thư ký + Chủ tịch ở cửa sổ thứ ba. Nếu chạy thử thấy vẫn rối thì **cắt phần
+> biên bản sang Trung** — Trung có 3 workflow nhưng nối liền một mạch nên nhẹ hơn tiếng.
+
+> ⚠️ Chỉ **phản biện** (`memberRole = "Opponent"`) mới chấm được ở vòng nghiệm thu (BM10, Điều
+> 12.3.b). Lập hội đồng nghiệm thu mà quên gán vai Phản biện thì đến lúc demo không ai chấm được.
 
 ---
 
