@@ -1042,7 +1042,7 @@ và **`isTotalValid`** (`totalCriteriaScore === maxTotalScore`).
 | `POST /api/ai/suggest-reviewers` | Gợi ý thành viên hội đồng | ❌ Chưa làm — **nên làm bằng truy vấn thuần**, không cần AI |
 | `POST /api/ai/similarity-check` | Trùng lặp với đặt hàng | ❌ Chưa làm — **không màn nào dùng**, nên xoá cả 2 đầu |
 
-> ✅ **Đã sửa 04/08:** `POST /ai/extract` — FE gọi sai đường dẫn suốt (BE là **`POST /api/proposals/extract`**) ⇒ nút "phân tích bằng AI" ở wizard **chưa từng chạy**, tức Đường B (upload+AI, rule #10/#20) coi như chưa có. Kèm theo `AiExtractionResult` ở FE cũng lệch hẳn field so với `ExtractedProposalDto` — nay đã khớp, prefill đủ 7 trường.
+> ✅ **Hoàn thiện 18/08:** `POST /api/proposals/extract` nhận multipart field `file` (**PDF hoặc DOCX**, theo giới hạn dung lượng/đuôi file Admin cấu hình). Gemini trích xuất để prefill tên VI/EN, tóm tắt, mục tiêu, phương pháp, sản phẩm dự kiến, tính cấp thiết, tính mới, khả năng ứng dụng/chuyển giao, cơ sở vật chất, thời gian và tổng kinh phí. Field không thấy → `null`; AI lỗi/chưa cấu hình → trả `warning` để FE tiếp tục đường nhập tay. FE chỉ điền **ô trống**, không ghi đè nội dung PI đã nhập; tổng kinh phí chỉ hiện tham chiếu để PI tự phân bổ đúng hạng mục.
 
 > ✅ **Đã bổ sung** (trước đây 404): tài liệu đính kèm `/api/proposals/{id}/documents` + `/api/documents` (§6), 4 endpoint change-requests (§6), `toggle-active` + `reset-password` (§4).
 

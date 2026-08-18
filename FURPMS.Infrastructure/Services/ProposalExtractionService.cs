@@ -1,7 +1,4 @@
-using System.Text;
 using System.Text.Json;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
 using FURPMS.Application.DTOs.Proposals;
 using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Services;
@@ -22,8 +19,11 @@ public class ProposalExtractionService : IProposalExtractionService
         "Đọc nội dung tài liệu và trả về DUY NHẤT một JSON (không giải thích, không markdown) với các khoá: " +
         "titleVi (tên đề tài tiếng Việt), titleEn (tên tiếng Anh), abstractVi (tóm tắt), " +
         "researchObjectives (mục tiêu nghiên cứu), methodology (phương pháp), expectedOutput (sản phẩm dự kiến), " +
+        "urgency (tổng quan và tính cấp thiết), novelty (tính mới và sáng tạo), " +
+        "applicationPotential (khả năng ứng dụng), transferPotential (khả năng chuyển giao), " +
+        "facilities (cơ sở vật chất và thiết bị sẵn có), " +
         "durationMonths (số nguyên, số tháng thực hiện), totalBudget (số, tổng kinh phí VND). " +
-        "Khoá nào không tìm thấy thì để giá trị null.";
+        "Không suy đoán nội dung không có trong tài liệu. Khoá nào không tìm thấy thì để giá trị null.";
 
     public async Task<ExtractedProposalDto> ExtractAsync(Stream content, string fileName, string contentType, CancellationToken ct = default)
     {
@@ -31,8 +31,6 @@ public class ProposalExtractionService : IProposalExtractionService
         using var ms = new MemoryStream();
         await content.CopyToAsync(ms, ct);
         ms.Position = 0;
-
-        var ext = Path.GetExtension(fileName).ToLowerInvariant();
 
         if (!_gemini.IsConfigured)
             return new ExtractedProposalDto
@@ -42,13 +40,8 @@ public class ProposalExtractionService : IProposalExtractionService
 
         try
         {
-            string raw = ext switch
-            {
-                ".pdf" => await _gemini.GenerateFromInlineDataAsync(ms.ToArray(), "application/pdf", Prompt, ct),
-                ".docx" => await _gemini.GenerateTextAsync($"{Prompt}\n\n--- NỘI DUNG ---\n{ExtractDocxText(ms)}", ct),
-                ".txt" => await _gemini.GenerateTextAsync($"{Prompt}\n\n--- NỘI DUNG ---\n{Encoding.UTF8.GetString(ms.ToArray())}", ct),
-                _ => throw new ArgumentException("Chỉ hỗ trợ trích xuất AI cho PDF, DOCX hoặc TXT.")
-            };
+            var raw = await GeminiFileInput.AskAboutFileAsync(
+                _gemini, ms.ToArray(), fileName, contentType, Prompt, ct);
 
             return ParseJson(raw);
         }
@@ -66,18 +59,6 @@ public class ProposalExtractionService : IProposalExtractionService
         }
     }
 
-    private static string ExtractDocxText(Stream s)
-    {
-        using var doc = WordprocessingDocument.Open(s, false);
-        var body = doc.MainDocumentPart?.Document?.Body;
-        if (body == null) return string.Empty;
-
-        var sb = new StringBuilder();
-        foreach (var para in body.Descendants<Paragraph>())
-            sb.AppendLine(para.InnerText);
-        return sb.ToString();
-    }
-
     private static ExtractedProposalDto ParseJson(string raw)
     {
         var json = StripFences(raw);
@@ -93,6 +74,11 @@ public class ProposalExtractionService : IProposalExtractionService
                 ResearchObjectives = GetString(r, "researchObjectives"),
                 Methodology = GetString(r, "methodology"),
                 ExpectedOutput = GetString(r, "expectedOutput"),
+                Urgency = GetString(r, "urgency"),
+                Novelty = GetString(r, "novelty"),
+                ApplicationPotential = GetString(r, "applicationPotential"),
+                TransferPotential = GetString(r, "transferPotential"),
+                Facilities = GetString(r, "facilities"),
                 DurationMonths = GetInt(r, "durationMonths"),
                 TotalBudget = GetDecimal(r, "totalBudget")
             };

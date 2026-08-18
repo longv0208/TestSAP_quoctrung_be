@@ -14,11 +14,16 @@ public class ProposalsController : ControllerBase
 {
     private readonly IProposalService _proposals;
     private readonly IProposalExtractionService _extraction;
+    private readonly ISystemSettingService _settings;
 
-    public ProposalsController(IProposalService proposals, IProposalExtractionService extraction)
+    public ProposalsController(
+        IProposalService proposals,
+        IProposalExtractionService extraction,
+        ISystemSettingService settings)
     {
         _proposals = proposals;
         _extraction = extraction;
+        _settings = settings;
     }
 
     // POST /api/proposals/extract — Đường B: upload Word/PDF → AI trích xuất field để prefill form.
@@ -27,6 +32,26 @@ public class ProposalsController : ControllerBase
     {
         if (file == null || file.Length == 0)
             throw new ArgumentException("Chưa chọn file hoặc file rỗng.");
+
+        // Endpoint trích xuất đọc toàn bộ file vào bộ nhớ rồi mới gửi Gemini. Chặn trước khi mở
+        // stream để một file quá lớn không làm tốn RAM/quota; dùng đúng cấu hình upload Admin đang
+        // quản lý, không dựng thêm một con số riêng cho AI.
+        var policy = await _settings.GetUploadPolicyAsync();
+        var maxBytes = (long)policy.MaxFileSizeMb * 1024 * 1024;
+        if (file.Length > maxBytes)
+            throw new ArgumentException(
+                $"File quá lớn ({file.Length / 1024d / 1024d:0.#} MB). Tối đa {policy.MaxFileSizeMb} MB.");
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!policy.AllowedExtensions.Contains(ext, StringComparer.OrdinalIgnoreCase))
+            throw new ArgumentException(
+                $"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", policy.AllowedExtensions)}.");
+
+        // Gemini đọc PDF trực tiếp; DOCX được bóc văn bản bằng OpenXml. Định dạng DOC cũ không có
+        // bộ đọc an toàn trong ứng dụng, nên không nhận rồi để người dùng đợi AI mới báo lỗi.
+        if (ext is not ".pdf" and not ".docx")
+            throw new ArgumentException(
+                $"AI chưa đọc được định dạng '{ext}'. Hãy lưu tài liệu thành PDF hoặc DOCX rồi thử lại.");
 
         await using var stream = file.OpenReadStream();
         var result = await _extraction.ExtractAsync(stream, file.FileName, file.ContentType);

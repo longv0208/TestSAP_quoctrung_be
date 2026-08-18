@@ -280,7 +280,7 @@ Dùng cho review 2 (tuần 7–8). Kiểm tra từng loại trước khi nộp:
 |---|---|---|
 | Đợt = 1 loại | `ResearchCycle.ResearchTypeId` **đã có** | Chốt UX/diễn đạt; KHÔNG cần code |
 | 2 luồng Ứng dụng/Cơ bản | `ResearchOrder` + `Proposal.OrderId` **đã có** | Multi-winner (N:N PI-đề tài Applied) = **epic tương lai** |
-| Dual intake upload+AI | `Document`/`LlmOutput`/`SemanticSearchVector` + Gemini **đã có** | Pipeline upload→extract→prefill = **epic tương lai** |
+| Dual intake upload+AI | `POST /api/proposals/extract` + Gemini; file gốc lưu `Document` khi lưu nháp | ✅ PDF/DOCX → extract → chỉ prefill ô trống; AI lỗi vẫn nhập tay |
 | Actor/chức danh = field | `CouncilMember.MemberRole` **đã là field** | Không cần code |
 | Đếm phiếu đa số | `ProposalReviewScore` đã có | Service logic tính kết quả = **epic tương lai** |
 | Khóa biên bản (TK→CT) | `CouncilDecision` đã có | Status LOCKED + revision = **epic tương lai** |

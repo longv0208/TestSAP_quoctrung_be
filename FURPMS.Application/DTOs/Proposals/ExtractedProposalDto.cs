@@ -10,6 +10,11 @@ public class ExtractedProposalDto
     public string? ResearchObjectives { get; set; }
     public string? Methodology { get; set; }
     public string? ExpectedOutput { get; set; }
+    public string? Urgency { get; set; }
+    public string? Novelty { get; set; }
+    public string? ApplicationPotential { get; set; }
+    public string? TransferPotential { get; set; }
+    public string? Facilities { get; set; }
     public int? DurationMonths { get; set; }
     public decimal? TotalBudget { get; set; }
     public string? Warning { get; set; }
