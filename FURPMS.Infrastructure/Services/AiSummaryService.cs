@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.DTOs.AI;
 using FURPMS.Application.DTOs.Proposals;
 using FURPMS.Application.Interfaces;
@@ -155,7 +156,9 @@ public class AiSummaryService : IAiSummaryService
             if (r.TryGetProperty("source", out var src) && src.ValueKind == JsonValueKind.String)
                 dto.Source = src.GetString();
             if (r.TryGetProperty("sourceFileName", out var fn) && fn.ValueKind == JsonValueKind.String)
-                dto.SourceFileName = fn.GetString();
+                // Bản tóm tắt cũ đã nhét nguyên tên file thô vào JSON — chuẩn hoá lúc đọc để
+                // không phải chạy lại AI chỉ vì cái tên hiển thị sai.
+                dto.SourceFileName = FileNames.Normalize(fn.GetString());
             dto.Strengths = ReadList(r, "strengths");
             dto.Weaknesses = ReadList(r, "weaknesses");
         }

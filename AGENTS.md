@@ -14,9 +14,13 @@ không phải bản sao của nhau:
 
 | Thư mục | Repo | Trạng thái |
 |---|---|---|
-| `D:\capstone\FURPMS_BEv2` | `trunghq54/FURPMS_BEv2` | ✅ **BE ĐANG DÙNG** — chính là repo này |
+| `D:\capstone\newroot\FURPMS_BEv2` | `trunghq54/FURPMS_BEv2` | ✅ **BE ĐANG DÙNG** — chính là repo này |
+| `D:\capstone\newroot\furpms-web` | `immanhdung/FURPMS-Web` | ✅ **FE đang dùng** |
 | `D:\Downloads\doc\9 đồ án\FURPMS\FURPMS_BE` | `trunghq54/FURPMS_BE` | ❌ **CHẾT** từ 02/08/2026 |
-| `D:\Downloads\doc\9 đồ án\core\FURPMS-Web` | `immanhdung/FURPMS-Web` | ✅ **FE đang dùng** |
+
+> Cập nhật 18/08: hai repo đang dùng đã gom về **`D:\capstone\newroot\`** (mở chung một workspace
+> VS Code). Đường dẫn `D:\capstone\FURPMS_BEv2` và `D:\Downloads\doc\9 đồ án\core\FURPMS-Web` ghi
+> ở các bản doc cũ **không còn đúng**.
 
 Thư mục `FURPMS_BE` cũ vẫn còn `CLAUDE.md` và `docs/` nhưng **nội dung đã lỗi thời** — ví dụ nó
 vẫn ghi chuỗi kết nối SQL Server LocalDB, trong khi dự án đã chuyển sang PostgreSQL từ 14/08. Sửa
@@ -44,7 +48,7 @@ bộ Railway mất vài giây mới sẵn sàng). Không cần chạy migration 
 Kiểm tra:
 ```bash
 dotnet build            # phải 0 error
-dotnet test             # 197 test, phải xanh hết
+dotnet test             # 204 test, phải xanh hết
 ```
 
 > `dotnet test` dùng **`UseInMemoryDatabase`** (`FURPMS.Tests/Helpers/TestDbContextFactory.cs`) —

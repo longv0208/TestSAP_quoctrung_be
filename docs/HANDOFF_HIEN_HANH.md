@@ -1,4 +1,4 @@
-# HANDOFF — trạng thái hiện hành (cập nhật 14/08/2026)
+# HANDOFF — trạng thái hiện hành (cập nhật 18/08/2026)
 
 > **Đọc file này ĐẦU TIÊN** nếu bạn là người/AI mới tiếp nhận dự án. Nó thay cho
 > `HANDOFF_Week10.md` (đã lỗi thời ở phần hạ tầng). Sau file này thì đọc `../CLAUDE.md` (quy tắc
@@ -45,6 +45,34 @@ nhiên và ghi log MỘT LẦN**.
 > ⚠️ Biến `SeedAdminPassword` chỉ có tác dụng **khi chưa có** tài khoản admin. Admin đã tồn tại thì
 > seeder bỏ qua hẳn — muốn đổi phải xoá dòng admin trong DB rồi khởi động lại.
 
+### 1.3 Hai lỗi Dũng (FE) báo 18/08 — đã sửa, ghi lại vì cả hai đều dễ tái phát
+
+**(a) Tên file hiển thị sai — sửa ở BE.** Màn xem tài liệu của hội đồng và câu *"AI đã đọc file
+đính kèm (…)"* hiện `02%20%C4%90e%CC%82%CC%80%20cu%CC%9Bo%CC%9Bng…` thay vì *02 Đề cương nghiên
+cứu…*. **Không phải FE hiện sai:** DB lưu đúng chuỗi đó, vì file trên máy người nộp vốn đã mang tên
+**bị mã hoá URL** (tải về từ link không kèm `Content-Disposition`) và dấu tiếng Việt ở dạng **NFD**
+(macOS). BE chép thẳng `IFormFile.FileName` vào cột `original_file_name`.
+
+Sửa bằng `FURPMS.Application/Common/FileNames.cs` — giải mã `%XX` (**chỉ khi tên không có khoảng
+trắng**, nên tên thật kiểu `Giải ngân 50% đợt 1.pdf` không bị đụng), gom về NFC, bỏ đường dẫn và ký
+tự điều khiển. Áp **cả lúc lưu lẫn lúc đọc**: đọc cũng chuẩn hoá vì các bản ghi đã nằm trên DB
+Railway vẫn mang tên hỏng và **không có migration nào đi sửa dữ liệu cũ**.
+
+Tiện thể gộp 3 bản sao validate upload trùng lặp vào `AssertUploadAllowedAsync` — nay trả về
+`(tên đã chuẩn hoá, đuôi file)` và dùng chung cho cả 6 luồng upload.
+
+**(b) Đổi vai bị văng ra "Bạn không có quyền" — sửa ở FE.** Triệu chứng **giống hệt** lỗi đã sửa
+12/08 (xem `BACKLOG_Uu_tien.md`, mục "Đã sửa xong trong lượt này") nhưng **nguyên nhân khác hẳn**:
+lần trước là khoá localStorage dùng chung; lần này là **react-router v7 bọc mọi thay đổi địa chỉ
+trong `React.startTransition`**, trong khi zustand (`useSyncExternalStore`) không hoãn được ⇒ React
+commit một lượt trung gian *(vai MỚI, địa chỉ CŨ)* và `RoleGuard` của trang cũ bắn
+`<Navigate to="/unauthorized">` đè lên điều hướng về dashboard. Sửa bằng
+`<BrowserRouter useTransitions={false}>` + đưa `<Suspense>` vào trong `AppLayout`. Chi tiết ở
+`AGENTS.md` §3.5 của repo FE.
+
+> ⚠️ Rút ra: thấy lại triệu chứng "đổi vai ăn 403 oan" thì **đừng cho là hồi quy của bản vá cũ** —
+> đã có hai nguyên nhân độc lập cùng ra một màn hình.
+
 ---
 
 ## 2. Chạy dự án
@@ -58,7 +86,7 @@ docker compose up -d                 # PostgreSQL 16, cổng 5433
 dotnet run --project FURPMS.API      # :5068 — tự Migrate + seed
 
 # FE (cửa sổ khác)
-cd core/FURPMS-Web && npm run dev    # :5173
+cd ../furpms-web && npm run dev     # :5173
 ```
 
 Tài khoản demo (chỉ có ở Development): `admin@furpms.edu.vn` · `staff.demo@…` · `pi.demo@…` ·
@@ -166,8 +194,8 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 ## 6. Cách kiểm tra nhanh mọi thứ còn chạy
 
 ```bash
-cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 190/190 xanh
-cd core/FURPMS-Web && npx tsc -p tsconfig.app.json --noEmit && npm run build
+cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 204/204 xanh
+cd furpms-web  && npx tsc -p tsconfig.app.json --noEmit && npm run build
 ```
 
 > ⚠️ `npx tsc --noEmit` ở thư mục gốc FE **không kiểm gì cả** (`tsconfig.json` có `"files": []` +
@@ -198,7 +226,7 @@ Kết quả lần chạy 14/08: **40 route × 4 vai — 0 vấn đề** (local, 
 
 > Dự án FURPMS, capstone SU26SE053, quản lý đề tài NCKH theo **QĐ 543/QĐ-ĐHFPT**.
 > BE .NET 8 + **PostgreSQL** (`D:\capstone\FURPMS_BEv2`, nhánh `thu-nghiem/postgres`).
-> FE React 19 + Vite (`core/FURPMS-Web`, nhánh `dev`).
+> FE React 19 + Vite (`furpms-web`, nhánh `dev`).
 >
 > Đọc theo thứ tự: `docs/HANDOFF_HIEN_HANH.md` → `CLAUDE.md` (quy tắc nghiệp vụ #1–29, **không
 > được tự đoán**) → `docs/KICH_BAN_DEMO.md`.

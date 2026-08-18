@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Proposals;
 using FURPMS.Application.Interfaces.Repositories;
@@ -40,23 +41,9 @@ public class ProposalDocumentService : IProposalDocumentService
         if (!exists)
             throw new KeyNotFoundException($"Đề tài {proposalId} không tồn tại.");
 
-        if (length <= 0)
-            throw new ArgumentException("File rỗng.");
-
         // Giới hạn do Admin đặt trong system_settings (mặc định khuyến cáo 10 MB) — đọc mỗi lần upload
         // để đổi cấu hình có hiệu lực ngay, không phải restart app.
-        var policy = await _settings.GetUploadPolicyAsync();
-        var maxBytes = (long)policy.MaxFileSizeMb * 1024 * 1024;
-
-        if (length > maxBytes)
-            throw new ArgumentException(
-                $"File quá lớn ({length / 1024d / 1024d:0.#} MB). Tối đa {policy.MaxFileSizeMb} MB.");
-
-        var ext = Path.GetExtension(fileName);
-        var allowed = policy.AllowedExtensions.ToList();
-        if (string.IsNullOrEmpty(ext) || !allowed.Contains(ext, StringComparer.OrdinalIgnoreCase))
-            throw new ArgumentException(
-                $"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", allowed)}.");
+        var (name, ext) = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"proposals/{proposalId}/{Guid.NewGuid():N}{ext}";
         await _storage.SaveAsync(blobName, content, contentType);
@@ -66,7 +53,7 @@ public class ProposalDocumentService : IProposalDocumentService
             EntityType = EntityTypeProposal,
             EntityId = proposalId.ToString(),
             DocumentCategory = string.IsNullOrWhiteSpace(documentType) ? "ATTACHMENT" : documentType,
-            OriginalFileName = fileName,
+            OriginalFileName = name,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             StorageContainer = _storage.Description,
@@ -132,7 +119,7 @@ public class ProposalDocumentService : IProposalDocumentService
 
         var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
             ?? throw new KeyNotFoundException("File không còn trên storage.");
-        return (stream, doc.MimeType, doc.OriginalFileName);
+        return (stream, doc.MimeType, FileNames.Normalize(doc.OriginalFileName));
     }
 
     /// <summary>
@@ -164,7 +151,7 @@ public class ProposalDocumentService : IProposalDocumentService
         if (doc == null) return null;
 
         var bytes = await _storage.ReadAllBytesAsync(doc.StorageBlobName, doc.StorageUrl);
-        return bytes == null ? null : (bytes, doc.MimeType, doc.OriginalFileName);
+        return bytes == null ? null : (bytes, doc.MimeType, FileNames.Normalize(doc.OriginalFileName));
     }
 
     public async Task DeleteAsync(Guid proposalId, Guid documentId)
@@ -180,10 +167,12 @@ public class ProposalDocumentService : IProposalDocumentService
         await _docs.SaveChangesAsync();
     }
 
+    // Chuẩn hoá cả lúc ĐỌC, không chỉ lúc lưu: các bản ghi tạo trước bản vá này vẫn đang mang tên
+    // bị mã hoá URL trên DB thật, mà không có migration nào đi sửa dữ liệu cũ.
     private static ProposalDocumentDto Map(Document d) => new()
     {
         Id = d.Id,
-        FileName = d.OriginalFileName,
+        FileName = FileNames.Normalize(d.OriginalFileName),
         DocumentType = d.DocumentCategory,
         FileSizeBytes = d.FileSizeBytes,
         UploadedAt = d.UploadedAt,
@@ -196,17 +185,7 @@ public class ProposalDocumentService : IProposalDocumentService
     public async Task<ProposalDocumentDto> UploadForDisbursementAsync(
         int disbursementId, Stream content, string fileName, string contentType, long length, Guid uploadedBy)
     {
-        if (length <= 0) throw new ArgumentException("File rỗng.");
-
-        var policy = await _settings.GetUploadPolicyAsync();
-        var maxBytes = (long)policy.MaxFileSizeMb * 1024 * 1024;
-        if (length > maxBytes)
-            throw new ArgumentException($"File quá lớn ({length / 1024d / 1024d:0.#} MB). Tối đa {policy.MaxFileSizeMb} MB.");
-
-        var ext = Path.GetExtension(fileName);
-        var allowed = policy.AllowedExtensions.ToList();
-        if (string.IsNullOrEmpty(ext) || !allowed.Contains(ext, StringComparer.OrdinalIgnoreCase))
-            throw new ArgumentException($"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", allowed)}.");
+        var (name, ext) = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"disbursements/{disbursementId}/{Guid.NewGuid():N}{ext}";
         await _storage.SaveAsync(blobName, content, contentType);
@@ -216,7 +195,7 @@ public class ProposalDocumentService : IProposalDocumentService
             EntityType = EntityTypeDisbursement,
             EntityId = disbursementId.ToString(),
             DocumentCategory = "EVIDENCE",
-            OriginalFileName = fileName,
+            OriginalFileName = name,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             StorageContainer = _storage.Description,
@@ -247,7 +226,7 @@ public class ProposalDocumentService : IProposalDocumentService
 
         var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
             ?? throw new KeyNotFoundException("File không còn trên storage.");
-        return (stream, doc.MimeType, doc.OriginalFileName);
+        return (stream, doc.MimeType, FileNames.Normalize(doc.OriginalFileName));
     }
 
     // ── File báo cáo tiến độ (BM06) ────────────────────────────────────────────
@@ -257,7 +236,7 @@ public class ProposalDocumentService : IProposalDocumentService
     public async Task<ProposalDocumentDto> UploadForProgressReportAsync(
         Guid reportId, Stream content, string fileName, string contentType, long length, Guid uploadedBy)
     {
-        var ext = await AssertUploadAllowedAsync(fileName, length);
+        var (name, ext) = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"progress-reports/{reportId}/{Guid.NewGuid():N}{ext}";
         await SaveToStorageAsync(blobName, content, contentType);
@@ -267,7 +246,7 @@ public class ProposalDocumentService : IProposalDocumentService
             EntityType = EntityTypeProgressReport,
             EntityId = reportId.ToString(),
             DocumentCategory = "PROGRESS_REPORT",
-            OriginalFileName = fileName,
+            OriginalFileName = name,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             StorageContainer = _storage.Description,
@@ -309,7 +288,7 @@ public class ProposalDocumentService : IProposalDocumentService
         int deliverableId, Stream content, string fileName, string contentType, long length,
         Guid uploadedBy, bool isTrialEvidence)
     {
-        var ext = await AssertUploadAllowedAsync(fileName, length);
+        var (name, ext) = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"deliverables/{deliverableId}/{Guid.NewGuid():N}{ext}";
         await SaveToStorageAsync(blobName, content, contentType);
@@ -319,7 +298,7 @@ public class ProposalDocumentService : IProposalDocumentService
             EntityType = EntityTypeDeliverable,
             EntityId = deliverableId.ToString(),
             DocumentCategory = isTrialEvidence ? "TRIAL_EVIDENCE" : "DELIVERABLE",
-            OriginalFileName = fileName,
+            OriginalFileName = name,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             StorageContainer = _storage.Description,
@@ -357,7 +336,7 @@ public class ProposalDocumentService : IProposalDocumentService
     public async Task<ProposalDocumentDto> UploadForFinalReportAsync(
         Guid contractId, Stream content, string fileName, string contentType, long length, Guid uploadedBy)
     {
-        var ext = await AssertUploadAllowedAsync(fileName, length);
+        var (name, ext) = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"final-reports/{contractId}/{Guid.NewGuid():N}{ext}";
         await SaveToStorageAsync(blobName, content, contentType);
@@ -367,7 +346,7 @@ public class ProposalDocumentService : IProposalDocumentService
             EntityType = EntityTypeFinalReport,
             EntityId = contractId.ToString(),
             DocumentCategory = "FINAL_REPORT",
-            OriginalFileName = fileName,
+            OriginalFileName = name,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             StorageContainer = _storage.Description,
@@ -398,8 +377,13 @@ public class ProposalDocumentService : IProposalDocumentService
         return await OpenStoredAsync(doc);
     }
 
-    // Dùng chung cho các luồng upload (kiểm dung lượng + phần mở rộng theo SystemSetting).
-    private async Task<string> AssertUploadAllowedAsync(string fileName, long length)
+    /// <summary>
+    /// Dùng chung cho MỌI luồng upload: kiểm dung lượng + đuôi file theo SystemSetting, và trả về
+    /// <b>tên file đã chuẩn hoá</b> (xem <see cref="FileNames"/>) để cái tên ghi vào DB đúng là cái
+    /// tên người nộp nhìn thấy — trước đây mỗi luồng tự kiểm một bản sao, tên thì chép thẳng vào DB.
+    /// Đuôi file cũng lấy từ tên đã chuẩn hoá, không lấy từ chuỗi thô.
+    /// </summary>
+    private async Task<(string Name, string Ext)> AssertUploadAllowedAsync(string fileName, long length)
     {
         if (length <= 0) throw new ArgumentException("File rỗng.");
 
@@ -408,11 +392,12 @@ public class ProposalDocumentService : IProposalDocumentService
         if (length > maxBytes)
             throw new ArgumentException($"File quá lớn ({length / 1024d / 1024d:0.#} MB). Tối đa {policy.MaxFileSizeMb} MB.");
 
-        var ext = Path.GetExtension(fileName);
+        var name = FileNames.Normalize(fileName);
+        var ext = Path.GetExtension(name);
         var allowed = policy.AllowedExtensions.ToList();
         if (string.IsNullOrEmpty(ext) || !allowed.Contains(ext, StringComparer.OrdinalIgnoreCase))
             throw new ArgumentException($"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", allowed)}.");
-        return ext;
+        return (name, ext);
     }
 
     private Task SaveToStorageAsync(string blobName, Stream content, string contentType) =>
@@ -422,7 +407,7 @@ public class ProposalDocumentService : IProposalDocumentService
     {
         var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
             ?? throw new KeyNotFoundException("File không còn trên storage.");
-        return (stream, doc.MimeType, doc.OriginalFileName);
+        return (stream, doc.MimeType, FileNames.Normalize(doc.OriginalFileName));
     }
 
     // ── Hồ sơ hợp đồng (BM05 — bản ký) ─────────────────────────────────────────
@@ -431,17 +416,7 @@ public class ProposalDocumentService : IProposalDocumentService
     public async Task<ProposalDocumentDto> UploadForContractAsync(
         Guid contractId, Stream content, string fileName, string contentType, long length, Guid uploadedBy)
     {
-        if (length <= 0) throw new ArgumentException("File rỗng.");
-
-        var policy = await _settings.GetUploadPolicyAsync();
-        var maxBytes = (long)policy.MaxFileSizeMb * 1024 * 1024;
-        if (length > maxBytes)
-            throw new ArgumentException($"File quá lớn ({length / 1024d / 1024d:0.#} MB). Tối đa {policy.MaxFileSizeMb} MB.");
-
-        var ext = Path.GetExtension(fileName);
-        var allowed = policy.AllowedExtensions.ToList();
-        if (string.IsNullOrEmpty(ext) || !allowed.Contains(ext, StringComparer.OrdinalIgnoreCase))
-            throw new ArgumentException($"Định dạng '{ext}' không được phép. Chỉ nhận: {string.Join(", ", allowed)}.");
+        var (name, ext) = await AssertUploadAllowedAsync(fileName, length);
 
         var blobName = $"contracts/{contractId}/{Guid.NewGuid():N}{ext}";
         await _storage.SaveAsync(blobName, content, contentType);
@@ -451,7 +426,7 @@ public class ProposalDocumentService : IProposalDocumentService
             EntityType = EntityTypeContract,
             EntityId = contractId.ToString(),
             DocumentCategory = "SIGNED_CONTRACT",
-            OriginalFileName = fileName,
+            OriginalFileName = name,
             FileSizeBytes = length,
             MimeType = string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             StorageContainer = _storage.Description,
@@ -482,6 +457,6 @@ public class ProposalDocumentService : IProposalDocumentService
 
         var stream = await _storage.OpenAsync(doc.StorageBlobName, doc.StorageUrl)
             ?? throw new KeyNotFoundException("File không còn trên storage.");
-        return (stream, doc.MimeType, doc.OriginalFileName);
+        return (stream, doc.MimeType, FileNames.Normalize(doc.OriginalFileName));
     }
 }

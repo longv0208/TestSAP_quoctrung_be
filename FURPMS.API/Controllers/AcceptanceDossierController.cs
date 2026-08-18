@@ -261,7 +261,7 @@ public class AcceptanceDossierController : ControllerBase
     private static DossierFileDto Map(Document d) => new()
     {
         Id = d.Id,
-        FileName = d.OriginalFileName,
+        FileName = FileNames.Normalize(d.OriginalFileName),
         Category = d.DocumentCategory,
         SizeBytes = d.FileSizeBytes,
         UploadedAt = d.UploadedAt,
