@@ -197,11 +197,11 @@ Lệnh bóc nội dung .docx có ở cuối `docs/00_INDEX.md`.
 |---|---|---|
 | Quy mô hội đồng | **03–05** thành viên | **05–07** thành viên |
 | Ai chấm điểm | **mọi** thành viên dự họp | **chỉ phản biện** |
-| Biểu mẫu chấm | **BM03** — 5 tiêu chí, tổng **100** (10/20/40/20/10) | **BM10** — 4 tiêu chí, thang **1–5** mỗi mục, tổng **20** |
+| Biểu mẫu chấm | **BM03** — 5 tiêu chí, tổng **100** (10/20/40/20/10) | **BM10** — 4 tiêu chí, chọn mức **1–5**; hệ thống quy đổi đều thành **5–25/tiêu chí, tổng 100** |
 | Kết luận | biên bản **BM04** | mọi thành viên có mặt bỏ phiếu **BM11 = Đạt/Không đạt** → biên bản **BM12** |
 
 - **Vai "Phản biện" CHỈ tồn tại ở vòng nghiệm thu.** Toàn văn QĐ543 nhắc "phản biện" đúng 5 lần, tất cả thuộc Điều 12/BM10/BM12; BM04 (biên bản xét duyệt) chỉ có "Ý kiến của các thành viên Hội đồng", không mục phản biện. BM12 còn đánh số "Phản biện 1 / Phản biện 2" tách khỏi "các thành viên".
-- **BM10 seed 4 tiêu chí chứ không phải 5:** mục thứ năm "Những nhận xét khác" là lời bình tự do, không phải chiều đo cho điểm ⇒ nhập ở ô nhận xét chung. (Diễn giải của nhóm — nếu thầy chốt khác thì sửa `SeedAcceptanceRubricAsync`.)
+- **BM10 seed 4 tiêu chí chứ không phải 5:** mục thứ năm "Những nhận xét khác" là lời bình tự do, không phải chiều đo cho điểm ⇒ nhập ở ô nhận xét chung. Biểu mẫu gốc có điểm thô 4–20; theo yêu cầu chủ dự án 19/08, FE vẫn cho chọn đúng mức 1–5 nhưng BE lưu trọng số ×5 để mọi bộ hiển thị và tổng hợp nhất quán trên thang 100. (Diễn giải của nhóm — nếu thầy chốt khác thì sửa `SeedAcceptanceRubricAsync`.)
 - Phản biện làm **cả hai**: chấm BM10 *và* bỏ phiếu BM11.
 12. **Kết quả = QUYẾT ĐỊNH của Chủ tịch** sau khi hội đồng họp kín & thống nhất (cập nhật theo ghi âm thầy tuần 7 — KHÁC bản cũ "số phiếu đa số"). Hệ thống **hiển thị điểm/phiếu chỉ để tham khảo, KHÔNG tự đếm phiếu chốt**. Biên bản: **Thư ký soạn (nháp) → Chủ tịch duyệt = khóa → mới cập nhật status đề tài** (thành viên khác chỉ xem). Đã code: `ReviewScoringService.SaveMinutesAsync` (Thư ký) + `ApproveMinutesAsync` (Chủ tịch), cờ khóa = `CouncilDecision.FinalizedAt`.
 

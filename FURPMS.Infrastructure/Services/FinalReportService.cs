@@ -33,8 +33,12 @@ public class FinalReportService : IFinalReportService
 
     public async Task<FinalReportDto> SubmitAsync(Guid contractId, SubmitFinalReportRequest request, Guid userId)
     {
-        if (string.IsNullOrWhiteSpace(request.ReportFileUrl))
-            throw new ArgumentException("Phải nộp file báo cáo tổng kết.");
+        var reportLocation = NormalizeDocumentLocation(request.ReportFileUrl, "báo cáo tổng kết", required: true)!;
+        var summaryLocation = NormalizeDocumentLocation(request.SummaryFileUrl, "bản tóm tắt", required: false);
+
+        var language = request.Language?.Trim().ToUpperInvariant();
+        if (language is not "VI" and not "EN")
+            throw new ArgumentException("Ngôn ngữ báo cáo chỉ được chọn Tiếng Việt hoặc Tiếng Anh.");
 
         var contract = await _contracts.Query()
             .Include(c => c.Project)
@@ -53,9 +57,9 @@ public class FinalReportService : IFinalReportService
                 throw new InvalidOperationException($"Báo cáo tổng kết đang ở trạng thái {StatusText.Vi(existing.Status)} — không sửa được nữa.");
 
             // Resubmission after revision
-            existing.ReportFileUrl = request.ReportFileUrl;
-            existing.SummaryFileUrl = request.SummaryFileUrl;
-            existing.Language = request.Language;
+            existing.ReportFileUrl = reportLocation;
+            existing.SummaryFileUrl = summaryLocation;
+            existing.Language = language;
             existing.FinalSubmittedAt = _clock.UtcNow;
             existing.Status = FinalReportStatus.Submitted;
             await _contracts.SaveChangesAsync();
@@ -68,9 +72,9 @@ public class FinalReportService : IFinalReportService
         var report = new FinalReport
         {
             ProjectId = contract.ProjectId,
-            ReportFileUrl = request.ReportFileUrl,
-            SummaryFileUrl = request.SummaryFileUrl,
-            Language = request.Language,
+            ReportFileUrl = reportLocation,
+            SummaryFileUrl = summaryLocation,
+            Language = language,
             SubmittedAt = _clock.UtcNow,
             Status = FinalReportStatus.Submitted
         };
@@ -123,6 +127,12 @@ public class FinalReportService : IFinalReportService
         if (report.Status != FinalReportStatus.Accepted)
             throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ lưu trữ được báo cáo đã được chấp nhận.");
 
+        // QĐ543 Điều 13: sau nghiệm thu phải nộp cả báo cáo đầy đủ và báo cáo tóm tắt
+        // (bằng tiếng Việt hoặc tiếng Anh) trước khi hoàn tất lưu trữ.
+        if (string.IsNullOrWhiteSpace(report.SummaryFileUrl))
+            throw new InvalidOperationException(
+                "Chưa có bản tóm tắt báo cáo tổng kết — phải nộp đủ báo cáo đầy đủ và bản tóm tắt trước khi lưu trữ.");
+
         report.Status = FinalReportStatus.Archived;
         report.ArchivedAt = _clock.UtcNow;
         await _contracts.SaveChangesAsync();
@@ -145,4 +155,31 @@ public class FinalReportService : IFinalReportService
         ArchivalDeadline = r.ArchivalDeadline?.ToString("yyyy-MM-dd"),
         ArchivedAt = r.ArchivedAt
     };
+
+    private static string? NormalizeDocumentLocation(string? value, string label, bool required)
+    {
+        var location = value?.Trim();
+        if (string.IsNullOrWhiteSpace(location))
+        {
+            if (required)
+                throw new ArgumentException($"Phải tải file hoặc dán đường dẫn {label}.");
+            return null;
+        }
+
+        // File tải lên hệ thống dùng endpoint có xác thực. Giữ dạng tương đối để FE mở bằng axios kèm JWT.
+        if (location.StartsWith("/api/", StringComparison.OrdinalIgnoreCase))
+            return location;
+
+        if (Uri.TryCreate(location, UriKind.Absolute, out var absolute)
+            && absolute.Scheme is "http" or "https")
+            return absolute.ToString();
+
+        // Cho phép người dùng dán dạng drive.google.com/... mà không cần tự gõ https://.
+        if (Uri.TryCreate($"https://{location}", UriKind.Absolute, out var inferred)
+            && (inferred.Host.Contains('.') || inferred.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase)))
+            return inferred.ToString();
+
+        throw new ArgumentException(
+            $"Đường dẫn {label} không hợp lệ — hãy tải file lên hoặc dán liên kết bắt đầu bằng http:// hoặc https://.");
+    }
 }

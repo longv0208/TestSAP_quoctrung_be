@@ -161,6 +161,19 @@ public class ProgressReportEvaluationTests
         Assert.Equal(ProgressReportStatus.Evaluated, result.Status);
     }
 
+    [Fact]
+    public async Task Submit_AgainBeforeEvaluation_Succeeds()
+    {
+        var (db, report) = await SeedSubmittedReportAsync(
+            reportFileUrl: "https://example.com/report.pdf", withAttachment: false);
+        var piId = await db.Projects.Select(p => p.PiUserId).FirstAsync();
+
+        var result = await MakeService(db).SubmitAsync(report.Id, piId);
+
+        Assert.Equal(ProgressReportStatus.Submitted, result.Status);
+        Assert.NotNull(result.SubmittedAt);
+    }
+
     /// <summary>
     /// Chủ nhiệm phải được BÁO kết quả đánh giá.
     /// <para>

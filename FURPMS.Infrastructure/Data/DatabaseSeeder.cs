@@ -344,12 +344,46 @@ public class DatabaseSeeder
     /// <b>Vì sao 4 mục chứ không phải 5:</b> BM10 liệt kê 5 đề mục, nhưng mục thứ năm là
     /// "Những nhận xét khác" — lời bình tự do, không phải một chiều đo để cho điểm. Bốn mục đầu
     /// mới là "nội dung đánh giá" mà câu "Thang điểm: Từ 1 đến 5 cho mỗi nội dung đánh giá" nhắm
-    /// tới. Tổng vì thế là <b>20</b>. "Những nhận xét khác" và "Đánh giá chung" nhập ở ô nhận xét
-    /// chung của phiếu chấm.
+    /// tới. Giao diện vẫn cho chọn đúng mức 1-5, nhưng lưu theo trọng số 5-10-15-20-25 để tổng chuẩn hóa
+    /// thành <b>100</b>, giúp so sánh và hiển thị nhất quán với các phiếu khác. "Những nhận xét khác" và
+    /// "Đánh giá chung" nhập ở ô nhận xét chung của phiếu chấm.
     /// </para>
     /// </summary>
     private async Task SeedAcceptanceRubricAsync()
     {
+        var existingBm10 = await _db.RubricTemplates
+            .Include(t => t.Criteria)
+            .FirstOrDefaultAsync(t => t.TemplateType == "ACCEPTANCE" && t.Name.Contains("BM10"));
+
+        if (existingBm10 != null)
+        {
+            // BM10 gốc cho người phản biện chọn mức 1-5 ở bốn nội dung. Hệ thống lại so sánh và
+            // tổng hợp các phiếu theo thang 100, vì vậy lưu trọng số 25 điểm/nội dung (mức 1-5
+            // tương ứng 5-10-15-20-25) thay vì để riêng bộ này ở thang 20. Khi DB demo cũ đã có
+            // phiếu, nhân cả điểm chi tiết để giữ nguyên tỷ lệ đánh giá, không làm đổi ý nghĩa lịch sử.
+            var activeCriteria = existingBm10.Criteria.Where(c => c.IsActive).ToList();
+            if (existingBm10.MaxTotalScore == 20m
+                && activeCriteria.Count == 4
+                && activeCriteria.All(c => c.MaxScore == 5m))
+            {
+                var criterionIds = activeCriteria.Select(c => c.Id).ToList();
+                var scoreDetails = await _db.ReviewScoreDetails
+                    .Where(d => criterionIds.Contains(d.CriterionId))
+                    .ToListAsync();
+
+                foreach (var detail in scoreDetails)
+                    detail.GivenScore *= 5m;
+                foreach (var criterion in activeCriteria)
+                    criterion.MaxScore = 25m;
+
+                existingBm10.MaxTotalScore = 100m;
+                await _db.SaveChangesAsync();
+                _log.LogInformation("Đã chuẩn hóa bộ BM10 và {Count} điểm chi tiết từ thang 20 sang thang 100.", scoreDetails.Count);
+            }
+
+            return;
+        }
+
         if (await _db.RubricTemplates.AnyAsync(t => t.TemplateType == "ACCEPTANCE"))
             return;
 
@@ -357,7 +391,7 @@ public class DatabaseSeeder
         {
             TemplateType = "ACCEPTANCE",   // khớp ReviewRound.RoundType; BE chưa có hằng số riêng
             Name = "Phiếu nhận xét nghiệm thu (BM10 — dành cho phản biện)",
-            MaxTotalScore = 20m,
+            MaxTotalScore = 100m,
             IsActive = true,
             AppliesBasic = true,
             AppliesApplied = true
@@ -366,10 +400,10 @@ public class DatabaseSeeder
         await _db.SaveChangesAsync();
 
         _db.RubricCriteria.AddRange(
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính cấp thiết của đề tài nghiên cứu",                        MaxScore = 5m, Sequence = 1, IsActive = true },
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Đóng góp khoa học",                                            MaxScore = 5m, Sequence = 2, IsActive = true },
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Ý nghĩa thực tiễn",                                            MaxScore = 5m, Sequence = 3, IsActive = true },
-            new RubricCriterion { TemplateId = template.Id, CriterionName = "Kết quả thực tế đạt được so với sản phẩm dự kiến trong đề cương", MaxScore = 5m, Sequence = 4, IsActive = true }
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Tính cấp thiết của đề tài nghiên cứu",                        MaxScore = 25m, Sequence = 1, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Đóng góp khoa học",                                            MaxScore = 25m, Sequence = 2, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Ý nghĩa thực tiễn",                                            MaxScore = 25m, Sequence = 3, IsActive = true },
+            new RubricCriterion { TemplateId = template.Id, CriterionName = "Kết quả thực tế đạt được so với sản phẩm dự kiến trong đề cương", MaxScore = 25m, Sequence = 4, IsActive = true }
         );
         await _db.SaveChangesAsync();
     }

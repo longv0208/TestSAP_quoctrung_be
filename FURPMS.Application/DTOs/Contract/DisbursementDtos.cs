@@ -25,6 +25,8 @@ public class DisbursementResponse
     public DateTime? DeliverableSubmittedAt { get; set; }
     /// <summary>Đợt có gắn sản phẩm nhưng sản phẩm chưa nghiệm thu Đạt ⇒ chưa được đánh dấu đã giải ngân.</summary>
     public bool IsBlockedByDeliverable { get; set; }
+    /// <summary>Đã có ít nhất một file hợp đồng/chứng từ làm minh chứng cho lần xác nhận này.</summary>
+    public bool HasEvidence { get; set; }
 }
 
 /// <summary>Staff gắn / gỡ sản phẩm minh chứng cho một đợt giải ngân. <c>null</c> = gỡ.</summary>

@@ -109,7 +109,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
         var result = (await svc.GenerateAsync(contract.Id)).OrderBy(x => x.RoundNumber).ToList();
 
         Assert.Equal(4, result.Count);
@@ -150,7 +150,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Equal(3, result.Count);
@@ -191,7 +191,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Single(result);
@@ -224,7 +224,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
+        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Single(result);
@@ -609,12 +609,48 @@ public class ContractLifecycleTests
         db.ContractDisbursements.Add(tranche);
         await db.SaveChangesAsync();
 
+        AddDisbursementEvidence(db, tranche.Id, pi.Id);
+        await db.SaveChangesAsync();
+
         return (db, tranche, deliverableId);
     }
 
     private static DisbursementService MakeDisbursementService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
         new(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(),
-            new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
+            new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
+
+    private static void AddDisbursementEvidence(
+        FURPMS.Infrastructure.Data.FURPMSDbContext db, int disbursementId, Guid uploadedBy)
+    {
+        db.Documents.Add(new FURPMS.Domain.Entities.AI.Document
+        {
+            EntityType = "Disbursement",
+            EntityId = disbursementId.ToString(),
+            DocumentCategory = "EVIDENCE",
+            OriginalFileName = "chung-tu.pdf",
+            FileSizeBytes = 100,
+            MimeType = "application/pdf",
+            StorageContainer = "test",
+            StorageBlobName = $"test/{disbursementId}.pdf",
+            StorageUrl = $"/test/{disbursementId}.pdf",
+            UploadedBy = uploadedBy
+        });
+    }
+
+    [Fact]
+    public async Task Confirm_WithoutEvidence_Throws()
+    {
+        var (db, tranche, _) = await SeedTrancheAsync(null);
+        db.Documents.RemoveRange(db.Documents.Where(x =>
+            x.EntityType == "Disbursement" && x.EntityId == tranche.Id.ToString()));
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            MakeDisbursementService(db).ConfirmAsync(
+                tranche.Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid()));
+
+        Assert.Contains("minh chung", RemoveDiacritics(ex.Message), StringComparison.OrdinalIgnoreCase);
+    }
 
     [Theory]
     [InlineData("PENDING")]
@@ -763,6 +799,8 @@ public class ContractLifecycleTests
         }).ToList();
         db.ContractDisbursements.AddRange(tranches);
         await db.SaveChangesAsync();
+        foreach (var tranche in tranches) AddDisbursementEvidence(db, tranche.Id, pi.Id);
+        await db.SaveChangesAsync();
         return (db, tranches);
     }
 
@@ -824,6 +862,8 @@ public class ContractLifecycleTests
         };
         db.ContractDisbursements.Add(single);
         await db.SaveChangesAsync();
+        AddDisbursementEvidence(db, single.Id, db.Users.Select(x => x.Id).First());
+        await db.SaveChangesAsync();
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             MakeDisbursementService(db).ConfirmAsync(
@@ -848,6 +888,8 @@ public class ContractLifecycleTests
             Status = DisbursementStatus.Pending
         };
         db.ContractDisbursements.Add(single);
+        await db.SaveChangesAsync();
+        AddDisbursementEvidence(db, single.Id, db.Users.Select(x => x.Id).First());
         await db.SaveChangesAsync();
 
         var result = await MakeDisbursementService(db).ConfirmAsync(
@@ -889,6 +931,8 @@ public class ContractLifecycleTests
             Status = DisbursementStatus.Pending
         }).ToList();
         db.ContractDisbursements.AddRange(tranches);
+        await db.SaveChangesAsync();
+        foreach (var tranche in tranches) AddDisbursementEvidence(db, tranche.Id, pi.Id);
         await db.SaveChangesAsync();
 
         var service = MakeDisbursementService(db);

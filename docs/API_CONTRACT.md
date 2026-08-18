@@ -651,7 +651,7 @@ Key hiện có:
 **CreateAmendmentRequest**: `{ categoryId, changeDescription, justification, changePercentage?, oldValue?, newValue?, requiresRectorApproval, reviewerComments? }`
 
 ### Giải ngân — `/api/disbursements`
-| POST | `/api/disbursements/{id}/confirm` | Admin, Staff | **Đánh dấu đã giải ngân** (rule tuần 10 — không quản tiền): `{ actualAmount?, bankReference?, notes? }` — **tất cả optional**. Gate theo QĐ543 Điều 16: hợp đồng phải đã ký; đề tài ứng dụng đợt 2/3 cần báo cáo tiến độ giai đoạn 1/2 được đánh giá `PASS`; đợt cuối (kể cả đề tài cơ bản chỉ có 1 đợt) cần project `COMPLETED` sau nghiệm thu Đạt. Vi phạm → 409. |
+| POST | `/api/disbursements/{id}/confirm` | Admin, Staff | **Đánh dấu đã giải ngân** (rule tuần 10 — không quản tiền): `{ actualAmount?, bankReference?, notes? }` — các trường nhập optional, nhưng **bắt buộc đã upload ít nhất 1 file minh chứng**. Gate theo QĐ543 Điều 16: hợp đồng phải đã ký; đề tài ứng dụng đợt 2/3 cần báo cáo tiến độ giai đoạn 1/2 được đánh giá `PASS`; đợt cuối (kể cả đề tài cơ bản chỉ có 1 đợt) cần project `COMPLETED` sau nghiệm thu Đạt. Vi phạm → 409. |
 | PUT | `/api/disbursements/{id}/deliverable` | Admin, Staff | **Gắn/gỡ sản phẩm minh chứng cho đợt** (P5): `{ deliverableId: int \| null }` — `null` = gỡ. **400** nếu sản phẩm không thuộc cùng hợp đồng; **409** nếu đợt đã giải ngân. Gắn sản phẩm đã `PASSED` ⇒ set luôn `conditionMetAt` |
 | GET | `/api/disbursements/{id}/evidence` | Admin, Staff | **Minh chứng giải ngân** (rule tuần 10) — list file HĐ/chứng từ của đợt |
 | POST | `/api/disbursements/{id}/evidence` | Admin, Staff | Upload minh chứng (multipart `file`) — tái dùng `Document` polymorphic (EntityType="Disbursement"); siết dung lượng/đuôi theo `system_settings` |
@@ -677,9 +677,9 @@ Key hiện có:
 | GET | `/api/progress-reports/{id}` | * | Chi tiết |
 | POST | `/api/progress-reports/generate?contractId=&roundCount=` | Admin, Staff | **Sinh sẵn các kỳ báo cáo** — chia đều theo mốc hợp đồng, bỏ qua kỳ đã có. **`roundCount` (1–12) để Staff tự chọn số kỳ**; bỏ trống → mặc định theo loại (QĐ543 Điều 10.1: Ứng dụng 2 / Cơ bản 1). ⚠️ **Tuần 12: không còn fix cứng số kỳ** (thầy 29/07). |
 | POST | `/api/progress-reports` | * (PI) | Tạo 1 kỳ. *(Tuần 12 bỏ chặn cứng theo loại — Staff/PI thêm kỳ được.)* Luồng chuẩn: Staff `generate` → PI điền. |
-| PUT | `/api/progress-reports/{id}` | * (PI) | **Sửa nội dung khi còn DRAFT** (nộp rồi → 409) — `UpdateProgressReportRequest`. **Tuần 12 thêm `reportFileUrl`**: PI dán LINK báo cáo thay cho upload khi file quá lớn (bỏ trống → giữ giá trị cũ). Trả kèm trong summary + detail để Staff/hội đồng mở xem. |
-| POST | `/api/progress-reports/{id}/submit` | * (PI) | Nộp. **409 (mới 06/08)** khi: kỳ **trước** chưa nộp, hoặc đã nộp mà Staff **chưa đánh giá**; hoặc kỳ này **chưa tới ngày bắt đầu**. Nguồn: QĐ543 Điều 10.1 — báo cáo **định kỳ**, kỳ sau chỉ có nghĩa khi kỳ trước đã chốt. Chặn theo **KỲ**, không theo số ngày (QĐ543 không quy định khoảng cách ngày). |
-| PATCH | `/api/progress-reports/{id}/schedule` | Admin, Staff | Đặt lịch báo cáo `{ dueDate?, scheduledMeetingAt?, meetingLink?, roundName? }`. **`dueDate` đặt lại = GIA HẠN** hạn nộp (thầy 29/07: đánh giá trúng ngày cuối thì gia hạn được). **`roundName`** = tên đợt Staff đặt (vd "Giữa kỳ"); null → FE hiện "Kỳ {số}". |
+| PUT | `/api/progress-reports/{id}` | * (PI) | **Sửa nội dung khi chưa có kết quả đánh giá** (`DRAFT` hoặc `SUBMITTED`) — `UpdateProgressReportRequest`. `reportFileUrl` chỉ nhận link http(s); bỏ trống → giữ giá trị cũ. Trả kèm trong summary + detail để Staff/hội đồng mở xem. |
+| POST | `/api/progress-reports/{id}/submit` | * (PI) | Nộp/nộp lại trước khi Staff đánh giá. **409** khi kỳ **trước** chưa nộp hoặc Staff chưa đánh giá. Nguồn: QĐ543 Điều 10.1 — báo cáo **định kỳ**, kỳ sau chỉ có nghĩa khi kỳ trước đã chốt. Chặn theo **KỲ**, không chặn PI nộp sớm vì QĐ543 không quy định khoảng cách ngày. |
+| PATCH | `/api/progress-reports/{id}/schedule` | Admin, Staff | Đặt lịch báo cáo `{ dueDate?, scheduledMeetingAt?, meetingLink?, roundName? }`. **`dueDate` đặt lại = GIA HẠN** hạn nộp (thầy 29/07: đánh giá trúng ngày cuối thì gia hạn được). Máy chủ chặn hạn nộp/buổi họp ở quá khứ, ngoài thời gian hợp đồng, trước đầu kỳ báo cáo; buổi họp cũng không được trước hạn nộp. **`roundName`** = tên đợt Staff đặt (vd "Giữa kỳ"); null → FE hiện "Kỳ {số}". |
 | POST | `/api/progress-reports/{id}/evaluate` | Admin, Staff | Đánh giá — `evaluationResult` ∈ **`PASS` / `FAIL` / `CONDITIONAL`** (QĐ543 Điều 10/BM06: Đạt / Không đạt / Có điều kiện). ⚠️ **Đổi tuần 12:** trước BE nhận `SATISFACTORY/…` còn FE gửi `APPROVED/…` → Staff bấm đánh giá **luôn 400**, không chấm được. |
 | GET | `/api/progress-reports/{id}/documents` | * | **File báo cáo (BM06)** PI đã nộp |
 | POST | `/api/progress-reports/{id}/documents` | PI của đề tài (hoặc Admin/Staff) | **PI upload file PDF/Word** báo cáo (multipart `file`). Người khác → 403 |
@@ -689,6 +689,7 @@ Key hiện có:
 > **"Bộ tiêu chí"** = `RubricTemplate` + các `RubricCriterion` bên trong (thầy 29/07: tiêu chí chia theo **loại đề tài** + **lĩnh vực**, phải linh hoạt). 1 bộ **dùng lại cho nhiều đợt**.
 > **Thứ tự ưu tiên khi chấm:** ① bộ gắn RIÊNG cho vòng → ② bộ theo (đợt + lĩnh vực + loại vòng) → ③ bộ mặc định chung.
 > **Ràng buộc:** mỗi **(đợt + lĩnh vực + LOẠI VÒNG)** chỉ 1 bộ — nhưng cùng lĩnh vực vẫn có bộ riêng cho **Xét duyệt** và bộ riêng cho **Nghiệm thu** (tiêu chí khác hẳn).
+> **Thang điểm:** mọi bộ dùng để tổng hợp trên thang **100**. Riêng BM10, phản biện vẫn chọn mức 1–5 đúng biểu mẫu; FE quy đổi thành 5/10/15/20/25 cho mỗi tiêu chí (4 tiêu chí = 100). Seed cũ 20 điểm được nâng tỷ lệ cả tiêu chí lẫn phiếu đã lưu, không đổi mức đánh giá tương đối.
 
 | Method | Endpoint | Quyền | Mô tả |
 |---|---|---|---|
@@ -704,13 +705,13 @@ Key hiện có:
 > Nghiệm thu cuối nay là **của ĐỀ TÀI** (1 `final_report` / project), không phải từng hợp đồng — route vẫn nhận `contractId` (resolve → project). `FinalReportDto` trả `projectId`.
 
 | GET | `/api/final-reports/{contractId}` | * | Theo hợp đồng (→ báo cáo cuối của đề tài) |
-| POST | `/api/final-reports/{contractId}/submit` | * (PI) | Nộp báo cáo cuối (project → `ACCEPTANCE`) |
+| POST | `/api/final-reports/{contractId}/submit` | * (PI) | Nộp báo cáo cuối (project → `ACCEPTANCE`). Bản đầy đủ và tóm tắt nhận **file nội bộ `/api/...` hoặc link HTTP(S)**; chuỗi tương đối kiểu `ab` bị 400 để không mở nhầm route FE. `language` chỉ nhận `VI`/`EN`. Nếu đang `SUBMITTED` hoặc `REVISION_REQUIRED`, PI được cập nhật/nộp lại cùng bản ghi; `ACCEPTED/ARCHIVED` thì khoá. |
 | GET | `/api/final-reports/{contractId}/documents` | * | **File báo cáo tổng kết (BM09)** đã upload |
-| POST | `/api/final-reports/{contractId}/documents` | * | **Upload file PDF/Word** (multipart `file`) → trả `downloadUrl` để nộp kèm. ⚠️ **Tuần 12:** thay ô dán URL bằng upload file thật (thầy 29/07) |
+| POST | `/api/final-reports/{contractId}/documents` | * | **Upload file PDF/Word** (multipart `file`) → trả `downloadUrl` để nộp kèm. FE đồng thời giữ lựa chọn dán link ngoài để PI linh hoạt khi tài liệu đã nằm trên Drive/kho cơ quan. |
 | GET | `/api/final-reports/{contractId}/documents/{documentId}/download` | * | Tải/mở file |
 | POST | `/api/final-reports/{id}/request-revision` | Admin, Staff | Yêu cầu sửa |
 | POST | `/api/final-reports/{id}/accept` | Admin, Staff | Chấp nhận |
-| POST | `/api/final-reports/{id}/archive` | Admin, Staff | Lưu trữ |
+| POST | `/api/final-reports/{id}/archive` | Admin, Staff | Lưu trữ; 409 nếu chưa có bản tóm tắt (QĐ543 Điều 13 yêu cầu báo cáo đầy đủ + tóm tắt) |
 
 ### Quyết toán — `/api/contracts/{contractId}/settlement`, `/api/settlements/...`
 | GET | `/api/contracts/{contractId}/settlement` | * | Xem quyết toán |

@@ -125,6 +125,7 @@ Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
 | **Ai tham gia** | PI (nộp báo cáo, yêu cầu thay đổi), Staff (duyệt báo cáo — không cần hội đồng) |
 | **Sản phẩm đầu ra** | `ProgressReport[]`; `AmendmentRequest` (nếu có) |
 | **Văn bản QĐ543** | Báo cáo tiến độ định kỳ; Form gia hạn (**tối đa 1/2 thời gian thực hiện** — QĐ543 Điều 10.4; đề tài 12 tháng ⇒ 6 tháng) |
+| **Ràng buộc lịch** | Hạn nộp và buổi đánh giá phải ở tương lai, nằm trong thời gian hợp đồng và không trước đầu kỳ báo cáo; buổi đánh giá không được trước hạn nộp. Gia hạn hợp đồng đổi `EndDate`, nên lịch mới được phép tới mốc đã gia hạn. |
 | **Rule** | Staff duyệt báo cáo tiến độ trực tiếp, không cần hội đồng. Ứng dụng mặc định 2 kỳ (cuối GĐ1/GĐ2), Cơ bản 1 kỳ giữa kỳ; kỳ trước phải được đánh giá xong mới nộp kỳ sau. Amendment validate theo QĐ543 (gia hạn ≤ **1/2 thời gian thực hiện**, v.v.) — không phải form trắng. Chữ ký số: ngoài scope. |
 
 ### Giai đoạn 8 — Nghiệm thu

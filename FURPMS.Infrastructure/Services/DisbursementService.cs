@@ -15,17 +15,20 @@ public class DisbursementService : IDisbursementService
     private readonly IClock _clock;
     private readonly ISystemSettingService _settings;
     private readonly INotifier _notifier;
+    private readonly IDocumentRepository _documents;
 
     public DisbursementService(IContractRepository contracts, IMasterDataRepository masterData,
         IClock clock,
         ISystemSettingService settings,
-        INotifier notifier)
+        INotifier notifier,
+        IDocumentRepository documents)
     {
         _notifier = notifier;
         _contracts = contracts;
         _masterData = masterData;
         _clock = clock;
         _settings = settings;
+        _documents = documents;
     }
 
     public async Task<IEnumerable<DisbursementResponse>> GetByContractAsync(Guid contractId)
@@ -39,7 +42,15 @@ public class DisbursementService : IDisbursementService
             .OrderBy(d => d.RoundNumber)
             .ToListAsync();
 
-        return items.Select(Map);
+        var itemIds = items.Select(x => x.Id.ToString()).ToList();
+        var evidenceIdList = await _documents.Query()
+            .Where(x => x.EntityType == "Disbursement" && itemIds.Contains(x.EntityId) && !x.IsDeleted)
+            .Select(x => x.EntityId)
+            .Distinct()
+            .ToListAsync();
+        var evidenceIds = evidenceIdList.ToHashSet();
+
+        return items.Select(x => Map(x, evidenceIds.Contains(x.Id.ToString())));
     }
 
     public async Task<DisbursementResponse> LinkDeliverableAsync(int disbursementId, LinkDeliverableRequest request)
@@ -103,7 +114,7 @@ public class DisbursementService : IDisbursementService
         _contracts.AddDisbursementsRange(tranches);
         await _contracts.SaveChangesAsync();
 
-        return tranches.Select(Map);
+        return tranches.Select(x => Map(x));
     }
 
     public async Task<DisbursementResponse> ConfirmAsync(int disbursementId, ConfirmDisbursementRequest request, Guid processedBy)
@@ -115,6 +126,12 @@ public class DisbursementService : IDisbursementService
 
         if (d.Status == DisbursementStatus.Disbursed)
             throw new InvalidOperationException("Đợt giải ngân này đã được đánh dấu đã chi.");
+
+        var hasEvidence = await _documents.Query().AnyAsync(x =>
+            x.EntityType == "Disbursement" && x.EntityId == d.Id.ToString() && !x.IsDeleted);
+        if (!hasEvidence)
+            throw new InvalidOperationException(
+                "Phải tải lên ít nhất một file minh chứng (hợp đồng/chứng từ) trước khi đánh dấu đã giải ngân.");
 
         // Đợt nào có gắn sản phẩm minh chứng thì sản phẩm phải nghiệm thu ĐẠT rồi mới
         // được đánh dấu đã giải ngân (QĐ543 Điều 16 — giải ngân theo tiến độ thực hiện).
@@ -156,7 +173,7 @@ public class DisbursementService : IDisbursementService
                 entityId: d.ContractId.ToString());
         }
 
-        return Map(d);
+        return Map(d, hasEvidence);
     }
 
     /// <summary>
@@ -273,7 +290,7 @@ public class DisbursementService : IDisbursementService
         return list;
     }
 
-    private static DisbursementResponse Map(ContractDisbursement d) => new()
+    private static DisbursementResponse Map(ContractDisbursement d, bool hasEvidence = false) => new()
     {
         Id = d.Id,
         ContractId = d.ContractId,
@@ -292,6 +309,7 @@ public class DisbursementService : IDisbursementService
         DeliverableAcceptanceStatus = d.Deliverable?.AcceptanceStatus,
         DeliverableSubmittedAt = d.Deliverable?.SubmittedAt,
         IsBlockedByDeliverable =
-            d.Deliverable is not null && d.Deliverable.AcceptanceStatus != AcceptanceStatus.Passed
+            d.Deliverable is not null && d.Deliverable.AcceptanceStatus != AcceptanceStatus.Passed,
+        HasEvidence = hasEvidence
     };
 }

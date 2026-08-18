@@ -120,6 +120,9 @@ public class ProgressReportService : IProgressReportService
             throw new ArgumentException("Ngày kết thúc kỳ báo cáo không hợp lệ (định dạng yyyy-MM-dd).");
         if (periodEnd <= periodStart)
             throw new ArgumentException("Ngày kết thúc kỳ báo cáo phải sau ngày bắt đầu.");
+        if (periodStart < contract.StartDate || periodEnd > contract.EndDate)
+            throw new ArgumentException(
+                $"Kỳ báo cáo phải nằm trong thời gian hợp đồng từ {contract.StartDate:dd/MM/yyyy} đến {contract.EndDate:dd/MM/yyyy}.");
         if (request.OverallCompletionPct is < 0 or > 100)
             throw new ArgumentException("Tỷ lệ hoàn thành phải nằm trong khoảng 0–100%.");
 
@@ -200,7 +203,13 @@ public class ProgressReportService : IProgressReportService
         report.PiRecommendations = request.PiRecommendations;
         // Bỏ trống thì GIỮ link cũ — nộp lại mà không dán lại link không được mất bản cũ.
         if (!string.IsNullOrWhiteSpace(request.ReportFileUrl))
-            report.ReportFileUrl = request.ReportFileUrl.Trim();
+        {
+            var reportUrl = request.ReportFileUrl.Trim();
+            if (!Uri.TryCreate(reportUrl, UriKind.Absolute, out var uri)
+                || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+                throw new ArgumentException("Link báo cáo phải là địa chỉ đầy đủ bắt đầu bằng http:// hoặc https://.");
+            report.ReportFileUrl = reportUrl;
+        }
 
         // Bảng tiến độ theo hoạt động (BM06): gửi lên thì THAY toàn bộ bảng cũ.
         if (request.Items != null)
@@ -232,8 +241,12 @@ public class ProgressReportService : IProgressReportService
         if (report.Contract.Project.PiUserId != userId)
             throw new ForbiddenException("Chỉ chủ nhiệm đề tài mới nộp được báo cáo này.");
 
-        if (report.Status != ProgressReportStatus.Draft)
-            throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ nộp được bản nháp.");
+        // PI được cập nhật/nộp lại cho tới khi Staff đánh giá. UpdateAsync đã cho phép sửa bản
+        // SUBMITTED chưa có kết quả, vì vậy SubmitAsync cũng phải chấp nhận đúng trạng thái đó.
+        // Trước đây FE cập nhật thành công rồi gọi submit lần nữa và bị chính kiểm tra DRAFT này chặn.
+        if (report.Status is not ProgressReportStatus.Draft and not ProgressReportStatus.Submitted)
+            throw new InvalidOperationException(
+                $"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ nộp hoặc nộp lại được trước khi có kết quả đánh giá.");
 
         /*
          * QĐ543 Điều 10.1: báo cáo tiến độ là báo cáo **ĐỊNH KỲ** — kỳ sau chỉ có nghĩa khi kỳ
@@ -272,8 +285,8 @@ public class ProgressReportService : IProgressReportService
          */
 
         report.Status = ProgressReportStatus.Submitted;
-        report.SubmittedAt = DateTime.UtcNow;
-        report.UpdatedAt = DateTime.UtcNow;
+        report.SubmittedAt = _clock.UtcNow;
+        report.UpdatedAt = _clock.UtcNow;
         await _contracts.SaveChangesAsync();
 
         return await GetByIdAsync(reportId);
@@ -382,21 +395,54 @@ public class ProgressReportService : IProgressReportService
 
     public async Task<ProgressReportDto> ScheduleAsync(Guid reportId, ScheduleProgressReportRequest request)
     {
-        var report = await _contracts.ProgressReports.FirstOrDefaultAsync(r => r.Id == reportId)
+        var report = await _contracts.ProgressReports
+            .Include(r => r.Contract)
+            .FirstOrDefaultAsync(r => r.Id == reportId)
             ?? throw new KeyNotFoundException("Không tìm thấy báo cáo tiến độ.");
+
+        var now = _clock.UtcNow;
+        var today = DateOnly.FromDateTime(now.AddHours(7));
+        var effectiveDueDate = report.DueDate;
 
         if (!string.IsNullOrWhiteSpace(request.DueDate))
         {
             if (!DateOnly.TryParse(request.DueDate, out var due))
                 throw new ArgumentException("DueDate phải là ngày hợp lệ (yyyy-MM-dd).");
+            if (due < today)
+                throw new ArgumentException($"Hạn nộp {due:dd/MM/yyyy} đã ở trong quá khứ — hãy chọn từ ngày {today:dd/MM/yyyy} trở đi.");
+            if (due < report.Contract.StartDate || due > report.Contract.EndDate)
+                throw new ArgumentException(
+                    $"Hạn nộp phải nằm trong thời gian hợp đồng từ {report.Contract.StartDate:dd/MM/yyyy} đến {report.Contract.EndDate:dd/MM/yyyy}.");
+            if (due < report.ReportingPeriodStart)
+                throw new ArgumentException(
+                    $"Hạn nộp không thể trước ngày bắt đầu kỳ báo cáo {report.ReportingPeriodStart:dd/MM/yyyy}.");
             report.DueDate = due;
+            effectiveDueDate = due;
         }
         if (!string.IsNullOrWhiteSpace(request.ScheduledMeetingAt))
         {
-            if (!DateTime.TryParse(request.ScheduledMeetingAt, out var at))
+            if (!DateTimeOffset.TryParse(request.ScheduledMeetingAt, out var parsedAt))
                 throw new ArgumentException("ScheduledMeetingAt phải là thời điểm hợp lệ.");
-            report.ScheduledMeetingAt = at.ToUniversalTime();
+            var at = parsedAt.UtcDateTime;
+            var meetingDate = DateOnly.FromDateTime(at.AddHours(7));
+            if (at <= now)
+                throw new ArgumentException("Thời gian họp đã ở trong quá khứ — hãy chọn một thời điểm trong tương lai.");
+            if (meetingDate < report.Contract.StartDate || meetingDate > report.Contract.EndDate)
+                throw new ArgumentException(
+                    $"Buổi họp phải nằm trong thời gian hợp đồng từ {report.Contract.StartDate:dd/MM/yyyy} đến {report.Contract.EndDate:dd/MM/yyyy}.");
+            if (meetingDate < report.ReportingPeriodStart)
+                throw new ArgumentException(
+                    $"Buổi họp không thể trước ngày bắt đầu kỳ báo cáo {report.ReportingPeriodStart:dd/MM/yyyy}.");
+            if (effectiveDueDate.HasValue && meetingDate < effectiveDueDate.Value)
+                throw new ArgumentException(
+                    $"Buổi họp không thể diễn ra trước hạn nộp {effectiveDueDate.Value:dd/MM/yyyy}.");
+            report.ScheduledMeetingAt = at;
         }
+
+        if (effectiveDueDate.HasValue && report.ScheduledMeetingAt.HasValue
+            && DateOnly.FromDateTime(report.ScheduledMeetingAt.Value.AddHours(7)) < effectiveDueDate.Value)
+            throw new ArgumentException(
+                $"Buổi họp hiện tại không thể diễn ra trước hạn nộp mới {effectiveDueDate.Value:dd/MM/yyyy} — hãy đổi cả thời gian họp.");
         report.MeetingLink = request.MeetingLink;
         if (request.RoundName != null)
             report.RoundName = string.IsNullOrWhiteSpace(request.RoundName) ? null : request.RoundName.Trim();
