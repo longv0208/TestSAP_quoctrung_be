@@ -15,7 +15,7 @@ cd D:\capstone\newroot\FURPMS_BEv2 && docker compose up -d
 dotnet run --project FURPMS.API --urls "http://localhost:5068"
 
 # 3. Bật giao diện (cửa sổ khác)
-cd "d:\Downloads\doc\9 đồ án\core\FURPMS-Web" && npm run dev
+cd "D:\capstone\newroot\FURPMS-Web" && npm run dev
 ```
 
 Sẵn sàng khi: http://localhost:5068/swagger mở được **và** http://localhost:5173 hiện trang chủ.

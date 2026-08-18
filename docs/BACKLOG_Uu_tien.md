@@ -54,7 +54,7 @@
 | # | Việc | Doc? | Ghi chú |
 |---|---|---|---|
 | ✅ P2-1 | **Màn "Sửa đề cương" có phần "Sản phẩm dự kiến" và "Tài liệu đính kèm" phân loại (thuyết minh / lý lịch khoa học)** — trong khi lúc **tạo** thì không có | ✅ | QĐ543 **Điều 6.4** yêu cầu hồ sơ có **lý lịch khoa học (BM02)**; **Điều 11.1** liệt sản phẩm cam kết. ⇒ Hai phần này **đúng nghiệp vụ**, cái sai là **lúc tạo lại không có** ⇒ PI nộp lần đầu thiếu. Cần đưa lên bước tạo.  **XONG 12/08** — wizard nay có Sản phẩm dự kiến + hiện tệp đã đính kèm khi sửa |
-| P2-2 | **Staff: đổi "Xét duyệt" thành "Xem chi tiết đề tài"** + thêm tab tiến độ như bên PI | — | Anh đề xuất. Hợp lý: màn đó thực chất là màn xem tổng hợp. |
+| ✅ P2-2 | **Staff: đổi "Xét duyệt" thành "Xem chi tiết đề tài"** + thêm tab tiến độ như bên PI | — | **XONG 18/08** — màn đổi thành **Đề cương**; nút **Xem chi tiết** mở trang có 2 tab: Nội dung đề cương (thông tin · sản phẩm · file đọc tại chỗ) và Tiến trình đề tài (vòng xét duyệt + timeline hợp đồng/báo cáo/giải ngân dùng chung với PI). Thao tác vòng vẫn chỉ nằm ở **Hội đồng & Chấm**. |
 | P2-3 | **Tiêu đề lịch họp: không gợi ý, không chặn trùng tên** | ⚠️ | Đề xuất: gợi ý sẵn `"Họp HĐ <loại vòng> — <tên đề tài>"`. Trùng tên thì **cảnh báo chứ không chặn** (hai đợt khác nhau trùng tên là bình thường). |
 | ⚪ P2-4 | **Gán hội đồng khi chưa gửi thư mời** | ✅ | **Đúng như hiện tại.** Rule #13: gán hết rồi mới gửi một lượt. Không cần sửa.  **KHÔNG CẦN SỬA** — đúng rule #13: gán hết rồi mới gửi một lượt |
 | ⚪ P2-5 | **Nhập số tháng gia hạn quá lớn** | — | Hiện chặn báo lỗi. Đề xuất tự kẹp về tối đa — **anh nghiêng về "thôi"**, tôi đồng ý: báo lỗi rõ ràng hơn là âm thầm đổi số người ta gõ.  **KHÔNG LÀM** — anh chốt: báo lỗi rõ ràng hơn là âm thầm đổi số người ta gõ |

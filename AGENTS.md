@@ -271,7 +271,7 @@ await Task.Yield();
 
 ## 9. Frontend
 
-FE nằm ở repo riêng: **`D:\Downloads\doc\9 đồ án\core\FURPMS-Web`** (`immanhdung/FURPMS-Web`).
+FE nằm ở repo riêng: **`D:\capstone\newroot\FURPMS-Web`** (`immanhdung/FURPMS-Web`).
 Xem `AGENTS.md` trong đó. Chạy `npm run dev` → `http://localhost:5173`, tự trỏ về `:5068`.
 
 Sửa endpoint hay đổi hình dạng DTO ở BE thì **phải kiểm luôn FE** — không có sinh code tự động

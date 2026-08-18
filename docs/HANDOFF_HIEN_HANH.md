@@ -211,7 +211,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 
 ### Backlog còn treo (`BACKLOG_Uu_tien.md`) — đều P2/P3, không chặn luồng chính
 
-`P2-2` đổi nhãn màn Staff · `P2-3` gợi ý tiêu đề lịch họp · `P2-6` màu ô nhận xét ·
+`P2-3` gợi ý tiêu đề lịch họp · `P2-6` màu ô nhận xét ·
 `P2-9` phạm vi Admin sửa hồ sơ người khác *(cần bạn quyết, không phải việc code)* ·
 `P3-1` Google Meet · `P3-3` đo token AI · `P3-4` `/ai/search` · `HD-7` hash file bản ký
 

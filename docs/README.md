@@ -23,6 +23,14 @@
 
 ## 🔧 Việc còn lại / đang dang dở (backlog)
 
+### A-18/08c. Khép P2-2 — chi tiết đề cương có lại tiến trình
+
+- Màn Staff đổi từ **Xét duyệt đề cương** thành **Đề cương**; hàng dùng nút **Xem chi tiết**.
+- Trang chi tiết chia đúng 2 tab: **Nội dung đề cương** (thông tin · sản phẩm · file xem tại chỗ)
+  và **Tiến trình đề tài** (vòng xét duyệt + timeline hợp đồng/báo cáo/giải ngân dùng chung với PI).
+- Kanban và form tạo vòng cũ không mang trở lại; mọi thao tác vòng/hội đồng vẫn ở một nơi là
+  **Hội đồng & Chấm**. Việc `BACKLOG_Uu_tien.md` **P2-2** đã xong.
+
 ### A-18/08b. Bẫy môi trường đã gỡ + việc còn treo (kiểm lại 18/08)
 
 **Đã gỡ — skill `fe-e2e` trỏ sai cả ba thứ.** File `.claude/skills/fe-e2e/SKILL.md` (có ở cả repo
