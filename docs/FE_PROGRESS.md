@@ -1,6 +1,6 @@
 # FURPMS Frontend (FURPMS-Web) — Đánh giá & việc cần làm
 
-> Đánh giá **FE MỚI** (`core/FURPMS-Web`, của Dũng) so với BE hiện tại + luồng nghiệp vụ chính. Cập nhật: 2026-07-20 (P0 Biên bản đã xong + verify sống).
+> Đánh giá **FE MỚI** (`furpms-web`, của Dũng) so với BE hiện tại + luồng nghiệp vụ chính. Cập nhật: 2026-07-20 (P0 Biên bản đã xong + verify sống).
 > **Cơ sở đánh giá** (không đoán): smoke test sống 4 role × ~25 trang qua BE local (0 lỗi API), đối chiếu toàn bộ endpoint FE gọi vs 37 controller BE, đi tay luồng nộp proposal end-to-end (SUBMITTED thành công), đọc code wizard/services/routes.
 > Bản đối chiếu API chuẩn: `API_CONTRACT.md`. Tiến độ BE: `PROGRESS.md`.
 

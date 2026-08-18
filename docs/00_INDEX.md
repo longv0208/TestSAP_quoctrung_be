@@ -3,7 +3,10 @@
 > Xếp theo **tác dụng thực tế**, không theo bảng chữ cái. Đọc từ trên xuống: tầng 1 là thứ **phải
 > tuân theo**, tầng 5 là thứ chỉ tra khi cần.
 >
-> Cập nhật 06/08/2026. Mỗi lần thêm/xoá file trong `docs/` phải sửa file này.
+> Cập nhật 18/08/2026. Mỗi lần thêm/xoá file trong `docs/` phải sửa file này.
+>
+> 18/08: hai repo đã gom về `D:\capstone\newroot\` (`FURPMS_BEv2` + `furpms-web`). Mọi đường dẫn
+> `core/FURPMS-Web` trong docs đã được sửa theo — gặp lại chỗ nào còn sót thì sửa luôn.
 
 ---
 

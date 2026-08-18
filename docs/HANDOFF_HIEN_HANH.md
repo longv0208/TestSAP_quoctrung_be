@@ -254,7 +254,7 @@ Kết quả lần chạy 14/08: **40 route × 4 vai — 0 vấn đề** (local, 
 ## 7. Nếu bàn giao cho AI khác — nói đúng những câu này
 
 > Dự án FURPMS, capstone SU26SE053, quản lý đề tài NCKH theo **QĐ 543/QĐ-ĐHFPT**.
-> BE .NET 8 + **PostgreSQL** (`D:\capstone\FURPMS_BEv2`, nhánh `thu-nghiem/postgres`).
+> BE .NET 8 + **PostgreSQL** (`D:\capstone\newroot\FURPMS_BEv2`, nhánh `thu-nghiem/postgres`).
 > FE React 19 + Vite (`furpms-web`, nhánh `dev`).
 >
 > Đọc theo thứ tự: `docs/HANDOFF_HIEN_HANH.md` → `CLAUDE.md` (quy tắc nghiệp vụ #1–29, **không

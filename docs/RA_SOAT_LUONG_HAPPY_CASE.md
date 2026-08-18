@@ -292,8 +292,8 @@ thống đang **nói sai** chứ không phải nói thiếu.
 
 ## 5. Ghi chú kiểm chứng
 
-- Toàn bộ §1 và §2 đối chiếu **code thật** ở `D:\capstone\FURPMS_BEv2` (nhánh `dev`, `5536b5e`) và
-  FE `core/FURPMS-Web` (nhánh `dev`, `600f479`). Số dòng đúng tại thời điểm 14/08/2026.
+- Toàn bộ §1 và §2 đối chiếu **code thật** ở `D:\capstone\newroot\FURPMS_BEv2` (nhánh `dev`, `5536b5e`) và
+  FE `furpms-web` (nhánh `dev`, `600f479`). Số dòng đúng tại thời điểm 14/08/2026.
 - Trích dẫn QĐ543 lấy trực tiếp từ `docs/QD_543_DHFPT_Quy_dinh_quan_ly_de_tai_NCKH_clean.docx`,
   không lấy từ trí nhớ.
 - **Chưa sửa dòng code nào. Chưa commit. Chưa push.**

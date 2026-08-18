@@ -9,7 +9,7 @@
 
 ```bash
 # 1. Bật PostgreSQL (14/08: đổi khỏi SQL Server để deploy được lên Railway)
-cd D:\capstone\FURPMS_BEv2 && docker compose up -d
+cd D:\capstone\newroot\FURPMS_BEv2 && docker compose up -d
 
 # 2. Bật máy chủ (tự chạy migration + seed khi khởi động)
 dotnet run --project FURPMS.API --urls "http://localhost:5068"

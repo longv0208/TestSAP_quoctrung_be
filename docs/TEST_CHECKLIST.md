@@ -47,7 +47,7 @@ Những mục dưới đây tôi đã chạy thật bằng API hoặc có test t
 > ⚠️ **Phần A-01…A-13 ở trên kiểm ở tầng API.**
 >
 > ✅ **Cập nhật 09–12/08 — đã chạy trên trình duyệt thật** (Chrome headless qua Playwright, script ở
-> `core/FURPMS-Web/.e2e/*.mjs`, gitignore): §1 (PI) · §2 (Staff vòng chấm/hội đồng/lịch họp) ·
+> `furpms-web/.e2e/*.mjs`, gitignore): §1 (PI) · §2 (Staff vòng chấm/hội đồng/lịch họp) ·
 > §3 (chấm điểm & biên bản) · §4 (hợp đồng, giải ngân, báo cáo tiến độ) · 9 ràng buộc nghiệp vụ ·
 > trần kinh phí Điều 14 · tỷ lệ hạng mục Điều 15 · nhãn vai hội đồng.
 > Mỗi lần chạy có bắt console error + mọi phản hồi API ≥ 400.

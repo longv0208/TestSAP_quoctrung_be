@@ -8,8 +8,8 @@
 
 ## 0. Cấu trúc repo & CHỖ DỄ NHẦM ⚠️
 - **BE:** `FURPMS_BE` — .NET 8, nhánh **`dev`**. Docs nằm ở `FURPMS_BE/docs/`, conventions ở `FURPMS_BE/CLAUDE.md`.
-- **FE:** `core/FURPMS-Web` — React 19 + Vite, nhánh **`dev`**. **ĐÂY là FE hiện hành.**
-- 🗑️ **Repo FE cũ đuôi `v0` đã BỎ HẲN** (30/07) — không dùng, không tham chiếu, không copy gì từ đó nữa. Mọi công cụ/doc đã trỏ về `core/FURPMS-Web`.
+- **FE:** `furpms-web` — React 19 + Vite, nhánh **`dev`**. **ĐÂY là FE hiện hành.**
+- 🗑️ **Repo FE cũ đuôi `v0` đã BỎ HẲN** (30/07) — không dùng, không tham chiếu, không copy gì từ đó nữa. Mọi công cụ/doc đã trỏ về `furpms-web`.
 
 ## 1. Chạy app
 
@@ -76,7 +76,7 @@ trước (pgAdmin hoặc `createdb furpms`) — EF Core tạo bảng nhưng **kh
 
 ### FE
 ```bash
-cd core/FURPMS-Web && cp .env.example .env && npm install && npm run dev  # :5173, trỏ BE :5068
+cd furpms-web && cp .env.example .env && npm install && npm run dev  # :5173, trỏ BE :5068
 ```
 **Tài khoản seed:** admin@furpms.edu.vn/`password` · staff.demo@…/`password` · pi.demo@…/`password` · reviewer{1,2,3}.demo@…/`password` (reviewer1=Chủ tịch, reviewer2=Thư ký của hội đồng đề tài "abc").
 **Verify:** BE `dotnet build && dotnet test` (84 test) · FE `npx tsc --noEmit && npm run build` + parity vi/en (932=932).

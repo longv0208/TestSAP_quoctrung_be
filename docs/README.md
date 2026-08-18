@@ -8,7 +8,7 @@
 >
 > ⏸ **Đang chờ user chốt:** `PLAN_Week12.md` → mục **"Chờ user quyết định"** — **Q1** tìm kiếm ngữ nghĩa (bỏ / thay bằng tìm kiếm nâng cao / làm thật) · **Q2** AI cho từng role *(đã xử lý)* · **Q3** chuẩn hoá validate ở FE · **Q4** Google Calendar/Meet (cần đăng ký OAuth, có bẫy refresh token 7 ngày) · **Q5** 🔴 **deploy thật: Render xoá sạch file upload mỗi lần redeploy** — phải đổi sang storage ngoài trước khi deploy. Đừng tự làm, hỏi lại trước.
 >
-> 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `core/FURPMS-Web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
+> 🆕 **Tiếp tục việc tuần 10 (thầy Đức)?** Đọc **`HANDOFF_Week10.md`** trước — file tự-chứa: cấu trúc repo (**FE = `furpms-web`** — repo FE cũ đuôi `v0` đã bỏ hẳn từ 30/07), cách chạy, đã làm / còn backlog, migrations mới. Rule nghiệp vụ tuần 10 ở `CLAUDE.md` #15–23.
 >
 > 📋 **Rà soát hệ thống + backlog (thừa / chưa ổn / ý tưởng để sau):** **`SYSTEM_REVIEW.md`** — chốt lại đánh giá để không quên (IDOR endpoint con, đa vai, sản phẩm/kỳ báo cáo tự tạo, rich text, lịch/thông báo…). Cập nhật tuần 11.
 >
@@ -145,7 +145,7 @@ Trước đây cả Staff lẫn thành viên hội đồng chỉ thấy **tên +
 - ✅ **GIẢI NGÂN FULL-UI (08/07):** staff "Tạo lịch giải ngân" HD-2026-003 → tự sinh **3 đợt 33/33/34%** (WHOLE ≥3 — rule #6, đều PENDING) · HD-2026-002 (PARTIAL): **PI nộp sản phẩm** (URL file) → **Staff đánh giá PASSED** → điều kiện đợt 3 tự đạt → nút "Xác nhận giải ngân" CHỈ hiện ở đợt đó (rule #3 — tiền không tự chuyển) → confirm với mã NH → **DISBURSED 90M**. Chuỗi nghiệm thu→giải ngân trọn vẹn qua UI.
 - ✅ **3 bug fix trong đợt MCP:** (1) BE `AddRoundMemberAsync` bổ sung `Secretary` vào whitelist (trước gán Thư ký 400); (2) FE `ROLE_LABEL` thêm `Secretary: 'Thư ký'`; (3) FE nút "Đánh giá" sản phẩm đòi `!acceptanceStatus` nhưng BE set `PENDING` khi PI nộp → **staff không bao giờ thấy nút** — sửa thành `PENDING` cũng hiện (`ContractManagement.tsx`).
 - ✅ **UX nhỏ đã fix gián tiếp (xem B3):** sau khi gán người đầu, "Gửi thư mời" từng bị disabled tới khi reload (state FE cũ không cập nhật `councilId`) — màn `ReviewBoard.tsx` mới refetch toàn bộ board sau mỗi thao tác nên không còn tái hiện.
-- Skill tái sử dụng: `.claude/skills/fe-e2e/SKILL.md` + Playwright MCP (scope user). Script/screenshot đặt ở `core/FURPMS-Web/.e2e/` (gitignore).
+- Skill tái sử dụng: `.claude/skills/fe-e2e/SKILL.md` + Playwright MCP (scope user). Script/screenshot đặt ở `furpms-web/.e2e/` (gitignore).
 
 ### C. Vận hành / môi trường
 - **Docker BE**: restart để nạp fix mới nhất (ResearchType create Code-optional, track chống trùng mã, appsettings.json có lại connection dev) — `docker compose restart backend`.

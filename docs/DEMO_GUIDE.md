@@ -17,7 +17,7 @@ dotnet run --project FURPMS.API     # chạy ở http://localhost:5068
 ```
 - Khi khởi động, BE tự **chạy migration** + **seed** (idempotent). Swagger: `http://localhost:5068/swagger`.
 
-**Frontend** (repo `core/FURPMS-Web`): `npm run dev` → `http://localhost:5173` (`.env` trỏ `VITE_API_BASE_URL=http://localhost:5068/api`).
+**Frontend** (repo `furpms-web`): `npm run dev` → `http://localhost:5173` (`.env` trỏ `VITE_API_BASE_URL=http://localhost:5068/api`).
 
 > Chỉ chạy **một** instance BE tại một thời điểm (tránh giành port 5068).
 
