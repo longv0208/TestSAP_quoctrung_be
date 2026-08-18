@@ -57,8 +57,8 @@ Mục đích **không phải** "màn nào cũng có chữ", mà là **mỗi bư�
 - **Ứng dụng 2026** (`UD26`) — đang **mở nhận** đề cương.
 - **Cơ bản 2026** (`CB26`) — đã **đóng nhận**, đang xét duyệt / thực hiện.
 
-> **Nhớ nhanh ai là chủ nhiệm:** PI 2 (`pi2.demo`) giữ đúng **3** đề tài — `002` (mới nộp),
-> `005` (chờ ký hợp đồng), `008` (đã hoàn thành). **Bảy đề tài còn lại đều của PI 1** (`pi.demo`).
+> Tên dữ liệu mẫu có tiền tố **`[TEST-…]`** để nhìn danh sách là biết ngay ca cần thử. Happy path
+> không seed sẵn; hãy tạo mới và đi từ đầu tới cuối để không vô tình dựa vào trạng thái giả lập.
 
 | Mã | Đề tài | Trạng thái | PI | Demo được gì |
 |---|---|---|---|---|
@@ -70,11 +70,15 @@ Mục đích **không phải** "màn nào cũng có chữ", mà là **mỗi bư�
 | `NCKH-2026-006` | Tối ưu lịch thi | HĐ **đang chạy**, báo cáo kỳ 1 **chờ duyệt** | PI 1 | Staff **duyệt báo cáo tiến độ** · PI **xin gia hạn** |
 | `NCKH-2026-007` | Nhận dạng chữ viết tay | **Đang nghiệm thu** ⭐ | PI 1 | **Màn chính vòng 2**: `reviewer3` (Phản biện) chấm **BM10** · cả 5 người bỏ phiếu **BM11** Đạt/Không đạt · hồ sơ nghiệm thu ở cột trái. Có sẵn **lịch sử vòng 1** (hội đồng, phiếu chấm, biên bản đã chốt, kết quả Đạt) |
 | `NCKH-2026-008` | Khuyến nghị môn học | **Hoàn thành** | PI 2 | Vòng đời trọn vẹn: **cả 2 vòng đều Đạt**, timeline, giải ngân đủ đợt, **quyết toán**, **1 phụ lục gia hạn 3 tháng đã duyệt**, xuất **BM13** biên bản thanh lý |
+| `NCKH-2026-009` | Phân loại rác tái chế | **Không đạt vòng 1** | PI 2 | Đủ phiếu + biên bản đã chốt Không đạt; thử bộ lọc và lịch sử ca xấu |
+| `NCKH-2026-010` | Phát hiện sử dụng điện bất thường | **Lời mời chờ trả lời** | PI 1 | Dùng chung một hội đồng với `011`; reviewer thấy đủ hai đề tài trước khi nhận |
+| `NCKH-2026-011` | Trợ lý hỏi đáp quy chế | **Lời mời chờ trả lời** | PI 2 | Sau khi nhận một lời mời, màn phân công phải hiện **hai công việc riêng** |
 
 Kèm theo:
-- **3 hội đồng**, mỗi hội đồng **5 người** — số **LẺ** và nằm trong 3–5 (xét duyệt, Điều 8.2) /
-  5–7 (nghiệm thu, Điều 12.2), đủ Chủ tịch/Thư ký/Phản biện, **tất cả đã xác nhận lời mời**, đã có lịch họp.
-- **#3, #4, #5 chấm chung MỘT hội đồng, một buổi họp, ba slot con 45 phút** → mới có gì để xem ở
+- **6 hội đồng**, mỗi hội đồng **5 người** — số **LẺ** và nằm trong 3–5 (xét duyệt, Điều 8.2) /
+  5–7 (nghiệm thu, Điều 12.2), đủ Chủ tịch/Thư ký/Phản biện. Riêng hội đồng `010+011` đang ở trạng
+  thái **đã mời, chờ tự trả lời**; các hội đồng còn lại đã xác nhận để vào thẳng màn chấm.
+- **#3, #4, #5, #9 chấm chung MỘT hội đồng, một buổi họp, bốn slot con 45 phút** → mới có gì để xem ở
   màn "lịch chấm"; hội đồng nào cũng chỉ 1 đề tài thì tính năng đó vô hình.
 - **Hai bộ tiêu chí, hai vòng khác nhau** (rule #24):
   · vòng xét duyệt **BM03** 10+20+40+20+10 = **Cộng 100**, **mọi** thành viên chấm (Điều 8.3.b);

@@ -1,5 +1,6 @@
 using FURPMS.Application.DTOs.ReviewRounds;
 using FURPMS.Domain.Entities.Proposals;
+using FURPMS.Domain.Entities.Progress;
 using FURPMS.Domain.Entities.Review;
 using FURPMS.Domain.Entities.Users;
 using FURPMS.Infrastructure.Repositories;
@@ -316,5 +317,99 @@ public class ReviewBoardServiceTests
 
         var service = MakeService(db);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.RemoveProjectFromRoundAsync(round.Id, projectId));
+    }
+
+    [Fact]
+    public async Task AddProjectToAcceptance_UnfinishedReviewRound_Blocked()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var pi = MakeUser();
+        var (project, proposal) = MakeProjectWithProposal(pi.Id);
+        var reviewRound = MakeRound();
+        reviewRound.Status = "OPEN";
+        var acceptanceRound = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = 1, RoundNumber = 2, Sequence = 2,
+            Dimension = "SCIENCE", RoundType = "ACCEPTANCE", Status = "PENDING"
+        };
+        db.Users.Add(pi);
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        db.ReviewRounds.AddRange(reviewRound, acceptanceRound);
+        db.ProjectRounds.Add(new ProjectRound
+        {
+            ProjectId = project.Id, RoundId = reviewRound.Id, Status = "OPEN"
+        });
+        await db.SaveChangesAsync();
+
+        var service = MakeService(db);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.AddProjectToRoundAsync(acceptanceRound.Id, project.Id));
+
+        Assert.Contains("chưa hoàn tất", error.Message);
+        Assert.False(await db.ProjectRounds.AnyAsync(x => x.RoundId == acceptanceRound.Id));
+    }
+
+    [Fact]
+    public async Task AddProjectToAcceptance_FinalReportNotApproved_Blocked()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var pi = MakeUser();
+        var (project, proposal) = MakeProjectWithProposal(pi.Id, status: "APPROVED");
+        project.Status = "ACCEPTANCE";
+        var reviewRound = MakeRound();
+        reviewRound.Status = "PASSED";
+        var acceptanceRound = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = 1, RoundNumber = 2, Sequence = 2,
+            Dimension = "SCIENCE", RoundType = "ACCEPTANCE", Status = "PENDING"
+        };
+        db.Users.Add(pi);
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        db.ReviewRounds.AddRange(reviewRound, acceptanceRound);
+        db.ProjectRounds.Add(new ProjectRound
+        {
+            ProjectId = project.Id, RoundId = reviewRound.Id, Status = "PASSED", FinalizedAt = DateTime.UtcNow
+        });
+        db.FinalReports.Add(new FinalReport { ProjectId = project.Id, Status = "SUBMITTED" });
+        await db.SaveChangesAsync();
+
+        var service = MakeService(db);
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => service.AddProjectToRoundAsync(acceptanceRound.Id, project.Id));
+
+        Assert.Contains("chưa sẵn sàng", error.Message);
+    }
+
+    [Fact]
+    public async Task AddProjectToAcceptance_PassedReviewAndApprovedDossier_Succeeds()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var pi = MakeUser();
+        var (project, proposal) = MakeProjectWithProposal(pi.Id, status: "APPROVED");
+        project.Status = "ACCEPTANCE";
+        var reviewRound = MakeRound();
+        reviewRound.Status = "PASSED";
+        var acceptanceRound = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = 1, RoundNumber = 2, Sequence = 2,
+            Dimension = "SCIENCE", RoundType = "ACCEPTANCE", Status = "PENDING"
+        };
+        db.Users.Add(pi);
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        db.ReviewRounds.AddRange(reviewRound, acceptanceRound);
+        db.ProjectRounds.Add(new ProjectRound
+        {
+            ProjectId = project.Id, RoundId = reviewRound.Id, Status = "PASSED", FinalizedAt = DateTime.UtcNow
+        });
+        db.FinalReports.Add(new FinalReport { ProjectId = project.Id, Status = "ACCEPTED" });
+        await db.SaveChangesAsync();
+
+        var service = MakeService(db);
+        await service.AddProjectToRoundAsync(acceptanceRound.Id, project.Id);
+
+        Assert.True(await db.ProjectRounds.AnyAsync(x => x.RoundId == acceptanceRound.Id && x.ProjectId == project.Id));
     }
 }

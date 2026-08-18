@@ -85,7 +85,7 @@
 | D1 | **Hệ thống KHÔNG quản tiền.** Chỉ theo dõi **mốc** giải ngân + lưu **minh chứng** | rule #15 (tuần 10) | số tiền là tuỳ chọn khi xác nhận; không có phép tính tiền nào | — |
 | D2 | Gia hạn **tối đa ½ thời gian thực hiện** (12 tháng ⇒ tối đa 6) | QĐ543 **Điều 10.4** | `ContractService.ValidateMaxExtension` (cả tạo lẫn sửa) | 400 |
 | D3 | Đợt giải ngân **có gắn sản phẩm minh chứng** ⇒ sản phẩm phải **nghiệm thu Đạt** mới đánh dấu đã chi | QĐ543 Điều 16 | `DisbursementService.ConfirmAsync` | 409 |
-| D4 | **Đợt CUỐI** chỉ chi sau khi đề tài được **công nhận Đạt**. Chỉ áp khi hợp đồng có **≥ 2 đợt** | QĐ543 **BM05 Điều 4.2** | `DisbursementService.AssertFinalTrancheUnlockedAsync` | 409 |
+| D4 | **Đợt CUỐI** chỉ chi sau khi đề tài được **công nhận Đạt**; áp cả đề tài cơ bản chỉ có **1 đợt 100%** | QĐ543 **Điều 16.1.d, 16.2** + BM05 Điều 4.2 | `DisbursementService.AssertMilestoneUnlockedAsync` | 409 |
 | D5 | Còn đợt chưa chi ⇒ **không lập được quyết toán** (quyết toán = bước đóng hợp đồng) | suy ra từ D4 | `ContractSettlementService.CreateAsync` | 409 |
 | D6 | Hợp đồng **chưa ký** mới xoá được; đã có sản phẩm/báo cáo/quyết toán ⇒ không xoá | an toàn dữ liệu | `ContractService.DeleteAsync` | 409 |
 | D7 | Hợp đồng đã ký **không sửa đè bản gốc** — mỗi điều chỉnh phải có **phụ lục** riêng ghi *trước → sau* | QĐ543 **BM05 Điều 6.1** (báo trước 15 ngày) | `DocumentExportService.ExportAmendmentDocAsync` | 409 nếu đơn chưa duyệt |
@@ -95,6 +95,7 @@
 | D11 | Tự sinh Word hợp đồng đủ mẫu BM05 → ký ngoài → **upload bản ký làm minh chứng** | rule #21 (tuần 10) | `ExportContractDocAsync` + `Document` polymorphic | — |
 | D12 | **Lịch giải ngân do LOẠI ĐỀ TÀI quyết định, PI không được chọn.** Ứng dụng **4 đợt 30–30–30–10**; Cơ bản **1 đợt 100% sau nghiệm thu "Đạt"** | QĐ543 **Điều 16** | `DisbursementService.GenerateFromTemplateAsync` đọc `disbursement_templates` theo `ResearchTypeId`; seed ở `DatabaseSeeder.SeedDisbursementTemplatesAsync` | — |
 | D13 | Tỷ lệ từng đợt **để trong master data**, không cắm số vào code; **đợt cuối lấy phần còn lại** để tổng luôn khớp giá trị hợp đồng | tránh lệch tiền do làm tròn | `GenerateFromTemplateAsync` | — |
+| D14 | Xác nhận mốc giải ngân phải đúng thứ tự điều kiện: hợp đồng **đã ký**; Ứng dụng đợt 2/3 cần tiến độ GĐ1/GĐ2 **Đạt**; đợt cuối cần nghiệm thu **Đạt** | QĐ543 **Điều 16** | `DisbursementService.AssertMilestoneUnlockedAsync` | 409 |
 
 > ⚠️ **"Phương thức khoán chi" (WHOLE/PARTIAL) KHÔNG có trong QĐ543** — rà toàn văn, chữ "khoán" chỉ xuất hiện ở *"thuê khoán chuyên môn"* và *"giao khoán"*. Khái niệm này đến từ mẫu thuyết minh cấp Bộ (`Mau-1_Thuyet-minh`). Cột `Proposal.FundingMethod` **vẫn còn trong DB** để đọc dữ liệu cũ nhưng **không còn quyết định số đợt giải ngân** (D12).
 

@@ -69,15 +69,15 @@ public class DemoScenarioSeeder
     private const string S6 = "NCKH-2026-006"; // đang thực hiện, báo cáo kỳ 1 chờ duyệt
     private const string S7 = "NCKH-2026-007"; // đang nghiệm thu
     private const string S8 = "NCKH-2026-008"; // hoàn thành
+    private const string S9 = "NCKH-2026-009"; // vòng 1 đã chốt không đạt
+    private const string S10 = "NCKH-2026-010"; // lời mời hội đồng chấm 2 đề tài
+    private const string S11 = "NCKH-2026-011"; // lời mời hội đồng chấm 2 đề tài
 
     private const string DocxMime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
     public async Task SeedAsync()
     {
         if (!await IsEnabledAsync()) return;
-        if (await _db.Projects.IgnoreQueryFilters().AnyAsync(p => p.ProjectCode == S8))
-            return; // đã dựng đủ kịch bản
-
         var ctx = await LoadContextAsync();
         if (ctx == null) return; // seeder gốc chưa chạy xong — bỏ qua, lần khởi động sau làm lại
 
@@ -87,6 +87,7 @@ public class DemoScenarioSeeder
         {
             var reviewRound = await GetOrCreateReviewRoundAsync(ctx);
             await SeedUnderReviewGroupAsync(ctx, reviewRound);
+            await SeedPendingMultiProjectInvitationAsync(ctx, reviewRound);
         });
         await TryStepAsync("đề tài đang thực hiện", () => SeedInProgressAsync(ctx));
         await TryStepAsync("đề tài đang nghiệm thu", () => SeedAcceptanceAsync(ctx));
@@ -458,7 +459,7 @@ public class DemoScenarioSeeder
         var now = DateTime.UtcNow;
         await BuildAsync(ctx, new Spec(
             S1,
-            "Ứng dụng học sâu phát hiện đạo văn trong bài báo khoa học tiếng Việt",
+            "[TEST-NHÁP] Ứng dụng học sâu phát hiện đạo văn trong bài báo khoa học tiếng Việt",
             "Deep Learning for Plagiarism Detection in Vietnamese Scientific Papers",
             "Đề tài xây dựng công cụ phát hiện đạo văn cho bài báo khoa học tiếng Việt dựa trên biểu diễn ngữ nghĩa, khắc phục hạn chế của các công cụ đối sánh chuỗi hiện hành khi văn bản đã được diễn đạt lại.",
             "1. Xây dựng kho ngữ liệu bài báo khoa học tiếng Việt có gán nhãn đạo văn.\n2. Phát triển mô hình đối sánh ngữ nghĩa đạt độ chính xác ≥ 0,85.\n3. Triển khai công cụ kiểm tra dùng được cho Phòng QLKH.",
@@ -480,7 +481,7 @@ public class DemoScenarioSeeder
         var now = DateTime.UtcNow;
         var (_, proposal, _) = await BuildAsync(ctx, new Spec(
             S2,
-            "Hệ thống giám sát chất lượng môi trường khuôn viên trường bằng cảm biến IoT",
+            "[TEST-CHỜ VÀO VÒNG 1] Hệ thống giám sát chất lượng môi trường khuôn viên trường bằng cảm biến IoT",
             "IoT-based Campus Environment Monitoring System",
             "Đề tài thiết kế mạng cảm biến IoT giám sát nhiệt độ, độ ẩm, bụi mịn và tiếng ồn trong khuôn viên trường, cung cấp dữ liệu thời gian thực phục vụ công tác quản trị cơ sở vật chất.",
             "1. Thiết kế mạng cảm biến chi phí thấp phủ 6 điểm trọng yếu.\n2. Xây dựng nền tảng thu thập và cảnh báo thời gian thực.\n3. Đánh giá độ tin cậy số liệu so với thiết bị chuẩn.",
@@ -534,7 +535,7 @@ public class DemoScenarioSeeder
 
         var (p3, _, _) = await BuildAsync(ctx, new Spec(
             S3,
-            "Mô hình dự báo nguy cơ bỏ học của sinh viên bằng học máy tổ hợp",
+            "[TEST-VÒNG 1 THIẾU PHIẾU] Mô hình dự báo nguy cơ bỏ học của sinh viên bằng học máy tổ hợp",
             "Ensemble Machine Learning for Student Dropout Risk Prediction",
             "Đề tài xây dựng mô hình dự báo sớm nguy cơ bỏ học dựa trên dữ liệu học tập và tương tác của sinh viên, giúp cố vấn học tập can thiệp kịp thời thay vì xử lý khi đã quá muộn.",
             "1. Phân tích các yếu tố ảnh hưởng tới quyết định bỏ học.\n2. Xây dựng mô hình tổ hợp đạt AUC ≥ 0,85 trên dữ liệu thực.\n3. Đề xuất quy trình can thiệp sớm cho cố vấn học tập.",
@@ -548,7 +549,7 @@ public class DemoScenarioSeeder
 
         var (p4, prop4, _) = await BuildAsync(ctx, new Spec(
             S4,
-            "Nền tảng học liệu thích ứng theo năng lực người học",
+            "[TEST-YÊU CẦU SỬA] Nền tảng học liệu thích ứng theo năng lực người học",
             "Adaptive Learning Material Platform",
             "Đề tài xây dựng nền tảng tự động điều chỉnh độ khó và thứ tự học liệu theo năng lực từng sinh viên, dựa trên lý thuyết ứng đáp câu hỏi kết hợp mô hình theo vết tri thức.",
             "1. Xây dựng ngân hàng học liệu có gán mức độ khó.\n2. Cài đặt thuật toán điều phối học liệu thích ứng.\n3. Thử nghiệm đối chứng trên 2 lớp học phần.",
@@ -562,7 +563,7 @@ public class DemoScenarioSeeder
 
         var (p5, prop5, _) = await BuildAsync(ctx, new Spec(
             S5,
-            "Đánh giá chất lượng giảng dạy từ phản hồi sinh viên bằng xử lý ngôn ngữ tự nhiên",
+            "[TEST-ĐẠT VÒNG 1] Đánh giá chất lượng giảng dạy từ phản hồi sinh viên bằng xử lý ngôn ngữ tự nhiên",
             "NLP-based Teaching Quality Assessment from Student Feedback",
             "Đề tài xây dựng công cụ phân tích tự động hàng chục nghìn phản hồi mở của sinh viên mỗi học kỳ, trích xuất khía cạnh và mức độ hài lòng thay cho việc đọc thủ công.",
             "1. Xây dựng bộ dữ liệu phản hồi có gán nhãn khía cạnh.\n2. Phát triển mô hình phân tích cảm xúc theo khía cạnh đạt F1 ≥ 0,80.\n3. Xây dựng báo cáo tự động cho lãnh đạo khoa.",
@@ -574,7 +575,21 @@ public class DemoScenarioSeeder
             ctx.Pi2, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
             ProjectStatus.Approved, ProposalStatus.Approved, start, now.AddDays(-100));
 
-        foreach (var p in new[] { p3, p4, p5 })
+        var (p9, prop9, _) = await BuildAsync(ctx, new Spec(
+            S9,
+            "[TEST-KHÔNG ĐẠT VÒNG 1] Phân loại rác tái chế bằng thị giác máy tính",
+            "Computer Vision for Recyclable Waste Classification",
+            "Đề tài thử nghiệm phân loại rác tái chế từ ảnh chụp tại điểm thu gom trong khuôn viên.",
+            "1. Thu thập dữ liệu ảnh.\n2. Huấn luyện mô hình phân loại.\n3. Đánh giá trong môi trường thực tế.",
+            "Học sâu cho phân loại ảnh và đánh giá chéo trên dữ liệu thực địa.",
+            "01 bộ dữ liệu ảnh; 01 mô hình thử nghiệm.",
+            12, 75_000_000m,
+            new[] { "Thu thập dữ liệu", "Huấn luyện mô hình", "Đánh giá thực địa" },
+            new[] { "Bộ dữ liệu ảnh", "Mô hình thử nghiệm" }),
+            ctx.Pi2, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
+            ProjectStatus.Cancelled, ProposalStatus.Rejected, start, now.AddDays(-100));
+
+        foreach (var p in new[] { p3, p4, p5, p9 })
             _db.ProjectRounds.Add(new ProjectRound { ProjectId = p.Id, RoundId = round.Id, Status = "PENDING" });
 
         prop4.SubmittedAt = now.AddDays(-80);
@@ -585,6 +600,8 @@ public class DemoScenarioSeeder
         prop5.ReviewedAt = now.AddDays(-20);
         prop5.ApprovedAt = now.AddDays(-20);
         prop5.ApprovedBy = ctx.Admin.Id;
+        prop9.SubmittedAt = now.AddDays(-80);
+        prop9.ReviewedAt = now.AddDays(-20);
         var prop3 = await _db.Proposals.FirstAsync(x => x.ProjectId == p3.Id);
         prop3.SubmittedAt = now.AddDays(-80);
         await _db.SaveChangesAsync();
@@ -598,7 +615,7 @@ public class DemoScenarioSeeder
         // Slot con theo từng đề tài — phải NẰM TRONG khung giờ họp và không chồng nhau.
         var slot = council.Meeting.ScheduledAt;
         var order = 1;
-        foreach (var p in new[] { p3, p4, p5 })
+        foreach (var p in new[] { p3, p4, p5, p9 })
         {
             _db.CouncilProjectAssignments.Add(new CouncilProjectAssignment
             {
@@ -634,6 +651,81 @@ public class DemoScenarioSeeder
             "Rà soát lại tiến độ nội dung 3 cho khớp thời gian thực hiện.",
             now.AddDays(-20));
         await SetProjectRoundAsync(p5.Id, round.Id, "PASSED", ReviewResult.Approved, now.AddDays(-20));
+
+        // #9 — đủ phiếu và đã chốt KHÔNG ĐẠT, dùng để thử bộ lọc trạng thái và lịch sử ca xấu.
+        await AddScoreBallotsAsync(ctx, council.Council, council.Members, p9.Id,
+            skipMemberIndexes: Array.Empty<int>(), baseQuality: 0.42m, submittedAt: now.AddDays(-22));
+        await AddDecisionAsync(council.Council, council.Members, p9.Id, ReviewResult.Rejected,
+            "Hội đồng kết luận dữ liệu thử nghiệm chưa đại diện và phương pháp đánh giá chưa chứng minh được tính khả thi.",
+            "Xây dựng lại thiết kế nghiên cứu và nộp trong đợt phù hợp khác nếu tiếp tục triển khai.",
+            now.AddDays(-20));
+        await SetProjectRoundAsync(p9.Id, round.Id, ReviewRoundStatus.Failed, ReviewResult.Rejected, now.AddDays(-20));
+    }
+
+    // ── #10 + #11 — MỘT lời mời hội đồng, phạm vi gồm HAI đề tài ─────────────
+    // Reviewer phải thấy cả hai tên trước khi nhận lời. Sau khi nhận, API my-memberships trả hai dòng
+    // công việc dùng chung memberId; đây chính là ca từng bị FirstOrDefault() nuốt mất đề tài thứ hai.
+    private async Task SeedPendingMultiProjectInvitationAsync(Ctx ctx, ReviewRound round)
+    {
+        if (await ExistsAsync(S10) || await ExistsAsync(S11)) return;
+        var now = DateTime.UtcNow;
+        var start = new DateOnly(2026, 10, 1);
+
+        var (p10, prop10, _) = await BuildAsync(ctx, new Spec(
+            S10,
+            "[TEST-LỜI MỜI 2 ĐỀ TÀI-A] Phát hiện phòng học sử dụng điện bất thường",
+            "Detecting Abnormal Classroom Energy Usage",
+            "Đề tài xây dựng mô hình phát hiện bất thường từ dữ liệu công tơ thông minh của phòng học.",
+            "1. Chuẩn hoá dữ liệu.\n2. Xây dựng mô hình.\n3. Đánh giá cảnh báo.",
+            "Phát hiện bất thường trên chuỗi thời gian.",
+            "01 mô hình cảnh báo và báo cáo thử nghiệm.",
+            12, 82_000_000m,
+            new[] { "Chuẩn hoá dữ liệu", "Xây dựng mô hình", "Đánh giá cảnh báo" },
+            new[] { "Mô hình cảnh báo", "Báo cáo thử nghiệm" }),
+            ctx.Pi1, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
+            ProjectStatus.UnderReview, ProposalStatus.Submitted, start, now.AddDays(-40));
+
+        var (p11, prop11, _) = await BuildAsync(ctx, new Spec(
+            S11,
+            "[TEST-LỜI MỜI 2 ĐỀ TÀI-B] Trợ lý hỏi đáp quy chế đào tạo",
+            "Academic Regulation Question Answering Assistant",
+            "Đề tài xây dựng trợ lý tra cứu quy chế đào tạo có dẫn nguồn cho sinh viên và cán bộ.",
+            "1. Chuẩn hoá văn bản.\n2. Xây dựng hệ hỏi đáp.\n3. Đánh giá độ chính xác.",
+            "Truy hồi tăng cường sinh và đánh giá bởi chuyên gia.",
+            "01 bộ dữ liệu và 01 trợ lý hỏi đáp thử nghiệm.",
+            12, 86_000_000m,
+            new[] { "Chuẩn hoá văn bản", "Xây dựng hệ hỏi đáp", "Đánh giá chuyên gia" },
+            new[] { "Bộ dữ liệu", "Trợ lý hỏi đáp" }),
+            ctx.Pi2, ctx.ClosedTrack, ctx.ClosedOrder, ctx.Basic,
+            ProjectStatus.UnderReview, ProposalStatus.Submitted, start, now.AddDays(-40));
+
+        prop10.SubmittedAt = now.AddDays(-35);
+        prop11.SubmittedAt = now.AddDays(-35);
+        _db.ProjectRounds.AddRange(
+            new ProjectRound { ProjectId = p10.Id, RoundId = round.Id, Status = ReviewRoundStatus.Pending },
+            new ProjectRound { ProjectId = p11.Id, RoundId = round.Id, Status = ReviewRoundStatus.Pending });
+        await _db.SaveChangesAsync();
+
+        var council = await CreateCouncilAsync(ctx, round, "REVIEW", minMembers: 3, maxMembers: 5,
+            meetingTitle: "[TEST] Hội đồng nhận một lời mời chấm hai đề tài",
+            location: "Phòng họp A205, Toà Alpha, Cơ sở Hoà Lạc",
+            scheduledAt: now.Date.AddDays(6).AddHours(2), durationMinutes: 120,
+            memberStatus: CouncilMemberStatus.Invited);
+
+        var slot = council.Meeting.ScheduledAt;
+        foreach (var (project, order) in new[] { (p10, 1), (p11, 2) })
+        {
+            _db.CouncilProjectAssignments.Add(new CouncilProjectAssignment
+            {
+                CouncilId = council.Council.Id,
+                ProjectId = project.Id,
+                MeetingId = council.Meeting.Id,
+                SlotStartAt = slot.AddMinutes((order - 1) * 60),
+                SlotDurationMinutes = 60,
+                SlotOrder = order
+            });
+        }
+        await _db.SaveChangesAsync();
     }
 
     // ── #6 — hợp đồng đang chạy, báo cáo kỳ 1 đã nộp CHƯA duyệt ──────────────
@@ -646,7 +738,7 @@ public class DemoScenarioSeeder
 
         var (project, proposal, activities) = await BuildAsync(ctx, new Spec(
             S6,
-            "Tối ưu hoá lịch thi học kỳ bằng thuật toán di truyền",
+            "[TEST-TIẾN ĐỘ CHỜ DUYỆT] Tối ưu hoá lịch thi học kỳ bằng thuật toán di truyền",
             "Exam Timetabling Optimization using Genetic Algorithms",
             "Đề tài xây dựng bộ giải bài toán xếp lịch thi nhiều ràng buộc, giảm thời gian lập lịch thủ công của Phòng Khảo thí từ vài ngày xuống dưới một giờ.",
             "1. Mô hình hoá ràng buộc lịch thi thực tế của Trường.\n2. Cài đặt thuật toán di truyền lai tìm kiếm cục bộ.\n3. So sánh với lịch thi lập thủ công trên 2 học kỳ.",
@@ -719,7 +811,7 @@ public class DemoScenarioSeeder
 
         var (project, proposal, activities) = await BuildAsync(ctx, new Spec(
             S7,
-            "Nhận dạng chữ viết tay tiếng Việt trên biểu mẫu hành chính",
+            "[TEST-NGHIỆM THU THIẾU PHIẾU] Nhận dạng chữ viết tay tiếng Việt trên biểu mẫu hành chính",
             "Vietnamese Handwriting Recognition on Administrative Forms",
             "Đề tài xây dựng mô hình nhận dạng chữ viết tay tiếng Việt có dấu trên biểu mẫu hành chính, phục vụ số hoá hồ sơ giấy đang tồn đọng của các phòng ban.",
             "1. Xây dựng tập dữ liệu chữ viết tay tiếng Việt trên biểu mẫu thực tế.\n2. Phát triển mô hình nhận dạng đạt độ chính xác ký tự ≥ 0,92.\n3. Tích hợp vào quy trình số hoá hồ sơ.",
@@ -860,7 +952,7 @@ public class DemoScenarioSeeder
 
         var (project, proposal, activities) = await BuildAsync(ctx, new Spec(
             S8,
-            "Hệ thống khuyến nghị môn học tự chọn theo lộ trình nghề nghiệp",
+            "[TEST-HOÀN THÀNH] Hệ thống khuyến nghị môn học tự chọn theo lộ trình nghề nghiệp",
             "Career-oriented Elective Course Recommendation System",
             "Đề tài xây dựng hệ thống gợi ý môn tự chọn dựa trên mục tiêu nghề nghiệp và kết quả học tập, giảm tình trạng sinh viên chọn môn theo cảm tính rồi phải học lại.",
             "1. Mô hình hoá lộ trình nghề nghiệp và bản đồ năng lực môn học.\n2. Xây dựng thuật toán khuyến nghị lai.\n3. Triển khai thử nghiệm cho 3 chuyên ngành.",
@@ -1142,7 +1234,8 @@ public class DemoScenarioSeeder
     private async Task<CouncilBundle> CreateCouncilAsync(
         Ctx ctx, ReviewRound round, string councilType, int minMembers, int maxMembers,
         string meetingTitle, string location, DateTime scheduledAt, int durationMinutes,
-        string meetingStatus = MeetingStatus.Scheduled, bool actuallyAttended = false)
+        string meetingStatus = MeetingStatus.Scheduled, bool actuallyAttended = false,
+        string memberStatus = CouncilMemberStatus.Confirmed)
     {
         var now = DateTime.UtcNow;
         var council = new ReviewCouncil
@@ -1177,9 +1270,10 @@ public class DemoScenarioSeeder
                 CouncilId = council.Id,
                 UserId = ctx.Reviewers[i].Id,
                 MemberRole = roles[i],
-                InvitationSentAt = now.AddDays(-12),
-                ConfirmedAt = now.AddDays(-11),
-                Status = CouncilMemberStatus.Confirmed
+                InvitationSentAt = memberStatus == CouncilMemberStatus.Assigned ? null : now.AddDays(-12),
+                ConfirmedAt = memberStatus == CouncilMemberStatus.Confirmed ? now.AddDays(-11) : null,
+                TokenExpiresAt = memberStatus == CouncilMemberStatus.Invited ? now.AddDays(10) : null,
+                Status = memberStatus
             };
             members.Add(m);
         }
@@ -1207,8 +1301,8 @@ public class DemoScenarioSeeder
             {
                 MeetingId = meeting.Id,
                 MemberId = m.Id,
-                RsvpStatus = "ACCEPTED",
-                RsvpAt = now.AddDays(-10),
+                RsvpStatus = memberStatus == CouncilMemberStatus.Confirmed ? "ACCEPTED" : "PENDING",
+                RsvpAt = memberStatus == CouncilMemberStatus.Confirmed ? now.AddDays(-10) : null,
                 ActuallyAttended = actuallyAttended ? true : null
             });
         }

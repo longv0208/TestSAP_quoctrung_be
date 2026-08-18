@@ -925,12 +925,21 @@ public class DatabaseSeeder
             }
         };
 
+        // Khuyến cáo của công tắc trả lời thay đã đổi từ true → false: cập nhật phần KHUYẾN CÁO cho DB cũ
+        // nhưng không tự ý ghi đè Value mà Admin đang vận hành. Admin vẫn chủ động chọn lúc nào được phép bật.
+        var respondOnBehalf = await _db.SystemSettings
+            .FirstOrDefaultAsync(s => s.Key == SystemSettingKeys.CouncilAllowRespondOnBehalf);
+        if (respondOnBehalf != null)
+        {
+            var recommended = SystemSettingKeys.DefaultCouncilAllowRespondOnBehalf.ToString().ToLowerInvariant();
+            if (respondOnBehalf.RecommendedValue != recommended)
+                respondOnBehalf.RecommendedValue = recommended;
+        }
+
         var existing = await _db.SystemSettings.Select(s => s.Key).ToListAsync();
         var missing = defaults.Where(d => !existing.Contains(d.Key)).ToList();
-        if (missing.Count == 0) return;
-
-        _db.SystemSettings.AddRange(missing);
-        await _db.SaveChangesAsync();
+        if (missing.Count > 0) _db.SystemSettings.AddRange(missing);
+        if (missing.Count > 0 || respondOnBehalf != null) await _db.SaveChangesAsync();
     }
 
     // ── Helpers (project-centric) ────────────────────────────────────────────

@@ -44,6 +44,13 @@ public class SystemSettingService : ISystemSettingService
             SystemSettingKeys.ScoreDecimalPlaces, SystemSettingKeys.DefaultScoreDecimalPlaces)
     };
 
+    public async Task<CouncilPolicyResponse> GetCouncilPolicyAsync() => new()
+    {
+        AllowRespondOnBehalf = await GetBoolAsync(
+            SystemSettingKeys.CouncilAllowRespondOnBehalf,
+            SystemSettingKeys.DefaultCouncilAllowRespondOnBehalf)
+    };
+
     public async Task<UploadPolicyResponse> GetUploadPolicyAsync()
     {
         var settings = await _masterData.SystemSettings

@@ -32,6 +32,7 @@
 | ✅ P0-5 | Lịch họp bấm "Bắt đầu" là kẹt vĩnh viễn | — | **XONG 12/08** — thêm `POST /meetings/{id}/undo-start` (chỉ khi chưa ai điểm danh) + nút "Hoàn tác bắt đầu". Danh sách nay chỉ hiện nút HỢP LỆ với trạng thái, không còn bấm sai ăn 409 |
 | ✅ P0-6 | "Sửa đề cương" không thấy file đã đính kèm | — | **XONG 12/08** — bước 2 chỉ biết tệp vừa chọn trong phiên, chưa bao giờ hỏi máy chủ. Nay liệt kê đủ tệp đã đính kèm |
 | ✅ P0-7 | Nút AI ở wizard không chạy | — | **XONG 12/08** — "Kiểm tra trùng lặp" gọi `/ai/similarity-check` mà BE KHÔNG có ⇒ gỡ. Đồng thời phát hiện AI-điền-hộ bị khoá sau nhánh `isApplied` nên đề tài ứng dụng không dùng được ⇒ mở cho cả hai loại |
+| ✅ P0-8 | **Vòng nghiệm thu đang nhận nhầm đề tài chưa đủ hồ sơ** | ✅ | **XONG lõi 19/08:** cả tạo/gom hàng loạt, thêm lẻ và mở vòng đều chặn 409 nếu REVIEW của lĩnh vực chưa chốt hết. Chỉ đề tài `PASSED` REVIEW + project `ACCEPTANCE` + final report `ACCEPTED/ARCHIVED` được vào vòng; FE chỉ bày project `ACCEPTANCE`. Còn một quyết định nghiệp vụ độc lập cần thầy chốt nếu muốn siết thêm: có bắt buộc mọi sản phẩm cam kết đã nộp/Staff đánh giá trước khi lập hội đồng hay để chính hội đồng nghiệm thu sản phẩm đó. |
 
 ---
 
@@ -46,6 +47,7 @@
 | ✅ P1-5 | **Quyết toán: bấm một phát xong hết, không xác nhận, không sửa lại** | ✅ | QĐ543 **Điều 13.1.e** đòi *"Xác nhận của Ban kế toán về việc đề tài đã quyết toán kinh phí và đã xử lý tài sản"* và **Điều 13.2** đòi ký **Biên bản thanh lý hợp đồng (BM13)**. Hiện chỉ có 2 nút đánh dấu, **chưa có biên bản thanh lý**. Cần: xác nhận trước khi đánh dấu · bỏ đánh dấu được · thêm BM13.  **XONG 12/08** — xác nhận trước khi đánh dấu, bỏ đánh dấu được, thêm biên bản thanh lý BM13 |
 | ✅ P1-6 | **Thông báo còn thiếu** | — | Xác nhận giải ngân · duyệt báo cáo tiến độ. Chi tiết ở `THONG_BAO_VA_EMAIL.md`.  **XONG 14/08** — `DISBURSEMENT_CONFIRMED` + `PROGRESS_REPORT_EVALUATED` (ưu tiên HIGH khi Không đạt). |
 | ✅ P1-7 | **Quên mật khẩu qua email** | — | **XONG 12/08** — `POST /auth/forgot-password` + `/auth/reset-password`, liên kết "Quên mật khẩu?" ở màn đăng nhập, 2 màn mới. Mã băm SHA-256 trong DB, sống 30 phút, dùng một lần; email không tồn tại vẫn trả 200 (chống dò tài khoản). |
+| P1-8 | **Hết hạn vòng chấm xử lý thế nào?** | ⚠️ | Hiện chỉ có `ResearchCycle.ReviewDeadline`, vòng chấm không có deadline riêng. **Không nên tự cho đề tài rớt** vì reviewer chậm là lỗi vận hành, không phải lỗi PI. Đề xuất: khoá nhận phiếu + cờ Quá hạn + thông báo Staff, rồi Staff gia hạn / đổi người / kết luận hành chính có lý do và audit log. Cần thầy chốt trước khi thêm state/migration. |
 
 ---
 
@@ -63,6 +65,7 @@
 | ✅ P2-8 | **Tab "Kho tài liệu" trống** | — | Cần xác định: chưa làm, hay có mà không có dữ liệu.  **XONG 14/08** — ẩn khỏi menu Staff/Admin theo yêu cầu (route/page giữ nguyên) |
 | P2-9 | **Admin có nên sửa thông tin cá nhân của người khác không?** | ⚠️ | Quy định không nói. Đề xuất: Admin sửa **vai + khoá/mở tài khoản**; thông tin cá nhân (điện thoại, học vị) để chính chủ sửa ở Hồ sơ. |
 | ✅ P2-10 | **Tạo tài khoản mới không gửi mail** | — | **XONG 12/08** — `ACCOUNT_CREATED`: chuông + mail kèm mật khẩu tạm, dẫn thẳng tới màn đổi mật khẩu. Đo thật: `email_logs` ghi `SENT`. |
+| ✅ P2-11 | **Reviewer khó tìm đề tài được phân công; Staff có tab Phân công trùng chức năng** | — | **XONG 19/08** — thêm lọc theo đợt · lĩnh vực · trạng thái · vòng; DTO trả cycle/track id+code. Ẩn mục Phân công khỏi sidebar và đổi quick action sang Hội đồng & Chấm, nhưng giữ route cũ để bookmark không 404. |
 
 ---
 

@@ -9,6 +9,7 @@ public interface ISystemSettingService
     /// <summary>Giới hạn upload hiện hành (đã clamp trong khoảng cho phép).</summary>
     Task<UploadPolicyResponse> GetUploadPolicyAsync();
     Task<ScoringPolicyResponse> GetScoringPolicyAsync();
+    Task<CouncilPolicyResponse> GetCouncilPolicyAsync();
 
     // ── Đọc có kiểu ───────────────────────────────────────────────────────────
     // Giá trị thiếu/hỏng trong DB đều rơi về `fallback` — cấu hình sai không được

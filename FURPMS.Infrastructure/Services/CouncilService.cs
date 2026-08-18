@@ -77,7 +77,9 @@ public class CouncilService : ICouncilService
     /// <inheritdoc/>
     public async Task<CouncilListItemDto> UpdateCouncilAsync(Guid councilId, UpdateCouncilRequest request)
     {
-        var council = await _review.Query().Include(c => c.Members)
+        var council = await _review.Query()
+            .Include(c => c.Members)
+            .Include(c => c.ProjectAssignments).ThenInclude(a => a.Project)
             .FirstOrDefaultAsync(c => c.Id == councilId)
             ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
@@ -359,6 +361,9 @@ public class CouncilService : ICouncilService
             throw new InvalidOperationException("Chưa có Thư ký hội đồng — không thể gửi thư mời.");
         if (!await _review.Meetings.AnyAsync(mt => mt.CouncilId == councilId))
             throw new InvalidOperationException("Chưa có lịch họp — đặt ngày/giờ + địa điểm trước khi gửi thư mời.");
+        if (council.ProjectAssignments.Count == 0)
+            throw new InvalidOperationException(
+                "Hội đồng chưa được gán đề tài nào — hãy gán ít nhất một đề tài trước khi gửi thư mời.");
         // QĐ543 Điều 8.2 (xét duyệt 3–5) / Điều 12.2 (nghiệm thu 5–7): thiếu người thì hội đồng
         // không hợp lệ, gửi thư mời rồi mới phát hiện là phải mời bù, mất công cả hai bên.
         if (council.MinMembersRequired > 0 && council.Members.Count < council.MinMembersRequired)
@@ -412,7 +417,16 @@ public class CouncilService : ICouncilService
             .ToListAsync();
 
         const string title = "Thư mời tham gia hội đồng đánh giá";
-        var body = $"Bạn được mời tham gia một hội đồng đánh giá đề tài. " +
+        var projectTitles = council.ProjectAssignments
+            .Select(a => a.Project.TitleVi)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToList();
+        var projectScope = projectTitles.Count == 1
+            ? $"đề tài \"{projectTitles[0]}\""
+            : $"{projectTitles.Count} đề tài: {string.Join("; ", projectTitles)}";
+        var body = $"Bạn được mời tham gia hội đồng đánh giá {projectScope}. " +
+                   $"Một lần xác nhận áp dụng cho toàn bộ các đề tài được giao trong hội đồng này. " +
                    $"Vui lòng xác nhận hoặc từ chối trước {deadline:dd/MM/yyyy}.";
 
         foreach (var u in invitedUsers)
@@ -457,14 +471,32 @@ public class CouncilService : ICouncilService
             .Include(m => m.Council)
                 .ThenInclude(c => c.ProjectAssignments)
                     .ThenInclude(a => a.Project)
+                        .ThenInclude(p => p.CycleTrack)
+                            .ThenInclude(ct => ct.Cycle)
+            .Include(m => m.Council)
+                .ThenInclude(c => c.ProjectAssignments)
+                    .ThenInclude(a => a.Project)
                         .ThenInclude(p => p.Proposals.Where(x => x.IsCurrent))
             .ToListAsync();
 
-        return memberships.Select(m =>
+        return memberships.SelectMany(m =>
         {
-            var firstProject = m.Council.ProjectAssignments.FirstOrDefault()?.Project;
-            var currentProposal = firstProject?.Proposals.FirstOrDefault();
-            return new MyMembershipDto
+            // Một lời mời thuộc HỘI ĐỒNG, nhưng công việc chấm thuộc từng ĐỀ TÀI. Trả một dòng cho mỗi
+            // assignment để hội đồng chấm nhiều đề tài không bị FirstOrDefault() nuốt mất đề tài thứ hai.
+            var assignments = m.Council.ProjectAssignments
+                .OrderBy(a => a.Project.TitleVi)
+                .ToList();
+            if (assignments.Count == 0)
+                return new[] { MapMembership(m, null) };
+
+            return assignments.Select(a => MapMembership(m, a.Project));
+        });
+    }
+
+    private static MyMembershipDto MapMembership(CouncilMember m, FURPMS.Domain.Entities.Projects.Project? project)
+    {
+        var currentProposal = project?.Proposals.FirstOrDefault();
+        return new MyMembershipDto
             {
                 MemberId = m.Id,
                 CouncilId = m.CouncilId,
@@ -477,15 +509,17 @@ public class CouncilService : ICouncilService
                 ProposalId = currentProposal?.Id ?? Guid.Empty,
                 // projectId để FE truyền cho SaveMinutes (biên bản neo theo PROJECT, không phải proposal).
                 // Thiếu field này khiến FE truyền nhầm proposalId → "Đề tài không thuộc phạm vi chấm".
-                ProjectId = firstProject?.Id ?? Guid.Empty,
-                ProposalTitleVI = firstProject?.TitleVi ?? string.Empty,
-                ProposalStatus = firstProject?.Status ?? string.Empty,
-                PiName = firstProject?.PiUser?.FullName,
-                TrackName = firstProject?.CycleTrack?.Track?.Name,
+                ProjectId = project?.Id ?? Guid.Empty,
+                ProposalTitleVI = project?.TitleVi ?? string.Empty,
+                ProposalStatus = project?.Status ?? string.Empty,
+                PiName = project?.PiUser?.FullName,
+                CycleId = project?.CycleTrack?.CycleId,
+                CycleCode = project?.CycleTrack?.Cycle?.SemesterCode,
+                TrackId = project?.CycleTrack?.TrackId,
+                TrackName = project?.CycleTrack?.Track?.Name,
                 CreatedAt = m.Council.CreatedAt,
                 NextMeetingAt = m.Council.Meetings.OrderBy(mt => mt.ScheduledAt).Select(mt => (DateTime?)mt.ScheduledAt).FirstOrDefault()
             };
-        });
     }
 
     public async Task<CouncilMemberResponse> RespondToMembershipAsync(Guid memberId, Guid userId, bool accept, string? declineReason)

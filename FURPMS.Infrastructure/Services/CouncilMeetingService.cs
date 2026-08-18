@@ -111,6 +111,7 @@ public class CouncilMeetingService : ICouncilMeetingService
             ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
         var platform = ValidateAndNormalize(request, requireFuture: true);
+        await AssertNoScheduleConflictAsync(councilId, request.ScheduledAt, request.DurationMinutes, null);
 
         var meeting = new CouncilMeeting
         {
@@ -180,6 +181,7 @@ public class CouncilMeetingService : ICouncilMeetingService
 
         var isPast = meeting.Status != MeetingStatus.Scheduled;
         var platform = ValidateAndNormalize(request, requireFuture: !isPast);
+        await AssertNoScheduleConflictAsync(meeting.CouncilId, request.ScheduledAt, request.DurationMinutes, meeting.Id);
 
         meeting.Title = request.Title;
         meeting.Platform = platform;
@@ -191,6 +193,55 @@ public class CouncilMeetingService : ICouncilMeetingService
 
         await _review.SaveChangesAsync();
         return Map(meeting);
+    }
+
+    /// <summary>
+    /// Cảnh báo sau khi đã lưu không bảo vệ được lịch: Staff vẫn có thể bấm tạo và một người phải dự hai
+    /// hội đồng cùng lúc. Ràng buộc này đặt ở service để mọi client (kể cả gọi API trực tiếp) đều bị chặn.
+    /// Hai buổi nối đuôi nhau đúng thời điểm kết thúc/bắt đầu không được coi là trùng.
+    /// </summary>
+    private async Task AssertNoScheduleConflictAsync(
+        Guid councilId, DateTime scheduledAt, int durationMinutes, Guid? excludedMeetingId)
+    {
+        var requestedEnd = scheduledAt.AddMinutes(durationMinutes);
+        var memberIds = await _review.CouncilMembers
+            .Where(m => m.CouncilId == councilId)
+            .Select(m => m.UserId)
+            .ToListAsync();
+
+        var candidates = await _review.Meetings
+            .Where(m => m.Id != excludedMeetingId
+                        && (m.Status == MeetingStatus.Scheduled || m.Status == MeetingStatus.InProgress)
+                        && (m.CouncilId == councilId
+                            || m.Council.Members.Any(cm => memberIds.Contains(cm.UserId))))
+            .Select(m => new
+            {
+                m.CouncilId,
+                m.Title,
+                m.ScheduledAt,
+                m.DurationMinutes,
+                SharedMemberNames = m.Council.Members
+                    .Where(cm => memberIds.Contains(cm.UserId))
+                    .Select(cm => cm.User.FullName)
+                    .ToList()
+            })
+            .ToListAsync();
+
+        var conflict = candidates.FirstOrDefault(m =>
+            m.ScheduledAt < requestedEnd && scheduledAt < m.ScheduledAt.AddMinutes(m.DurationMinutes));
+        if (conflict == null) return;
+
+        if (conflict.CouncilId == councilId)
+            throw new InvalidOperationException(
+                $"Hội đồng đã có lịch \"{conflict.Title}\" lúc {conflict.ScheduledAt:dd/MM/yyyy HH:mm} " +
+                $"trong {conflict.DurationMinutes} phút — hãy chọn khung giờ không trùng.");
+
+        var names = conflict.SharedMemberNames.Count > 0
+            ? string.Join(", ", conflict.SharedMemberNames.Distinct())
+            : "thành viên hội đồng";
+        throw new InvalidOperationException(
+            $"Không thể tạo lịch vì {names} đang dự hội đồng khác lúc {conflict.ScheduledAt:dd/MM/yyyy HH:mm} " +
+            $"trong {conflict.DurationMinutes} phút — hãy chọn khung giờ khác.");
     }
 
     /// <summary>

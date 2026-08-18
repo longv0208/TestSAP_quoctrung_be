@@ -124,7 +124,7 @@ public class DisbursementService : IDisbursementService
                 $"Sản phẩm minh chứng \"{d.Deliverable.ProductName}\" chưa nghiệm thu Đạt " +
                 "— chưa thể đánh dấu đã giải ngân đợt này.");
 
-        await AssertFinalTrancheUnlockedAsync(d);
+        await AssertMilestoneUnlockedAsync(d);
 
         if (request.ActualAmount.HasValue) d.ActualAmount = request.ActualAmount;   // optional, không bắt buộc
         if (!string.IsNullOrWhiteSpace(request.BankReference)) d.BankReference = request.BankReference;
@@ -160,37 +160,63 @@ public class DisbursementService : IDisbursementService
     }
 
     /// <summary>
-    /// QĐ543 **BM05 Điều 4.2**: *"Đợt cuối: giải ngân kinh phí còn lại **sau khi đề tài được công
-    /// nhận kết quả Đạt**"*. Trước đây đợt cuối chi được bất cứ lúc nào, nên có thể chi hết tiền
-    /// rồi mới họp nghiệm thu — mất luôn đòn bẩy cuối cùng của mốc giải ngân.
+    /// Khóa mốc giải ngân theo QĐ543 Điều 16: hợp đồng phải đã ký; đề tài ứng dụng cần tiến độ giai đoạn
+    /// tương ứng đạt cho đợt 2/3; đợt cuối (kể cả đề tài cơ bản chỉ có một đợt) cần nghiệm thu Đạt.
     /// <para>
     /// Mốc "công nhận Đạt" đọc qua <c>Project.Status == COMPLETED</c> — trạng thái này CHỈ được đặt
     /// ở một đường duy nhất: Chủ tịch chốt biên bản vòng NGHIỆM THU với kết quả Đạt
     /// (<c>ReviewScoringService.ApproveMinutesAsync</c>).
     /// </para>
     /// </summary>
-    private async Task AssertFinalTrancheUnlockedAsync(ContractDisbursement d)
+    private async Task AssertMilestoneUnlockedAsync(ContractDisbursement d)
     {
-        // Hợp đồng chỉ có MỘT đợt thì đợt đó vừa là đầu vừa là cuối — chặn nó là cấm luôn khoản
-        // tạm ứng sau khi ký, tức là đề tài không có tiền để bắt đầu. "Đợt cuối" theo BM05 chỉ có
-        // nghĩa khi hợp đồng chia thành nhiều đợt.
         var tranches = await _contracts.Disbursements
             .Where(x => x.ContractId == d.ContractId)
             .Select(x => x.RoundNumber)
             .ToListAsync();
-        if (tranches.Count < 2) return;
-        if (tranches.Any(n => n > d.RoundNumber)) return;   // chưa phải đợt cuối
 
-        var project = await _contracts.Query()
+        var contract = await _contracts.Query()
             .Where(c => c.Id == d.ContractId)
-            .Select(c => new { c.Project.Status, c.Project.TitleVi })
+            .Select(c => new
+            {
+                c.SignedAt,
+                ProjectStatus = c.Project.Status,
+                c.Project.TitleVi,
+                IsApplied = c.Project.ResearchType.RequireOrderingUnit
+            })
             .FirstOrDefaultAsync();
-        if (project == null || project.Status == ProjectStatus.Completed) return;
+        if (contract == null) return;
 
-        throw new InvalidOperationException(
-            $"Đợt {d.RoundNumber} là đợt giải ngân CUỐI — theo QĐ543 (BM05 Điều 4.2) chỉ được chi " +
-            "kinh phí còn lại sau khi đề tài được hội đồng nghiệm thu công nhận kết quả Đạt. " +
-            $"Đề tài đang ở trạng thái \"{StatusText.Vi(project.Status)}\", chưa có kết luận nghiệm thu Đạt.");
+        // Điều 16.1.a: đợt đầu của đề tài ứng dụng chỉ mở SAU KHI ký hợp đồng. Áp cho mọi loại để một
+        // hợp đồng còn chờ ký không thể có bất kỳ mốc nào bị ghi nhận là đã chi.
+        if (contract.SignedAt == null)
+            throw new InvalidOperationException(
+                $"Hợp đồng của đề tài \"{contract.TitleVi}\" chưa được ghi nhận đã ký — chưa thể xác nhận giải ngân đợt {d.RoundNumber}.");
+
+        var isFinal = !tranches.Any(n => n > d.RoundNumber);
+        // Điều 16.2: đề tài CƠ BẢN chỉ có đúng một đợt 100% SAU nghiệm thu Đạt. Vì vậy một đợt vẫn là
+        // đợt cuối thật sự, không phải "tạm ứng khởi động" như logic cũ từng giả định.
+        if (isFinal && contract.ProjectStatus != ProjectStatus.Completed)
+            throw new InvalidOperationException(
+                $"Đợt {d.RoundNumber} là đợt giải ngân CUỐI — theo QĐ543 chỉ được xác nhận sau khi đề tài " +
+                $"được hội đồng nghiệm thu công nhận Đạt. Đề tài đang ở trạng thái \"{StatusText.Vi(contract.ProjectStatus)}\".");
+
+        // Điều 16.1.b–c: đợt 2/3 của đề tài ứng dụng lần lượt phụ thuộc kết quả Đạt của báo cáo tiến độ
+        // giai đoạn 1/2. Trước đây ConditionDescription chỉ để hiển thị, API vẫn cho bấm xác nhận bất kỳ lúc nào.
+        if (contract.IsApplied && d.RoundNumber is 2 or 3)
+        {
+            var requiredReportRound = d.RoundNumber - 1;
+            var progressResult = await _contracts.ProgressReports
+                .Where(r => r.ContractId == d.ContractId && r.ReportRound == requiredReportRound)
+                .Select(r => r.EvaluationResult)
+                .FirstOrDefaultAsync();
+            if (!string.Equals(progressResult, "PASS", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException(
+                    $"Chưa thể xác nhận giải ngân đợt {d.RoundNumber}: báo cáo tiến độ giai đoạn {requiredReportRound} " +
+                    $"phải được Phòng QLKH đánh giá Đạt trước (hiện: {StatusText.Vi(progressResult ?? "chưa có kết quả")}).");
+        }
+
+        // Các mốc ở giữa không có điều kiện khác ngoài báo cáo tương ứng ở trên.
     }
 
     /// <summary>

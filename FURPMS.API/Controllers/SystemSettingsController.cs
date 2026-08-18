@@ -47,6 +47,17 @@ public class SystemSettingsController : ControllerBase
         return Ok(ApiResponse<ScoringPolicyResponse>.Ok(result));
     }
 
+    /// <summary>
+    /// Chính sách hội đồng mà Staff cần để giao diện không bày thao tác "trả lời thay" khi Admin đã tắt.
+    /// Endpoint chỉ trả đúng cờ cần dùng, không làm lộ toàn bộ cấu hình vận hành.
+    /// </summary>
+    [HttpGet("council-policy")]
+    public async Task<ActionResult<ApiResponse<CouncilPolicyResponse>>> GetCouncilPolicy()
+    {
+        var result = await _service.GetCouncilPolicyAsync();
+        return Ok(ApiResponse<CouncilPolicyResponse>.Ok(result));
+    }
+
     [HttpPut("{key}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApiResponse<SystemSettingResponse>>> Update(

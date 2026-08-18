@@ -99,6 +99,13 @@ public class ReviewRoundService : IReviewRoundService
 
         var (projectId, cycleTrackId) = await ResolveProjectAsync(proposalId);
 
+        if (ReviewShared.IsAcceptance(request.RoundType))
+        {
+            await ReviewShared.AssertAcceptanceTrackReadyAsync(_review, _proposals, cycleTrackId);
+            await ReviewShared.AssertProjectEligibleForAcceptanceAsync(
+                _review, _proposals, cycleTrackId, projectId);
+        }
+
         if (request.PrerequisiteRoundId.HasValue)
         {
             var prereq = await _review.GetRoundByIdAsync(request.PrerequisiteRoundId.Value)
@@ -149,6 +156,21 @@ public class ReviewRoundService : IReviewRoundService
 
         if (round.Status != ReviewRoundStatus.Pending)
             throw new InvalidOperationException($"Vòng đang ở trạng thái {StatusText.Vi(round.Status)} — chỉ mở được vòng chưa bắt đầu.");
+
+        if (ReviewShared.IsAcceptance(round.RoundType))
+        {
+            await ReviewShared.AssertAcceptanceTrackReadyAsync(_review, _proposals, round.CycleTrackId);
+            var projectIds = await _review.ProjectRounds
+                .Where(pr => pr.RoundId == roundId)
+                .Select(pr => pr.ProjectId)
+                .ToListAsync();
+            if (projectIds.Count == 0)
+                throw new InvalidOperationException(
+                    "Vòng NGHIỆM THU chưa có đề tài nào — hãy thêm đề tài đủ hồ sơ trước khi mở vòng.");
+            foreach (var projectId in projectIds)
+                await ReviewShared.AssertProjectEligibleForAcceptanceAsync(
+                    _review, _proposals, round.CycleTrackId, projectId);
+        }
 
         if (round.PrerequisiteRoundId.HasValue)
         {

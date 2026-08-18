@@ -22,8 +22,9 @@ public static class SystemSettingKeys
     /// <summary>
     /// Cho phép chuyên viên <b>trả lời thư mời THAY</b> thành viên hội đồng.
     /// <para>
-    /// Bật (mặc định) vì thực tế nhiều thầy trả lời qua điện thoại/email rồi chuyên viên ghi nhận
-    /// hộ, và vì lúc demo không phải lúc nào cũng có sẵn tài khoản người chấm để tự bấm.
+    /// Bật khi thực tế có thầy trả lời qua điện thoại/email rồi chuyên viên cần ghi nhận hộ.
+    /// Mặc định tắt để trạng thái "đã chấp nhận" luôn do chính thành viên xác nhận; môi trường demo có thể
+    /// bật lại trong Cài đặt mà không cần sửa code.
     /// </para>
     /// <para>
     /// Tắt khi cần <b>chỉ chấp nhận thành viên tự xác nhận</b> — lúc đó lời xác nhận mới thực sự
@@ -32,7 +33,7 @@ public static class SystemSettingKeys
     /// </para>
     /// </summary>
     public const string CouncilAllowRespondOnBehalf = "COUNCIL_ALLOW_RESPOND_ON_BEHALF";
-    public const bool DefaultCouncilAllowRespondOnBehalf = true;
+    public const bool DefaultCouncilAllowRespondOnBehalf = false;
     public const int DefaultCouncilInviteDeadlineDays = 7;
 
     /// <summary>

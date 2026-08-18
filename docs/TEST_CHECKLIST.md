@@ -3,7 +3,7 @@
 > **Cách dùng:** đi từ trên xuống, tick từng dòng. Mỗi dòng ghi **bấm gì** và **phải thấy gì**.
 > Dòng nào sai thì ghi lại mã dòng (vd `S-04`) rồi báo — đỡ phải mô tả lại từ đầu.
 >
-> Cập nhật: **09/08/2026** · BE **125 test** xanh · FE typecheck + build xanh.
+> Cập nhật: **19/08/2026** · BE **221 test** xanh · FE typecheck + build xanh.
 
 ---
 
@@ -19,7 +19,7 @@ npm run dev                      # FE, http://localhost:5173
 
 **Tài khoản**: mọi tài khoản demo dùng chung mật khẩu **`password`** — bảng đầy đủ ở `DEMO_GUIDE.md` §2.
 
-**Dữ liệu**: 8 đề tài `NCKH-2026-001…008`, mỗi cái đứng ở một bước khác nhau (`DEMO_GUIDE.md` §3).
+**Dữ liệu**: 11 đề tài `NCKH-2026-001…011`, tên có tiền tố `[TEST-…]` và đứng ở các ca tốt/xấu khác nhau (`DEMO_GUIDE.md` §3).
 
 ---
 
@@ -30,7 +30,7 @@ Những mục dưới đây tôi đã chạy thật bằng API hoặc có test t
 
 | Mã | Đã kiểm gì | Bằng cách nào |
 |---|---|---|
-| A-01 | Dữ liệu demo dựng đủ: 10 đề tài · 3 hội đồng × 5 người · 22 phiếu · 3 biên bản · 6 file Word | Truy vấn DB sau khi xoá sạch và seed lại 2 lần |
+| A-01 | Dữ liệu demo dựng đủ: 13 project tổng (2 nền + 11 kịch bản) · 6 hội đồng × 5 người · có hội đồng 4 đề tài và hội đồng lời mời 2 đề tài | Truy vấn DB thật sau khi xoá sạch và seed lại 19/08 |
 | A-02 | Quorum 2/3: Thư ký lưu được biên bản #3 (4/5 phiếu, TB 87.25) | API |
 | A-03 | Nghiệm thu 3/5 phiếu → **chặn**; bỏ phiếu thứ 4 → **qua** | API |
 | A-04 | Số liệu biên bản nghiệm thu: 5 phát ra / 4 thu về / 4 hợp lệ / TB null | API |
@@ -100,7 +100,7 @@ duyệt báo cáo) — mới kiểm màn hiện đúng chứ chưa bấm hết.
 | S-03 | Lập hội đồng → gán **4 người** | Cảnh báo **số chẵn** ngay lúc gán, không đợi tới lúc bấm gửi mời |
 | S-04 | Gán đủ **5 người** nhưng **chưa có lịch họp** → bấm "Gửi thư mời" | Bị chặn, nói rõ thiếu lịch họp |
 | S-05 | Thêm lịch họp (offline → **bắt buộc địa điểm**; online → link) → "Gửi thư mời" | Gửi được |
-| S-06 | Mở hội đồng của `NCKH-2026-003` (3 đề tài) | Có tab **"Lịch chấm"**; banner vàng cảnh báo quỹ giờ nếu không đủ |
+| S-06 | Mở hội đồng của `NCKH-2026-003` (4 đề tài) | Có tab **"Lịch chấm"**; banner vàng cảnh báo quỹ giờ nếu không đủ |
 | S-07 | Mở hội đồng chỉ có **1 đề tài** | **Không có** tab "Lịch chấm" |
 | S-08 | Ở "Lịch chấm", đặt khung giờ **tràn ra ngoài** buổi họp | Bị chặn kèm giờ cụ thể |
 | S-09 | Đặt 2 khung giờ **chồng nhau** | Bị chặn, nêu đề tài bị đụng |
@@ -122,6 +122,8 @@ duyệt báo cáo) — mới kiểm màn hiện đúng chứ chưa bấm hết.
 | R-10 | `NCKH-2026-007` → `reviewer3` (Phản biện) bỏ phiếu **Đạt/Không đạt** | Chỉ có 2 lựa chọn, **không có ô điểm** (BM11) |
 | R-11 | Thư ký thử soạn biên bản nghiệm thu khi mới **3/5 phiếu** | Bị chặn kèm dẫn chiếu **QĐ543 Điều 8.3.b** |
 | R-12 | Bỏ thêm 1 phiếu (đủ 4/5) → soạn lại | Lưu được; số liệu hiện **5 phát ra / 4 thu về**, **không có** điểm trung bình |
+| R-13 | `reviewer1` → **Lời mời** → hội đồng `[TEST] ... hai đề tài` | Chỉ có **một** thẻ lời mời nhưng đọc được đủ tên `010` + `011` trước khi chấp nhận |
+| R-14 | Chấp nhận lời mời trên → **Đề tài được phân công** | Có hai thẻ công việc riêng; lọc được theo đợt · lĩnh vực · trạng thái · vòng |
 
 ## 4. Staff — hợp đồng & giải ngân
 

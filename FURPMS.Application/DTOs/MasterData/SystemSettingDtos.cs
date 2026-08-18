@@ -29,6 +29,12 @@ public class ScoringPolicyResponse
     public int ScoreDecimalPlaces { get; set; }
 }
 
+/// <summary>Chính sách thao tác hội đồng mà Staff cần đọc để ẩn/hiện đúng nút nghiệp vụ.</summary>
+public class CouncilPolicyResponse
+{
+    public bool AllowRespondOnBehalf { get; set; }
+}
+
 public class UploadPolicyResponse
 {
     public int MaxFileSizeMb { get; set; }

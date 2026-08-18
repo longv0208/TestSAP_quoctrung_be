@@ -28,10 +28,10 @@ public class AcceptanceEvaluationsController : ControllerBase
 
     // Phiếu của CHÍNH tôi (null nếu chưa chấm) — form chấm nghiệm thu của reviewer dùng endpoint này.
     [HttpGet("my")]
-    public async Task<IActionResult> GetMy(Guid councilId)
+    public async Task<IActionResult> GetMy(Guid councilId, [FromQuery] Guid projectId)
     {
         var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        var dto = await _service.GetMyAsync(councilId, userId);
+        var dto = await _service.GetMyAsync(councilId, projectId, userId);
         return Ok(ApiResponse<AcceptanceEvaluationDto?>.Ok(dto));
     }
 

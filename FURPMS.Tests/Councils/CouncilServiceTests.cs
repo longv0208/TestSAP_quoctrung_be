@@ -70,6 +70,46 @@ public class CouncilServiceTests
         UpdatedAt = DateTime.UtcNow
     };
 
+    [Fact]
+    public async Task GetMyMemberships_MultiProjectCouncil_ReturnsEveryAssignedProject()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var pi = MakeUser();
+        var reviewer = MakeUser();
+        var staff = MakeUser();
+        var (first, firstProposal) = MakeProjectWithProposal(pi.Id);
+        first.TitleVi = "Đề tài thứ nhất";
+        firstProposal.TitleVi = first.TitleVi;
+        var (second, secondProposal) = MakeProjectWithProposal(pi.Id);
+        second.TitleVi = "Đề tài thứ hai";
+        secondProposal.TitleVi = second.TitleVi;
+        var council = MakeCouncil(first.Id, staff.Id);
+        db.Users.AddRange(pi, reviewer, staff);
+        db.Projects.AddRange(first, second);
+        db.Proposals.AddRange(firstProposal, secondProposal);
+        db.ReviewCouncils.Add(council);
+        db.CouncilMembers.Add(new CouncilMember
+        {
+            Id = Guid.NewGuid(), CouncilId = council.Id, UserId = reviewer.Id,
+            MemberRole = "Member", Status = "CONFIRMED"
+        });
+        db.CouncilProjectAssignments.AddRange(
+            new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = first.Id },
+            new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = second.Id });
+        await db.SaveChangesAsync();
+
+        var service = new CouncilService(
+            new ReviewRepository(db), new ProposalRepository(db),
+            new SystemSettingService(new MasterDataRepository(db)),
+            new NotificationRepository(db), new NullEmailService());
+
+        var memberships = (await service.GetMyMembershipsAsync(reviewer.Id)).ToList();
+
+        Assert.Equal(2, memberships.Count);
+        Assert.Equal(2, memberships.Select(x => x.ProjectId).Distinct().Count());
+        Assert.All(memberships, x => Assert.Equal(council.Id, x.CouncilId));
+    }
+
     // ── test 3: COI check — PI cannot be added as council member ─────────────
 
     [Fact]
@@ -185,6 +225,12 @@ public class CouncilServiceTests
         db.Proposals.Add(proposal);
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
+        db.SystemSettings.Add(new FURPMS.Domain.Entities.MasterData.SystemSetting
+        {
+            Key = SystemSettingKeys.CouncilAllowRespondOnBehalf,
+            Value = "true",
+            RecommendedValue = "false"
+        });
         await db.SaveChangesAsync();
 
         var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
@@ -248,15 +294,7 @@ public class CouncilServiceTests
     public async Task RespondOnBehalf_WhenSettingOff_Throws()
     {
         var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
-        var (service, staffId, memberId) = await SeedInvitedMemberAsync(db);
-
-        db.SystemSettings.Add(new FURPMS.Domain.Entities.MasterData.SystemSetting
-        {
-            Key = SystemSettingKeys.CouncilAllowRespondOnBehalf,
-            Value = "false",
-            RecommendedValue = "true"
-        });
-        await db.SaveChangesAsync();
+        var (service, staffId, memberId) = await SeedInvitedMemberAsync(db, allowRespondOnBehalf: false);
 
         var ex = await Assert.ThrowsAsync<AppException>(
             () => service.RespondOnBehalfAsync(memberId, staffId, accept: true, declineReason: null));
@@ -278,7 +316,8 @@ public class CouncilServiceTests
 
     /// <summary>Dựng sẵn một hội đồng có 1 thành viên ĐÃ ĐƯỢC GỬI thư mời.</summary>
     private static async Task<(CouncilService Service, Guid StaffId, Guid MemberId)> SeedInvitedMemberAsync(
-        FURPMS.Infrastructure.Data.FURPMSDbContext db, bool sendInvitation = true)
+        FURPMS.Infrastructure.Data.FURPMSDbContext db, bool sendInvitation = true,
+        bool allowRespondOnBehalf = true)
     {
         var pi = MakeUser();
         var reviewer = MakeUser();
@@ -291,6 +330,12 @@ public class CouncilServiceTests
         db.Proposals.Add(proposal);
         db.ReviewCouncils.Add(council);
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
+        db.SystemSettings.Add(new FURPMS.Domain.Entities.MasterData.SystemSetting
+        {
+            Key = SystemSettingKeys.CouncilAllowRespondOnBehalf,
+            Value = allowRespondOnBehalf ? "true" : "false",
+            RecommendedValue = "false"
+        });
         await db.SaveChangesAsync();
 
         var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db),

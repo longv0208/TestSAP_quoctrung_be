@@ -16,6 +16,9 @@ public class MyMembershipDto
     public string ProposalStatus { get; set; } = null!;
     // Enrich (rule tuần 10) — cho reviewer xem nhiều thông tin + sắp xếp.
     public string? PiName { get; set; }
+    public int? CycleId { get; set; }
+    public string? CycleCode { get; set; }
+    public int? TrackId { get; set; }
     public string? TrackName { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? NextMeetingAt { get; set; }

@@ -74,6 +74,7 @@ public class ContractLifecycleTests
         OriginalEndDate = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(12)),
         MaxExtensionMonths = 6,
         Status = "ACTIVE",
+        SignedAt = DateTime.UtcNow,
         CreatedBy = Guid.NewGuid()
     };
 
@@ -566,6 +567,9 @@ public class ContractLifecycleTests
         await db.SaveChangesAsync();
 
         var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        // Nhóm test này chỉ kiểm tra gate SẢN PHẨM; đặt dự án đã nghiệm thu để gate đợt cuối không che mất
+        // đúng hành vi mà từng test đang nhắm tới.
+        project.Status = ProjectStatus.Completed;
         proposal.FundingMethod = "WHOLE";   // P5: WHOLE cũng gắn được sản phẩm
         db.Projects.Add(project);
         db.Proposals.Add(proposal);
@@ -629,7 +633,7 @@ public class ContractLifecycleTests
         Assert.Equal("PENDING", (await db.ContractDisbursements.FindAsync(tranche.Id))!.Status);
     }
 
-    /// <summary>Đợt KHÔNG gắn sản phẩm (vd tạm ứng khởi động) vẫn đánh dấu được — không chặn oan.</summary>
+    /// <summary>Đợt đã qua các gate nghiệp vụ nhưng KHÔNG gắn sản phẩm vẫn xác nhận được.</summary>
     [Fact]
     public async Task Confirm_NoDeliverableLinked_Succeeds()
     {
@@ -802,6 +806,113 @@ public class ContractLifecycleTests
             tranches[2].Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid());
 
         Assert.Equal("DISBURSED", result.Status);
+    }
+
+    [Fact]
+    public async Task Confirm_BasicSingleTranche_BeforeAcceptancePassed_Throws()
+    {
+        var (db, tranches) = await SeedThreeTranchesAsync("IN_PROGRESS");
+        db.ContractDisbursements.RemoveRange(tranches);
+        var single = new ContractDisbursement
+        {
+            ContractId = tranches[0].ContractId,
+            RoundNumber = 1,
+            Percentage = 100m,
+            PlannedAmount = 1_000_000m,
+            ConditionDescription = "Sau nghiệm thu Đạt",
+            Status = DisbursementStatus.Pending
+        };
+        db.ContractDisbursements.Add(single);
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            MakeDisbursementService(db).ConfirmAsync(
+                single.Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid()));
+
+        Assert.Contains("CUOI", RemoveDiacritics(ex.Message));
+        Assert.Equal(DisbursementStatus.Pending, (await db.ContractDisbursements.FindAsync(single.Id))!.Status);
+    }
+
+    [Fact]
+    public async Task Confirm_BasicSingleTranche_AfterAcceptancePassed_Succeeds()
+    {
+        var (db, tranches) = await SeedThreeTranchesAsync(ProjectStatus.Completed);
+        db.ContractDisbursements.RemoveRange(tranches);
+        var single = new ContractDisbursement
+        {
+            ContractId = tranches[0].ContractId,
+            RoundNumber = 1,
+            Percentage = 100m,
+            PlannedAmount = 1_000_000m,
+            ConditionDescription = "Sau nghiệm thu Đạt",
+            Status = DisbursementStatus.Pending
+        };
+        db.ContractDisbursements.Add(single);
+        await db.SaveChangesAsync();
+
+        var result = await MakeDisbursementService(db).ConfirmAsync(
+            single.Id, new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid());
+
+        Assert.Equal(DisbursementStatus.Disbursed, result.Status);
+    }
+
+    [Theory]
+    [InlineData(2, 1)]
+    [InlineData(3, 2)]
+    public async Task Confirm_AppliedMiddleTranche_RequiresMatchingPassedProgressReport(
+        int trancheRound, int reportRound)
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var pi = MakeUser();
+        var rt = MakeResearchType();
+        rt.RequireOrderingUnit = true;
+        db.Users.Add(pi);
+        db.ResearchTypes.Add(rt);
+        await db.SaveChangesAsync();
+
+        var (project, proposal) = MakeApprovedProposal(pi.Id, rt.Id);
+        project.Status = ProjectStatus.InProgress;
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+
+        var contract = MakeContract(project.Id);
+        db.Contracts.Add(contract);
+        await db.SaveChangesAsync();
+        var tranches = Enumerable.Range(1, 4).Select(round => new ContractDisbursement
+        {
+            ContractId = contract.Id,
+            RoundNumber = round,
+            Percentage = round == 4 ? 10m : 30m,
+            PlannedAmount = round == 4 ? 100_000m : 300_000m,
+            ConditionDescription = $"Đợt {round}",
+            Status = DisbursementStatus.Pending
+        }).ToList();
+        db.ContractDisbursements.AddRange(tranches);
+        await db.SaveChangesAsync();
+
+        var service = MakeDisbursementService(db);
+        var blocked = await Assert.ThrowsAsync<InvalidOperationException>(() => service.ConfirmAsync(
+            tranches[trancheRound - 1].Id,
+            new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid()));
+        Assert.Contains("bao cao tien do", RemoveDiacritics(blocked.Message));
+
+        db.ProgressReports.Add(new ProgressReport
+        {
+            ContractId = contract.Id,
+            ReportRound = reportRound,
+            ReportingPeriodStart = contract.StartDate,
+            ReportingPeriodEnd = contract.StartDate.AddMonths(reportRound),
+            CompletedContent = "Đã hoàn thành",
+            Status = ProgressReportStatus.Evaluated,
+            EvaluationResult = EvaluationResult.Pass
+        });
+        await db.SaveChangesAsync();
+
+        var result = await service.ConfirmAsync(
+            tranches[trancheRound - 1].Id,
+            new Application.DTOs.Contract.ConfirmDisbursementRequest(), Guid.NewGuid());
+        Assert.Equal(DisbursementStatus.Disbursed, result.Status);
     }
 
     /// <summary>Không cho lấy sản phẩm của hợp đồng khác làm minh chứng.</summary>

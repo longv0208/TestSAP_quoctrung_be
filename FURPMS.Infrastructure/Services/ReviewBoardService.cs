@@ -136,21 +136,8 @@ public class ReviewBoardService : IReviewBoardService
     /// </summary>
     private async Task AssertAcceptanceComesAfterReviewAsync(int cycleTrackId, string? roundType)
     {
-        if (!string.Equals(roundType, "ACCEPTANCE", StringComparison.OrdinalIgnoreCase)) return;
-
-        var hasApprovedProject = await _proposals.Query().IgnoreQueryFilters()
-            .AnyAsync(p => p.IsCurrent
-                           && p.Project.CycleTrackId == cycleTrackId
-                           && (p.Status == ProposalStatus.Approved
-                               || p.Project.Status == ProjectStatus.InProgress
-                               || p.Project.Status == ProjectStatus.Acceptance
-                               || p.Project.Status == ProjectStatus.Completed));
-
-        if (!hasApprovedProject)
-            throw new InvalidOperationException(
-                "Lĩnh vực này chưa có đề tài nào qua vòng xét duyệt đề cương — chưa mở được vòng NGHIỆM THU. " +
-                "Theo QĐ543 (Điều 11.2.c), hội đồng nghiệm thu lập dựa trên hồ sơ nghiệm thu, mà hồ sơ đó chỉ có " +
-                "sau khi đề tài được duyệt và ký hợp đồng. Hãy mở vòng XÉT DUYỆT ĐỀ CƯƠNG trước.");
+        if (!ReviewShared.IsAcceptance(roundType)) return;
+        await ReviewShared.AssertAcceptanceTrackReadyAsync(_review, _proposals, cycleTrackId);
     }
 
     public async Task<ReviewRoundResponse> CreateRoundForTrackAsync(int cycleId, int trackId, CreateTrackRoundRequest request)
@@ -186,10 +173,32 @@ public class ReviewBoardService : IReviewBoardService
         var round = await ReviewShared.GetOrCreateOpenRoundAsync(
             _review, cycleTrack.Id, request.Dimension, request.RoundType, request.RubricTemplateId, request.PrerequisiteRoundId);
 
-        // Tập đề tài đưa vào vòng: chỉ định rõ, hoặc mặc định gom mọi đề tài SUBMITTED/REVISION_REQUIRED
-        // của track chưa vào vòng này (rule #7-10: đề tài tự do, 1 track có thể nhiều đề tài cùng vòng).
+        // Tập đề tài đưa vào vòng: REVIEW gom hồ sơ đang chờ xét; ACCEPTANCE chỉ gom hồ sơ đã qua REVIEW,
+        // đã nộp báo cáo tổng kết và được Staff duyệt. Dùng chung query cho cả mặc định lẫn danh sách chỉ định
+        // để API trực tiếp không lách được bộ lọc của giao diện.
         List<Guid> targetProjectIds;
-        if (request.ProjectIds != null && request.ProjectIds.Count > 0)
+        if (ReviewShared.IsAcceptance(request.RoundType))
+        {
+            var eligibleIds = await ReviewShared.GetAcceptanceEligibleProjectIdsAsync(
+                _review, _proposals, cycleTrack.Id);
+            if (eligibleIds.Count == 0)
+                throw new InvalidOperationException(
+                    "Chưa có đề tài nào đủ hồ sơ nghiệm thu — cần đề tài đã Đạt xét duyệt và báo cáo tổng kết đã được Phòng QLKH duyệt.");
+
+            if (request.ProjectIds != null && request.ProjectIds.Count > 0)
+            {
+                var invalidIds = request.ProjectIds.Except(eligibleIds).ToList();
+                if (invalidIds.Count > 0)
+                    throw new InvalidOperationException(
+                        "Danh sách có đề tài chưa đủ điều kiện nghiệm thu — chỉ chọn đề tài đã Đạt xét duyệt và có báo cáo tổng kết được duyệt.");
+                targetProjectIds = request.ProjectIds;
+            }
+            else
+            {
+                targetProjectIds = eligibleIds;
+            }
+        }
+        else if (request.ProjectIds != null && request.ProjectIds.Count > 0)
         {
             targetProjectIds = request.ProjectIds;
         }
@@ -268,6 +277,13 @@ public class ReviewBoardService : IReviewBoardService
 
         if (project.CycleTrackId != round.CycleTrackId)
             throw new ArgumentException("Đề tài không thuộc lĩnh vực của vòng này.");
+
+        if (ReviewShared.IsAcceptance(round.RoundType))
+        {
+            await ReviewShared.AssertAcceptanceTrackReadyAsync(_review, _proposals, round.CycleTrackId);
+            await ReviewShared.AssertProjectEligibleForAcceptanceAsync(
+                _review, _proposals, round.CycleTrackId, projectId);
+        }
 
         var existingLink = await _review.ProjectRounds
             .AnyAsync(pr => pr.ProjectId == projectId && pr.RoundId == roundId);

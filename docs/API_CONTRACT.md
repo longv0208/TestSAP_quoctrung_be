@@ -285,6 +285,7 @@ Key-value do Admin chỉnh trong app, có hiệu lực ngay (không cần restar
 |---|---|---|---|
 | GET | `/api/system-settings` | Admin | Danh sách cấu hình: `{ id, key, value, recommendedValue, description, updatedAt }` |
 | GET | `/api/system-settings/upload-policy` | mọi user đăng nhập | Giới hạn upload đã giải mã sẵn — FE validate trước khi gửi file |
+| GET | `/api/system-settings/council-policy` | mọi user đăng nhập | `{ allowRespondOnBehalf }` — Staff dùng để ẩn thao tác trả lời thư mời thay khi Admin đã tắt; không lộ danh sách cấu hình đầy đủ |
 | PUT | `/api/system-settings/{key}` | Admin | Body `{ "value": "25" }` → 400 nếu ngoài khoảng cho phép |
 
 `upload-policy` trả:
@@ -439,6 +440,7 @@ Key hiện có:
 }
 ```
 - Nếu track đã có vòng cùng `dimension`+`roundType` đang `PENDING|OPEN` → **tái dùng** vòng đó, chỉ thêm đề tài (không tạo trùng).
+- Với `roundType=ACCEPTANCE`: **409** nếu còn bất kỳ đề tài/vòng REVIEW nào chưa có kết quả cuối cùng. Mặc định chỉ gom đề tài đã `PASSED` REVIEW, project đang `ACCEPTANCE` và final report `ACCEPTED|ARCHIVED`; danh sách `projectIds` gửi tay cũng bị kiểm cùng điều kiện. Khi mở vòng, server kiểm lại toàn bộ để không lách bằng API.
 - Trả về `ReviewRoundResponse` (`councilId` luôn null ở path này).
 
 **Request — thêm đề tài** (`POST /api/rounds/{roundId}/projects`): `{ "projectId": "guid" }`
@@ -525,12 +527,12 @@ Key hiện có:
 
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
-| GET | `/api/councils/my-memberships` | Authenticated | Hội đồng mà tôi tham gia. `MyMembershipDto` **enrich (tuần 10)**: thêm `piName`, `trackName`, `createdAt`, `nextMeetingAt` (FE tìm kiếm/sắp xếp + hiện PI/lĩnh vực/ngày họp) |
+| GET | `/api/councils/my-memberships` | Authenticated | Công việc hội đồng của tôi, **một dòng cho mỗi (hội đồng × đề tài)**. Một hội đồng chấm nhiều đề tài sẽ trả đủ nhiều dòng nhưng cùng `memberId`; FE màn lời mời gộp theo `memberId`, màn chấm giữ từng dòng. `MyMembershipDto` có `projectId`, `proposalId`, `piName`, `cycleId`, `cycleCode`, `trackId`, `trackName`, `createdAt`, `nextMeetingAt` để màn Reviewer tìm/lọc theo đợt · lĩnh vực · trạng thái · vòng. |
 | POST | `/api/councils` | Staff, Admin | Lập 1 hội đồng cho 1 đề tài trong round |
 | GET | `/api/councils/{councilId}/members` | Authenticated | Thành viên hội đồng |
 | DELETE | `/api/councils/{councilId}` | Staff, Admin | **Xóa hội đồng** — chỉ khi **chưa có phiếu chấm / biên bản / nghiệm thu** (có → 409). Tự gỡ thành viên + lịch họp + điểm danh + gán đề tài. |
 | POST | `/api/councils/{councilId}/members` | Staff, Admin | Thêm thành viên `{ userId, memberRole, isExternal }` (COI rule #5) |
-| POST | `/api/councils/{councilId}/send-invitations` | Staff, Admin | **Gửi thư mời đồng loạt** cho member `ASSIGNED` (rule #13) `{ confirmDeadline? }`. **Gate (rule tuần 10):** phải đủ **Chủ tịch + Thư ký + đã có lịch họp** — thiếu → **409** |
+| POST | `/api/councils/{councilId}/send-invitations` | Staff, Admin | **Gửi thư mời đồng loạt** cho member `ASSIGNED` (rule #13) `{ confirmDeadline? }`. Gate: phải đủ **Chủ tịch + Thư ký + lịch họp + ít nhất 1 đề tài** — thiếu → **409**. Một lời mời xác nhận tư cách cho toàn hội đồng; nội dung liệt kê đầy đủ mọi đề tài hội đồng được giao. |
 | GET | `/api/councils/{councilId}/schedule-conflicts` | Staff, Admin | **Cảnh báo trùng lịch** (rule tuần 10): TV hội đồng này còn dự hội đồng khác họp **giao giờ**. Trả `[{ memberUserId, memberName, otherCouncilId, otherCouncilType?, thisMeetingAt, otherMeetingAt }]` (rỗng = không trùng). |
 | GET | `/api/councils/{councilId}/slots` | Staff, Admin | **Lịch chấm theo đề tài** (rule tuần 10): slot con từng đề tài trong buổi họp. Trả `[{ projectId, projectTitle, meetingId?, slotStartAt?, slotDurationMinutes?, slotOrder? }]` |
 | PUT | `/api/councils/{councilId}/slots` | Staff, Admin | Gán slot: `{ entries: [{ projectId, slotStartAt?, slotDurationMinutes?, slotOrder? }] }` — meetingId auto = buổi họp sớm nhất của hội đồng |
@@ -552,8 +554,8 @@ Key hiện có:
 | GET | `/api/meetings` | Admin, Staff | Toàn bộ lịch họp |
 | GET | `/api/meetings/my` | * (PI) | **Lịch họp hội đồng chấm đề tài của tôi** — PI **trình bày trước hội đồng** (Process_Spec) nên cần biết ngày/giờ + địa điểm hoặc link. Trước đây chỉ Staff/Reviewer xem được |
 | GET | `/api/councils/{councilId}/meetings` | Authenticated | Lịch họp của hội đồng |
-| POST | `/api/councils/{councilId}/meetings` | Admin, Staff | Tạo lịch họp |
-| PUT | `/api/meetings/{id}` | Admin, Staff | **Sửa lịch họp (mới 05/08)** — `UpdateMeetingRequest` (cùng bộ trường với lúc tạo). Rule #17 cho đổi lịch **bất kỳ lúc nào** nên không khoá theo trạng thái; buổi đã diễn ra thì bỏ ràng buộc "phải ở tương lai" (vẫn sửa được địa điểm/link ghi nhầm). Offline mà trống địa điểm → 400; `durationMinutes <= 0` → 400. Đổi sang online thì BE **tự xoá** `location`, và ngược lại. |
+| POST | `/api/councils/{councilId}/meetings` | Admin, Staff | Tạo lịch họp. **409 và không ghi dữ liệu** nếu giao giờ với lịch khác của chính hội đồng hoặc lịch hội đồng khác có chung thành viên. Hai lịch nối đuôi đúng giờ kết thúc/bắt đầu được phép. |
+| PUT | `/api/meetings/{id}` | Admin, Staff | **Sửa lịch họp (mới 05/08)** — `UpdateMeetingRequest` (cùng bộ trường với lúc tạo), áp dụng cùng ràng buộc chống trùng lịch như POST. Rule #17 cho đổi lịch **bất kỳ lúc nào** nên không khoá theo trạng thái; buổi đã diễn ra thì bỏ ràng buộc "phải ở tương lai" (vẫn sửa được địa điểm/link ghi nhầm). Offline mà trống địa điểm → 400; `durationMinutes <= 0` → 400. Đổi sang online thì BE **tự xoá** `location`, và ngược lại. |
 | DELETE | `/api/meetings/{id}` | Admin, Staff | **Xoá buổi họp (mới 05/08)** — chỉ khi `status = SCHEDULED`, ngược lại **409**. Đã có điểm danh (`ActuallyAttended != null`) cũng **409**. Xoá thì dọn dòng điểm danh và **gỡ slot đề tài** đang trỏ tới buổi họp (`CouncilProjectAssignment.MeetingId/SlotStartAt` về null). |
 | POST | `/api/meetings/{id}/start` | Admin, Staff | Bắt đầu họp — ⚠️ **đã gỡ khỏi giao diện 17/08** (endpoint giữ lại) |
 | POST | `/api/meetings/{id}/end` | Admin, Staff | Kết thúc họp — ⚠️ **đã gỡ khỏi giao diện 17/08** (endpoint giữ lại) |
@@ -615,8 +617,8 @@ Key hiện có:
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
 | GET | `/api/councils/{councilId}/acceptance` | Admin, Staff, **thành viên hội đồng** | Tất cả phiếu nghiệm thu (tổng hợp — Thư ký lập biên bản cần xem). Người ngoài hội đồng → **403**. *Trước đây khóa cứng `Admin,Staff` → reviewer 403, không chấm được.* |
-| GET | `/api/councils/{councilId}/acceptance/my` | Thành viên hội đồng | **Phiếu của CHÍNH tôi** (null nếu chưa chấm) — form chấm nghiệm thu dùng endpoint này |
-| POST | `/api/councils/{councilId}/acceptance` | Thành viên | Nộp **hoặc CẬP NHẬT** đánh giá của mình (`{ result: "PASS"|"FAIL", failReason? }`). Biên bản đã Chủ tịch chốt → **409** (rule #12). *Trước đây nộp lần 2 luôn 409 "already submitted" dù UI ghi "Cập nhật".* |
+| GET | `/api/councils/{councilId}/acceptance/my?projectId={projectId}` | Thành viên hội đồng | **Phiếu của CHÍNH tôi cho đúng đề tài** (null nếu chưa chấm). `projectId` bắt buộc vì một hội đồng có thể chấm nhiều đề tài. |
+| POST | `/api/councils/{councilId}/acceptance` | Thành viên đã `CONFIRMED` | Nộp **hoặc CẬP NHẬT** phiếu riêng cho đề tài `{ projectId, result: "PASS"|"FAIL", failReason? }`. Đề tài không thuộc hội đồng hoặc biên bản của chính đề tài đã chốt → **409**. Mỗi `(councilId, projectId, evaluatorMemberId)` là một phiếu độc lập. |
 
 > **Nghiệm thu chốt vòng đời đề tài:** Chủ tịch duyệt biên bản vòng **ACCEPTANCE** → project `COMPLETED` (Đạt) hoặc quay lại `IN_PROGRESS` (chưa đạt) — khác vòng REVIEW (`APPROVED`/`CANCELLED`). Trước đây mọi vòng đều set APPROVED nên nghiệm thu xong đề tài vẫn "Đã duyệt" → **đứt mạch cuối**.
 
@@ -649,7 +651,7 @@ Key hiện có:
 **CreateAmendmentRequest**: `{ categoryId, changeDescription, justification, changePercentage?, oldValue?, newValue?, requiresRectorApproval, reviewerComments? }`
 
 ### Giải ngân — `/api/disbursements`
-| POST | `/api/disbursements/{id}/confirm` | Admin, Staff | **Đánh dấu đã giải ngân** (rule tuần 10 — không quản tiền): `{ actualAmount?, bankReference?, notes? }` — **tất cả optional**, chỉ đổi status→DISBURSED + `disbursedAt` |
+| POST | `/api/disbursements/{id}/confirm` | Admin, Staff | **Đánh dấu đã giải ngân** (rule tuần 10 — không quản tiền): `{ actualAmount?, bankReference?, notes? }` — **tất cả optional**. Gate theo QĐ543 Điều 16: hợp đồng phải đã ký; đề tài ứng dụng đợt 2/3 cần báo cáo tiến độ giai đoạn 1/2 được đánh giá `PASS`; đợt cuối (kể cả đề tài cơ bản chỉ có 1 đợt) cần project `COMPLETED` sau nghiệm thu Đạt. Vi phạm → 409. |
 | PUT | `/api/disbursements/{id}/deliverable` | Admin, Staff | **Gắn/gỡ sản phẩm minh chứng cho đợt** (P5): `{ deliverableId: int \| null }` — `null` = gỡ. **400** nếu sản phẩm không thuộc cùng hợp đồng; **409** nếu đợt đã giải ngân. Gắn sản phẩm đã `PASSED` ⇒ set luôn `conditionMetAt` |
 | GET | `/api/disbursements/{id}/evidence` | Admin, Staff | **Minh chứng giải ngân** (rule tuần 10) — list file HĐ/chứng từ của đợt |
 | POST | `/api/disbursements/{id}/evidence` | Admin, Staff | Upload minh chứng (multipart `file`) — tái dùng `Document` polymorphic (EntityType="Disbursement"); siết dung lượng/đuôi theo `system_settings` |

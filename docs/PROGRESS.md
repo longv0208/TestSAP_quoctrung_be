@@ -124,8 +124,8 @@ prompt ưu/nhược, gợi ý bám tiêu chí) · **D1** nộp dồn kỳ báo c
 hiện quỹ giờ buổi họp.
 
 Xong thêm 08/08: **C1** xuất Word hợp đồng đủ mẫu BM05 · **A9** hội đồng số lẻ · **A10** bước
-nhảy điểm do Admin đặt · **E7 data demo** (`DemoScenarioSeeder`: 2 đợt + 8 đề tài `NCKH-2026-001..008`
-đứng ở 8 bước, 3 hội đồng × 5 người, 3 slot chấm chung một buổi họp, 22 phiếu, 3 biên bản đã chốt,
+nhảy điểm do Admin đặt · **E7 data demo** (`DemoScenarioSeeder`: 2 đợt + 11 đề tài `NCKH-2026-001..011`
+đứng ở các ca tốt/xấu, 6 hội đồng × 5 người, hội đồng nhiều đề tài + lời mời hai đề tài, ca Không đạt,
 6 file Word thuyết minh sinh sẵn) · **F5 kịch bản demo** (viết vào `DEMO_GUIDE.md` §3–4).
 Dựng data demo lôi ra **2 lỗi thật** đã sửa luôn: **A12** hội đồng nghiệm thu không chốt được biên
 bản dù đủ phiếu (quorum chỉ đếm phiếu chấm điểm, bỏ qua phiếu Đạt/Không đạt) · **A13** biên bản

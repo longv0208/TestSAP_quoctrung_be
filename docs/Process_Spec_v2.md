@@ -85,7 +85,7 @@ PI điền trực tiếp                      AI đọc & trích xuất field c�
 | **Ai tham gia** | Staff (gán), Reviewer (xác nhận/từ chối) |
 | **Sản phẩm đầu ra** | `ReviewCouncil` + `CouncilMember[]` (status confirmed); thư mời đã gửi |
 | **Văn bản QĐ543** | Quyết định thành lập hội đồng |
-| **Rule** | Gán hết → 1 nút "Gửi thư mời" đồng loạt; deadline xác nhận/từ chối; quá hạn → Staff gán người thay; chức danh (CT/TK/PB/TV) = field khi gán, không tách actor |
+| **Rule** | Gán hết → 1 nút "Gửi thư mời" đồng loạt; deadline xác nhận/từ chối; quá hạn → Staff gán người thay; chức danh (CT/TK/PB/TV) = field khi gán, không tách actor. Mặc định thành viên **tự trả lời**; Admin có thể bật `COUNCIL_ALLOW_RESPOND_ON_BEHALF` để Staff ghi nhận phản hồi đã nhận ngoài hệ thống, luôn lưu người thao tác hộ. |
 
 **Biểu mẫu versioning:** đề tài pin version `RubricTemplate` active **lúc tạo** → đổi active chỉ áp đề tài mới, không đụng đề tài cũ.
 
@@ -101,11 +101,12 @@ PI điền trực tiếp                      AI đọc & trích xuất field c�
 
 ```
 Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
-    → Bỏ phiếu online → Đếm phiếu → Kết quả
+    → Bỏ phiếu online → Tổng hợp phiếu → Dự thảo kết luận
     → Thư ký soạn biên bản → Chủ tịch approve = KHÓA (revision lưu lại)
 ```
 
-> **Kết quả = số phiếu đa số**, không phải Chủ tịch quyết đơn phương.  
+> **Phiếu/điểm là dữ liệu tham khảo để soạn kết luận; kết quả hệ thống lấy từ kết luận do Chủ tịch duyệt và khóa**
+> (rule #12). Không tự động suy kết quả chỉ bằng phép đếm đa số.
 > **Khóa biên bản:** TK edit → CT approve → status LOCKED; thành viên khác chỉ xem.
 
 ### Giai đoạn 6 — Hợp đồng & Giải ngân
@@ -115,7 +116,7 @@ Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
 | **Ai tham gia** | Staff (tạo hợp đồng, xác nhận giải ngân), PI (ký) |
 | **Sản phẩm đầu ra** | `Contract`; `ContractDisbursement[]` (từng đợt) |
 | **Văn bản QĐ543** | Hợp đồng nghiên cứu |
-| **Rule** | Tiền KHÔNG tự giải ngân. deliverable PASSED → `condition_met_at` + notify Staff → Staff xác nhận tay. PARTIAL: 1 đợt/mốc. WHOLE: ≥3 đợt (đầu/giữa/cuối), tỷ lệ % config được |
+| **Rule** | Hệ thống không chi tiền, chỉ theo dõi mốc + minh chứng; Staff xác nhận tay. Lịch do **loại đề tài** quyết định: Ứng dụng 4 đợt `30–30–30–10` (ký HĐ → tiến độ GĐ1 Đạt → tiến độ GĐ2 Đạt → nghiệm thu Đạt); Cơ bản 1 đợt `100%` sau nghiệm thu Đạt. `FundingMethod` không còn quyết định lịch. |
 
 ### Giai đoạn 7 — Tiến độ & Amendment
 
@@ -124,7 +125,7 @@ Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
 | **Ai tham gia** | PI (nộp báo cáo, yêu cầu thay đổi), Staff (duyệt báo cáo — không cần hội đồng) |
 | **Sản phẩm đầu ra** | `ProgressReport[]`; `AmendmentRequest` (nếu có) |
 | **Văn bản QĐ543** | Báo cáo tiến độ định kỳ; Form gia hạn (**tối đa 1/2 thời gian thực hiện** — QĐ543 Điều 10.4; đề tài 12 tháng ⇒ 6 tháng) |
-| **Rule** | Staff duyệt báo cáo tiến độ trực tiếp, không cần hội đồng. Amendment validate theo QĐ543 (gia hạn ≤ **1/2 thời gian thực hiện**, v.v.) — không phải form trắng. Chữ ký số: ngoài scope |
+| **Rule** | Staff duyệt báo cáo tiến độ trực tiếp, không cần hội đồng. Ứng dụng mặc định 2 kỳ (cuối GĐ1/GĐ2), Cơ bản 1 kỳ giữa kỳ; kỳ trước phải được đánh giá xong mới nộp kỳ sau. Amendment validate theo QĐ543 (gia hạn ≤ **1/2 thời gian thực hiện**, v.v.) — không phải form trắng. Chữ ký số: ngoài scope. |
 
 ### Giai đoạn 8 — Nghiệm thu
 
@@ -133,6 +134,12 @@ Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
 | **Ai tham gia** | Hội đồng nghiệm thu, PI |
 | **Sản phẩm đầu ra** | `AcceptanceEvaluation`; `ProductDeliverable[]` (PASSED/FAILED); `FinalReport` |
 | **Văn bản QĐ543** | Biên bản nghiệm thu; báo cáo tổng kết |
+| **Rule** | Chỉ tạo/mở vòng nghiệm thu khi toàn bộ đề tài đã đưa vào vòng xét duyệt của lĩnh vực đều có kết quả cuối cùng. Từng đề tài vào nghiệm thu phải **Đạt** xét duyệt, đang ở trạng thái `ACCEPTANCE`, và báo cáo tổng kết đã được Staff duyệt (`ACCEPTED/ARCHIVED`). Một hội đồng có thể chấm nhiều đề tài: lời mời xác nhận một lần cho hội đồng, nhưng nhiệm vụ, phiếu Đạt/Không đạt và biên bản tách riêng theo từng đề tài. |
+
+> **Hạn vòng chấm (hiện trạng 19/08):** `ResearchCycle.ReviewDeadline` là hạn quản trị ở cấp đợt;
+> `ReviewRound` chưa có deadline riêng và chưa có tác vụ tự kết luận đề tài. Không tự đánh **Không đạt**
+> khi reviewer chậm chấm: đó không phải lỗi của chủ nhiệm. Hướng cần chốt nghiệp vụ là hết hạn thì khoá
+> nhận phiếu, gắn cờ quá hạn và buộc Staff chọn gia hạn / đổi người / kết luận hành chính có lưu lý do.
 
 ---
 
@@ -203,9 +210,9 @@ stateDiagram-v2
 
     REVISION_REQUIRED --> SUBMITTED : PI sửa & nộp lại
 
-    UNDER_REVIEW --> APPROVED : HĐ: đủ phiếu đạt
-    UNDER_REVIEW --> REVISION_REQUIRED : HĐ: cần sửa
-    UNDER_REVIEW --> REJECTED : HĐ: không đạt (kết thúc)
+    UNDER_REVIEW --> APPROVED : Chủ tịch duyệt biên bản: Đạt
+    UNDER_REVIEW --> REVISION_REQUIRED : Chủ tịch duyệt: Cần sửa
+    UNDER_REVIEW --> REJECTED : Chủ tịch duyệt: Không đạt
 
     APPROVED --> CONTRACTED : Hợp đồng ký kết
     CONTRACTED --> IN_PROGRESS : Triển khai
