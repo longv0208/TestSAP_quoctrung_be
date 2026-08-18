@@ -9,6 +9,14 @@ public class ContractListResponse
     public string? ProposalCode { get; set; }
     public string? ProposalTitle { get; set; }
     public string? PiName { get; set; }        // chủ nhiệm đề tài (hiển thị ở danh sách hợp đồng)
+    public int ResearchTypeId { get; set; }
+    public string? ResearchTypeCode { get; set; }
+    public string? ResearchTypeName { get; set; }
+    public int CycleId { get; set; }
+    public string? CycleCode { get; set; }
+    public int TrackId { get; set; }
+    public string? TrackCode { get; set; }
+    public string? TrackName { get; set; }
     public string Status { get; set; } = null!;
     public string? ProjectStatus { get; set; }
     public decimal TotalAmount { get; set; }
@@ -33,6 +41,14 @@ public class ContractDetailResponse
     public Guid ProposalId { get; set; }    // bản đề cương hiện hành (giữ cho FE cũ)
     public string? ProposalCode { get; set; }
     public string? ProposalTitle { get; set; }
+    public int ResearchTypeId { get; set; }
+    public string? ResearchTypeCode { get; set; }
+    public string? ResearchTypeName { get; set; }
+    public int CycleId { get; set; }
+    public string? CycleCode { get; set; }
+    public int TrackId { get; set; }
+    public string? TrackCode { get; set; }
+    public string? TrackName { get; set; }
     public string? FundingMethod { get; set; }
     public string? ScopeTitle { get; set; }
     public string Status { get; set; } = null!;

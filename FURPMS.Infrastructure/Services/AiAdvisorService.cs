@@ -14,6 +14,7 @@ public class AiAdvisorService : IAiAdvisorService
 {
     private const string ProposalEntity = "Proposal";
     private const string FeedbackOutput = "FEEDBACK";
+    private static string ScoreOutput(Guid councilId) => $"SCORE_SUGGESTION:{councilId}";
 
     private static readonly JsonSerializerOptions JsonOpts = new() { PropertyNameCaseInsensitive = true };
 
@@ -142,13 +143,7 @@ Tổng kinh phí: {p.TotalBudget:#,##0} VND");
     public async Task<IReadOnlyList<AiScoreSuggestionDto>> SuggestScoresAsync(
         Guid councilId, Guid proposalId, Guid userId, bool isStaffOrAdmin)
     {
-        if (!isStaffOrAdmin)
-        {
-            var isMember = await _db.CouncilMembers
-                .AnyAsync(m => m.CouncilId == councilId && m.UserId == userId);
-            if (!isMember)
-                throw new ForbiddenException("Bạn không phải thành viên hội đồng này.");
-        }
+        await EnsureCanUseScoreSuggestionsAsync(councilId, userId, isStaffOrAdmin);
 
         var template = await _rubrics.ResolveForCouncilAsync(councilId)
             ?? throw new KeyNotFoundException(
@@ -207,7 +202,7 @@ Thời gian: {proposal.DurationMonths} tháng";
 
         // Luôn trả ĐỦ tiêu chí theo đúng thứ tự bộ tiêu chí — AI thiếu cái nào thì để 0 kèm
         // ghi chú, để người chấm biết chỗ nào AI không đọc được thay vì mất tiêu chí.
-        return criteria.Select(c =>
+        var result = criteria.Select(c =>
         {
             var hit = parsed.FirstOrDefault(x => x.CriterionId == c.Id);
             return new AiScoreSuggestionDto
@@ -219,6 +214,51 @@ Thời gian: {proposal.DurationMonths} tháng";
                 Comment = hit?.Comment ?? "AI chưa đưa ra nhận định cho tiêu chí này."
             };
         }).ToList();
+
+        var outputType = ScoreOutput(councilId);
+        foreach (var old in await _db.LlmOutputs
+                     .Where(o => o.EntityType == ProposalEntity && o.EntityId == proposalId.ToString()
+                                 && o.OutputType == outputType && o.IsActive)
+                     .ToListAsync())
+            old.IsActive = false;
+
+        _db.LlmOutputs.Add(new LlmOutput
+        {
+            EntityType = ProposalEntity,
+            EntityId = proposalId.ToString(),
+            OutputType = outputType,
+            ModelUsed = "gemini",
+            PromptVersion = "score-v2",
+            Content = JsonSerializer.Serialize(result),
+            GeneratedAt = DateTime.UtcNow,
+            IsActive = true
+        });
+        await _db.SaveChangesAsync();
+        return result;
+    }
+
+    public async Task<IReadOnlyList<AiScoreSuggestionDto>?> GetScoreSuggestionsAsync(
+        Guid councilId, Guid proposalId, Guid userId, bool isStaffOrAdmin)
+    {
+        await EnsureCanUseScoreSuggestionsAsync(councilId, userId, isStaffOrAdmin);
+        var outputType = ScoreOutput(councilId);
+        var cached = await _db.LlmOutputs
+            .Where(o => o.EntityType == ProposalEntity && o.EntityId == proposalId.ToString()
+                        && o.OutputType == outputType && o.IsActive)
+            .OrderByDescending(o => o.GeneratedAt)
+            .FirstOrDefaultAsync();
+        return cached == null
+            ? null
+            : TryDeserialize<List<AiScoreSuggestionDto>>(cached.Content) ?? [];
+    }
+
+    private async Task EnsureCanUseScoreSuggestionsAsync(Guid councilId, Guid userId, bool isStaffOrAdmin)
+    {
+        if (isStaffOrAdmin) return;
+        var isMember = await _db.CouncilMembers
+            .AnyAsync(m => m.CouncilId == councilId && m.UserId == userId);
+        if (!isMember)
+            throw new ForbiddenException("Bạn không phải thành viên hội đồng này.");
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────

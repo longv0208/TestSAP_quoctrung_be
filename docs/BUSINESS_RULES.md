@@ -99,7 +99,8 @@
 | D15 | BM07 chỉ chia **4 nhóm**: nội dung/tên đề tài · tiến độ/thời gian · dự toán kinh phí · thay đổi khác. Không ép mọi nhóm khai cặp “giá trị hiện tại → đề nghị”; chỉ gia hạn cần số tháng cấu trúc | QĐ543 **BM07**, Điều 10.2 | danh mục `amendment_categories`; form PI; `DocumentExportService.ExportAmendmentDocAsync` | — |
 | D16 | Nghiệm thu `Đạt` ⇒ **Project = COMPLETED**, nhưng hợp đồng chưa phải đã thanh lý | QĐ543 Điều 13.1–13.2 | `ReviewScoringService`; `ContractDto.ProjectStatus` | — |
 | D17 | Chỉ lập quyết toán sau nghiệm thu Đạt và chi xong các đợt; chỉ ký BM13 sau xác nhận quyết toán kinh phí + xử lý tài sản; ký xong ⇒ **Contract = SETTLED** | QĐ543 Điều 13.1.e–13.2, BM13 | `ContractSettlementService` | 409 |
-| D18 | Hợp đồng đang hiệu lực, đề tài chưa hoàn thành có thể **TERMINATED** bất thường khi Staff/Admin nêu lý do; đồng thời Project = TERMINATED. Đã nghiệm thu Đạt thì phải đi thanh lý BM13, không đổi sang chấm dứt. Không có toggle hoàn tác trực tiếp | yêu cầu lưu dấu vết nghiệp vụ | `ContractService.TerminateAsync` | 400 / 409 |
+| D18 | Hợp đồng đang hiệu lực, đề tài chưa hoàn thành chỉ được **TERMINATED** để *ghi nhận quyết định/căn cứ dừng*; lý do tối thiểu 20 ký tự, đồng thời Project = TERMINATED. Đã nghiệm thu Đạt thì phải đi thanh lý BM13. Không có toggle hoàn tác trực tiếp; phục hồi nếu có phải là nghiệp vụ thu hồi quyết định có audit riêng | QĐ543 Điều 10.3 (Hiệu trưởng quyết định đình chỉ) + BM05 Điều 5.1.h | `ContractService.TerminateAsync` | 400 / 409 |
+| D19 | Danh sách hợp đồng phải trả và hiển thị đủ **loại đề tài · đợt · lĩnh vực**, vì loại đề tài quyết định trực tiếp lịch giải ngân D12 | QĐ543 Điều 16 | `ContractService.GetListAsync`; FE `ContractsPage` | — |
 
 > ⚠️ **"Phương thức khoán chi" (WHOLE/PARTIAL) KHÔNG có trong QĐ543** — rà toàn văn, chữ "khoán" chỉ xuất hiện ở *"thuê khoán chuyên môn"* và *"giao khoán"*. Khái niệm này đến từ mẫu thuyết minh cấp Bộ (`Mau-1_Thuyet-minh`). Cột `Proposal.FundingMethod` **vẫn còn trong DB** để đọc dữ liệu cũ nhưng **không còn quyết định số đợt giải ngân** (D12).
 
@@ -128,6 +129,7 @@
 | F6 | Dữ liệu demo tắt được bằng `DEMO_DATA_ENABLED`; seeder hỏng **không được** chặn ứng dụng khởi động | vận hành | `DemoScenarioSeeder` (giao dịch riêng từng kịch bản) + `Program.cs` | — |
 | F7 | Mã lỗi: 400 sai dữ liệu · **401 chỉ dùng cho lỗi xác thực** (FE thấy 401 là đăng xuất) · 403 thiếu quyền · 404 không tìm thấy · 409 xung đột trạng thái | quy ước dự án | `GlobalExceptionMiddleware` | — |
 | F8 | **Mọi thông báo lỗi nghiệp vụ đều bằng tiếng Việt** — rà 09/08, dịch 86 câu còn sót | thầy 05/08 (E3) | toàn bộ `FURPMS.Infrastructure/Services` | — |
+| F9 | AI dùng `llm_outputs` làm nguồn cache tập trung; retry lỗi 429/5xx theo exponential backoff + jitter rồi fallback model nhẹ. Reviewer đọc tóm tắt/gợi ý đã cache, chạy lại thành công mới ghi đè; lỗi không xoá bản tốt gần nhất | yêu cầu demo 19/08 + khuyến nghị Gemini API | `GeminiService`, `AiSummaryPregenerationService`, `AiAdvisorService` | — |
 
 ---
 

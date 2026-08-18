@@ -182,6 +182,20 @@ public class ContractSigningTests
     }
 
     [Fact]
+    public async Task Terminate_ActiveContract_RejectsVagueReason()
+    {
+        var (svc, db, contract) = await SetupAsync();
+        AddSignedCopy(db, contract.Id);
+        await svc.SignAsync(contract.Id, Guid.NewGuid());
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(
+            () => svc.TerminateAsync(contract.Id, Guid.NewGuid(), "thích"));
+
+        Assert.Contains("căn cứ", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("20", ex.Message);
+    }
+
+    [Fact]
     public async Task Terminate_PendingSignature_PointsToDeleteInstead()
     {
         var (svc, _, contract) = await SetupAsync();

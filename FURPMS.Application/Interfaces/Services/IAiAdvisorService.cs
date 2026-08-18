@@ -29,4 +29,8 @@ public interface IAiAdvisorService
     /// </summary>
     Task<IReadOnlyList<AiScoreSuggestionDto>> SuggestScoresAsync(
         Guid councilId, Guid proposalId, Guid userId, bool isStaffOrAdmin);
+
+    /// <summary>Lấy gợi ý điểm gần nhất đã lưu, không gọi Gemini.</summary>
+    Task<IReadOnlyList<AiScoreSuggestionDto>?> GetScoreSuggestionsAsync(
+        Guid councilId, Guid proposalId, Guid userId, bool isStaffOrAdmin);
 }

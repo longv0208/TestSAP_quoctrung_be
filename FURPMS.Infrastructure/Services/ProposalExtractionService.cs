@@ -1,7 +1,4 @@
-using System.Text;
 using System.Text.Json;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
 using FURPMS.Application.DTOs.Proposals;
 using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Services;
@@ -45,13 +42,8 @@ public class ProposalExtractionService : IProposalExtractionService
 
         try
         {
-            string raw = ext switch
-            {
-                ".pdf" => await _gemini.GenerateFromInlineDataAsync(ms.ToArray(), "application/pdf", Prompt, ct),
-                ".docx" => await _gemini.GenerateTextAsync($"{Prompt}\n\n--- NỘI DUNG ---\n{ExtractDocxText(ms)}", ct),
-                ".txt" => await _gemini.GenerateTextAsync($"{Prompt}\n\n--- NỘI DUNG ---\n{Encoding.UTF8.GetString(ms.ToArray())}", ct),
-                _ => throw new ArgumentException("Chỉ hỗ trợ PDF, DOCX, TXT cho tính năng trích xuất AI.")
-            };
+            var raw = await GeminiFileInput.AskAboutFileAsync(
+                _gemini, ms.ToArray(), fileName, contentType, Prompt, ct);
 
             return ParseJson(raw);
         }
@@ -67,18 +59,6 @@ public class ProposalExtractionService : IProposalExtractionService
                 Warning = $"AI không trích xuất được ({ex.Message}). Vui lòng nhập tay — file vẫn được lưu đính kèm."
             };
         }
-    }
-
-    private static string ExtractDocxText(Stream s)
-    {
-        using var doc = WordprocessingDocument.Open(s, false);
-        var body = doc.MainDocumentPart?.Document?.Body;
-        if (body == null) return string.Empty;
-
-        var sb = new StringBuilder();
-        foreach (var para in body.Descendants<Paragraph>())
-            sb.AppendLine(para.InnerText);
-        return sb.ToString();
     }
 
     private static ExtractedProposalDto ParseJson(string raw)

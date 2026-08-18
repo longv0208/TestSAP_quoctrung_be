@@ -138,7 +138,16 @@ giữ bản đã ký làm bằng chứng, và từ lúc ký thì khoá lại —
 | ✅ HD-6 | Đối chiếu **BM05 gốc** từng trường | — | **XONG 12/08.** Cấu trúc 7 Điều vốn đã khớp; bù **7 chỗ thiếu**: 3 căn cứ pháp lý · Địa chỉ Bên B · mục "Đại diện cho các thành viên" · **số tiền bằng chữ** · Điều 5 đầy đủ 15 mục a–h (trước gộp thành 2 câu) · Điều 6.1 vế phụ lục · Điều 6.3 vế Trọng tài/Toà án. Bản Word từ 74 → **95 dòng** |
 | HD-7 | Lưu **hash file bản ký** để chống tráo file | P2 | không |
 | ✅ HD-8 | Bố cục file Word xuất ra cho giống hợp đồng thật | P3 | không  **XONG 14/08** — thể thức theo Nghị định 30/2020: Times New Roman 13, A4, lề 30mm, quốc hiệu căn giữa, khối ký không viền |
-| HD-9 | Làm lại giao diện màn hợp đồng | P3 | không |
+| ✅ HD-9 | Danh sách hợp đồng hiện + lọc theo **loại đề tài / đợt / lĩnh vực** để phân biệt lịch giải ngân | — | **XONG 19/08** |
+
+### AI chống gãy khi demo — 19/08
+
+- Giữ `llm_outputs` làm **single source of truth**, không tạo thêm bảng `ProposalAiAnalyses` trùng dữ liệu.
+- Gemini thử tối đa 3 lượt: 2 lượt model chính, lượt cuối fallback `gemini-2.5-flash-lite`; delay exponential + jitter cho 429/5xx.
+- DOCX/TXT được làm sạch ký tự/khoảng trắng rác và cắt trần context trước khi gửi.
+- Gợi ý điểm lưu cache theo `(proposal, council)`; mở lại trang reviewer tải cache ngay. Khi chạy lại lỗi, giữ bản thành công gần nhất.
+- FE khóa nút AI và đếm ngược 10 giây sau mỗi lượt; lỗi quá tải hiện câu thân thiện, không lộ raw 429/503.
+- Seed ca `[TEST-VÒNG 1 THIẾU PHIẾU]` có sẵn tóm tắt + gợi ý điểm để demo offline; nút **Chạy lại** vẫn gọi Gemini thật.
 
 ---
 

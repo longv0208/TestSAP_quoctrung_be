@@ -84,6 +84,16 @@ public class ProposalExtractionServiceTests
         Assert.Contains("Chỉ hỗ trợ PDF, DOCX, TXT", error.Message);
     }
 
+    [Fact]
+    public void CleanText_BoKyTuRac_GopKhoangTrang_VaGioiHanContext()
+    {
+        var clean = GeminiFileInput.CleanText("A\0   B\r\n\r\n C\t D");
+        Assert.Equal("A B\nC D", clean);
+
+        var oversized = GeminiFileInput.CleanText(new string('x', 130_000));
+        Assert.Equal(120_000, oversized.Length);
+    }
+
     private sealed class FakeGeminiService : IGeminiService
     {
         public bool IsConfigured { get; init; } = true;

@@ -47,8 +47,36 @@ public class ContractService : IContractService
         if (piUserId.HasValue)
             query = query.Where(c => c.Project.PiUserId == piUserId.Value);
 
-        var contracts = await query.OrderByDescending(c => c.CreatedAt).ToListAsync();
-        return contracts.Select(MapList);
+        return await query.OrderByDescending(c => c.CreatedAt)
+            .Select(c => new ContractListResponse
+            {
+                Id = c.Id,
+                ContractNumber = c.ContractNumber,
+                ProjectId = c.ProjectId,
+                ProposalId = c.Project.Proposals.Where(x => x.IsCurrent).Select(x => x.Id).FirstOrDefault(),
+                ProposalCode = c.Project.ProjectCode,
+                ProposalTitle = c.Project.TitleVi,
+                PiName = c.Project.PiUser.FullName,
+                ResearchTypeId = c.Project.ResearchTypeId,
+                ResearchTypeCode = c.Project.ResearchType.Code,
+                ResearchTypeName = c.Project.ResearchType.Name,
+                CycleId = c.Project.CycleTrack.CycleId,
+                CycleCode = c.Project.CycleTrack.Cycle.SemesterCode
+                    ?? c.Project.CycleTrack.Cycle.CycleYear.ToString(),
+                TrackId = c.Project.CycleTrack.TrackId,
+                TrackCode = c.Project.CycleTrack.Track.Code,
+                TrackName = c.Project.CycleTrack.Track.Name,
+                Status = c.Status,
+                ProjectStatus = c.Project.Status,
+                TotalAmount = c.TotalAmount,
+                StartDate = c.StartDate,
+                EndDate = c.EndDate,
+                OriginalEndDate = c.OriginalEndDate,
+                MaxExtensionMonths = c.MaxExtensionMonths,
+                SignedAt = c.SignedAt,
+                CreatedAt = c.CreatedAt
+            })
+            .ToListAsync();
     }
 
     public async Task<ContractDetailResponse> GetByIdAsync(Guid contractId)
@@ -325,9 +353,6 @@ public class ContractService : IContractService
     /// </summary>
     public async Task<ContractDetailResponse> TerminateAsync(Guid contractId, Guid terminatedBy, string reason)
     {
-        if (string.IsNullOrWhiteSpace(reason))
-            throw new ArgumentException("Phải nêu lý do chấm dứt hợp đồng.");
-
         var contract = await QueryWithProject()
             .FirstOrDefaultAsync(c => c.Id == contractId)
             ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
@@ -342,6 +367,9 @@ public class ContractService : IContractService
         if (contract.Project.Status == ProjectStatus.Completed)
             throw new InvalidOperationException(
                 "Đề tài đã nghiệm thu Đạt — hãy hoàn tất quyết toán và thanh lý BM13, không chuyển sang chấm dứt bất thường.");
+        if (string.IsNullOrWhiteSpace(reason) || reason.Trim().Length < 20)
+            throw new ArgumentException(
+                "Phải nêu căn cứ/quyết định và lý do chấm dứt rõ ràng (ít nhất 20 ký tự).");
 
         contract.Status = ContractStatus.Terminated;
         contract.TerminatedAt = _clock.UtcNow;
@@ -376,6 +404,15 @@ public class ContractService : IContractService
         ProposalCode = c.Project?.ProjectCode,
         ProposalTitle = c.Project?.TitleVi,
         PiName = c.Project?.PiUser?.FullName,
+        ResearchTypeId = c.Project?.ResearchTypeId ?? 0,
+        ResearchTypeCode = c.Project?.ResearchType?.Code,
+        ResearchTypeName = c.Project?.ResearchType?.Name,
+        CycleId = c.Project?.CycleTrack?.CycleId ?? 0,
+        CycleCode = c.Project?.CycleTrack?.Cycle?.SemesterCode
+            ?? c.Project?.CycleTrack?.Cycle?.CycleYear.ToString(),
+        TrackId = c.Project?.CycleTrack?.TrackId ?? 0,
+        TrackCode = c.Project?.CycleTrack?.Track?.Code,
+        TrackName = c.Project?.CycleTrack?.Track?.Name,
         Status = c.Status,
         ProjectStatus = c.Project?.Status,
         TotalAmount = c.TotalAmount,
@@ -395,6 +432,15 @@ public class ContractService : IContractService
         ProposalId = c.Project?.Proposals.FirstOrDefault()?.Id ?? Guid.Empty,
         ProposalCode = c.Project?.ProjectCode,
         ProposalTitle = c.Project?.TitleVi,
+        ResearchTypeId = c.Project?.ResearchTypeId ?? 0,
+        ResearchTypeCode = c.Project?.ResearchType?.Code,
+        ResearchTypeName = c.Project?.ResearchType?.Name,
+        CycleId = c.Project?.CycleTrack?.CycleId ?? 0,
+        CycleCode = c.Project?.CycleTrack?.Cycle?.SemesterCode
+            ?? c.Project?.CycleTrack?.Cycle?.CycleYear.ToString(),
+        TrackId = c.Project?.CycleTrack?.TrackId ?? 0,
+        TrackCode = c.Project?.CycleTrack?.Track?.Code,
+        TrackName = c.Project?.CycleTrack?.Track?.Name,
         FundingMethod = c.Project?.Proposals.FirstOrDefault()?.FundingMethod,
         ScopeTitle = c.ScopeTitle,
         Status = c.Status,

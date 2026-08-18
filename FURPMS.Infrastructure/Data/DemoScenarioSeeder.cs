@@ -612,6 +612,9 @@ public class DemoScenarioSeeder
             location: "Phòng họp A203, Toà Alpha, Cơ sở Hoà Lạc",
             scheduledAt: now.Date.AddDays(2).AddHours(2), durationMinutes: 180);
 
+        // Cache bảo hiểm cho buổi demo. Nút "Chạy lại" vẫn gọi Gemini thật và ghi đè khi thành công.
+        await SeedReviewerAiCacheAsync(prop3.Id, council.Council.Id, ctx.ReviewRubric.Id, now);
+
         // Slot con theo từng đề tài — phải NẰM TRONG khung giờ họp và không chồng nhau.
         var slot = council.Meeting.ScheduledAt;
         var order = 1;
@@ -1362,6 +1365,79 @@ public class DemoScenarioSeeder
             }
             await _db.SaveChangesAsync();
         }
+    }
+
+    private async Task SeedReviewerAiCacheAsync(
+        Guid proposalId, Guid councilId, int rubricTemplateId, DateTime now)
+    {
+        var entityId = proposalId.ToString();
+        if (!await _db.LlmOutputs.AnyAsync(x => x.EntityType == "Proposal"
+                                              && x.EntityId == entityId
+                                              && x.OutputType == "SUMMARY"
+                                              && x.IsActive))
+        {
+            var summary = new
+            {
+                title = "Mô hình dự báo nguy cơ bỏ học của sinh viên bằng học máy tổ hợp",
+                summary = "Đề tài xây dựng mô hình cảnh báo sớm nguy cơ bỏ học từ dữ liệu học tập và tương tác của sinh viên.",
+                strengths = new[]
+                {
+                    "Mục tiêu có chỉ tiêu định lượng AUC ≥ 0,85 và gắn với nhu cầu can thiệp sớm thực tế.",
+                    "Phương pháp tổ hợp và SHAP phù hợp với bài toán dự báo có yêu cầu giải thích."
+                },
+                weaknesses = new[]
+                {
+                    "Cần mô tả rõ cách bảo vệ dữ liệu cá nhân và chiến lược xử lý mất cân bằng lớp.",
+                    "Kế hoạch đánh giá cần nêu cách tránh rò rỉ dữ liệu giữa các khóa học."
+                },
+                source = "file+form",
+                sourceFileName = "ThuyetMinh_NCKH-2026-003.docx"
+            };
+            _db.LlmOutputs.Add(new LlmOutput
+            {
+                EntityType = "Proposal",
+                EntityId = entityId,
+                OutputType = "SUMMARY",
+                ModelUsed = "demo-cache",
+                PromptVersion = "v2",
+                Content = System.Text.Json.JsonSerializer.Serialize(summary),
+                GeneratedAt = now.AddMinutes(-10),
+                IsActive = true
+            });
+        }
+
+        var scoreOutput = $"SCORE_SUGGESTION:{councilId}";
+        if (!await _db.LlmOutputs.AnyAsync(x => x.EntityType == "Proposal"
+                                              && x.EntityId == entityId
+                                              && x.OutputType == scoreOutput
+                                              && x.IsActive))
+        {
+            var criteria = await _db.RubricCriteria
+                .Where(x => x.TemplateId == rubricTemplateId && x.IsActive)
+                .OrderBy(x => x.Sequence)
+                .ToListAsync();
+            var suggestions = criteria.Select(x => new
+            {
+                criterionId = x.Id,
+                criterionName = x.CriterionName,
+                maxScore = x.MaxScore,
+                suggestedScore = Math.Round(x.MaxScore * 0.82m, 0, MidpointRounding.AwayFromZero),
+                comment = "Gợi ý AI dựa trên bản thuyết minh; thành viên hội đồng cần đọc hồ sơ và tự quyết định điểm cuối."
+            });
+            _db.LlmOutputs.Add(new LlmOutput
+            {
+                EntityType = "Proposal",
+                EntityId = entityId,
+                OutputType = scoreOutput,
+                ModelUsed = "demo-cache",
+                PromptVersion = "score-v2",
+                Content = System.Text.Json.JsonSerializer.Serialize(suggestions),
+                GeneratedAt = now.AddMinutes(-10),
+                IsActive = true
+            });
+        }
+
+        await _db.SaveChangesAsync();
     }
 
     private async Task AddDecisionAsync(

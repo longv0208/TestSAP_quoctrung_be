@@ -13,12 +13,14 @@ public class GeminiService : IGeminiService
     private readonly HttpClient _http;
     private readonly string? _apiKey;
     private readonly string _model;
+    private readonly string _fallbackModel;
 
     public GeminiService(HttpClient http, IConfiguration config)
     {
         _http = http;
         _apiKey = config["GeminiAI:ApiKey"];
         _model = config["GeminiAI:Model"] ?? "gemini-flash-latest";
+        _fallbackModel = config["GeminiAI:FallbackModel"] ?? "gemini-2.5-flash-lite";
     }
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
@@ -61,7 +63,7 @@ public class GeminiService : IGeminiService
     /// chết, trong khi bấm lại lần nữa là chạy.
     /// </para>
     /// </summary>
-    private const int MaxRetries = 3;
+    private const int MaxAttempts = 3;
 
     private static bool IsTransient(int status) => status is 429 or 500 or 502 or 503 or 504;
 
@@ -71,31 +73,44 @@ public class GeminiService : IGeminiService
             throw new InvalidOperationException(
                 "Chưa cấu hình GeminiAI:ApiKey. Thêm key vào appsettings.Development.json và chạy BE ở môi trường Development.");
 
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent";
         var json = JsonSerializer.Serialize(payload);
 
         string body = string.Empty;
         HttpStatusCode status = default;
 
-        for (var attempt = 1; ; attempt++)
+        for (var attempt = 1; attempt <= MaxAttempts; attempt++)
         {
+            // Hai lần đầu ưu tiên model chính; lần cuối dùng model nhẹ hơn. Đây là fallback thật,
+            // không chỉ đổi thông báo rồi bắt người dùng tự bấm lại trong lúc demo.
+            var model = attempt < MaxAttempts ? _model : _fallbackModel;
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent";
             using var req = new HttpRequestMessage(HttpMethod.Post, url)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             };
             // Dùng header (hỗ trợ cả key cũ "AIza..." lẫn key mới "AQ...."), không nhét key vào URL.
             req.Headers.Add("X-goog-api-key", _apiKey);
-            using var resp = await _http.SendAsync(req, ct);
-            body = await resp.Content.ReadAsStringAsync(ct);
-            status = resp.StatusCode;
+            try
+            {
+                using var resp = await _http.SendAsync(req, ct);
+                body = await resp.Content.ReadAsStringAsync(ct);
+                status = resp.StatusCode;
+            }
+            catch (Exception ex) when ((ex is HttpRequestException or TaskCanceledException) && !ct.IsCancellationRequested)
+            {
+                status = HttpStatusCode.ServiceUnavailable;
+                body = "";
+            }
 
-            if (resp.IsSuccessStatusCode) break;
+            if ((int)status is >= 200 and < 300) break;
 
-            if (attempt >= MaxRetries || !IsTransient((int)status))
+            if (attempt >= MaxAttempts || !IsTransient((int)status))
                 break;
 
-            // Giãn dần 1s → 2s: đủ để cơn tải nhất thời qua đi mà người dùng vẫn chờ được.
-            await Task.Delay(TimeSpan.FromSeconds(attempt), ct);
+            // Exponential backoff 2s → 4s, cộng jitter để nhiều request lỗi cùng lúc không
+            // thức dậy và nã lại Gemini đúng cùng một thời điểm.
+            var seconds = Math.Pow(2, attempt) + Random.Shared.NextDouble();
+            await Task.Delay(TimeSpan.FromSeconds(seconds), ct);
         }
 
         if ((int)status is < 200 or >= 300)

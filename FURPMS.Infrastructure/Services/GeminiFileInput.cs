@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.RegularExpressions;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using FURPMS.Application.Interfaces;
@@ -47,10 +48,26 @@ public static class GeminiFileInput
                 $"Không đọc được định dạng \"{ext}\". Chỉ hỗ trợ PDF, DOCX, TXT.")
         };
 
+        text = CleanText(text);
         if (string.IsNullOrWhiteSpace(text))
             throw new ArgumentException("File không có nội dung văn bản để AI đọc.");
 
         return gemini.GenerateTextAsync($"{prompt}\n\n--- NỘI DUNG FILE ---\n{text}", ct);
+    }
+
+    /// <summary>
+    /// Bỏ ký tự điều khiển/khoảng trắng rác trước khi gửi model. Giới hạn 120.000 ký tự để một
+    /// file Word chứa lịch sử sửa/khối lặp không làm bùng token và kéo cả request vào 429.
+    /// </summary>
+    public static string CleanText(string raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return string.Empty;
+        var clean = new string(raw.Where(c => c is '\n' or '\r' or '\t' || !char.IsControl(c)).ToArray());
+        var lines = clean.Replace("\r", "").Split('\n')
+            .Select(line => Regex.Replace(line, @"[ \t]+", " ").Trim())
+            .Where(line => line.Length > 0);
+        clean = string.Join('\n', lines);
+        return clean.Length <= 120_000 ? clean : clean[..120_000];
     }
 
     private static string NormalizeMime(string ext, string mimeType) =>
@@ -66,6 +83,6 @@ public static class GeminiFileInput
         var sb = new StringBuilder();
         foreach (var para in body.Descendants<Paragraph>())
             sb.AppendLine(para.InnerText);
-        return sb.ToString();
+        return CleanText(sb.ToString());
     }
 }

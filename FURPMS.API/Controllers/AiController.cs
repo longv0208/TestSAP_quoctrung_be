@@ -93,6 +93,15 @@ public class AiController : ControllerBase
         return Ok(ApiResponse<IReadOnlyList<AiScoreSuggestionDto>>.Ok(result));
     }
 
+    /// <summary>Đọc gợi ý điểm đã lưu — không gọi Gemini, dùng để mở màn chấm là thấy ngay.</summary>
+    [HttpGet("api/ai/councils/{councilId:guid}/proposals/{proposalId:guid}/score-suggestion")]
+    public async Task<IActionResult> GetScoreSuggestions(Guid councilId, Guid proposalId)
+    {
+        var isStaffOrAdmin = User.IsInRole("Admin") || User.IsInRole("Staff");
+        var result = await _advisor.GetScoreSuggestionsAsync(councilId, proposalId, CurrentUserId, isStaffOrAdmin);
+        return Ok(ApiResponse<IReadOnlyList<AiScoreSuggestionDto>?>.Ok(result));
+    }
+
     /// <summary>
     /// <b>Một lần bấm ra cả tóm tắt lẫn gợi ý điểm.</b>
     ///
@@ -122,7 +131,13 @@ public class AiController : ControllerBase
 
         // Mỗi nhánh một scope riêng — xem chú thích trên về DbContext.
         var summaryTask = RunScoped(async sp =>
-            await sp.GetRequiredService<IAiSummaryService>().GenerateAsync(proposalId, userId, roles));
+        {
+            var summaries = sp.GetRequiredService<IAiSummaryService>();
+            // PI submit đã xếp hàng sinh sẵn. Có cache thì dùng ngay, không đốt thêm một request
+            // Gemini chỉ vì reviewer bấm gợi ý điểm.
+            return await summaries.GetAsync(proposalId)
+                ?? await summaries.GenerateAsync(proposalId, userId, roles);
+        });
 
         var suggestionTask = RunScoped(async sp =>
             await sp.GetRequiredService<IAiAdvisorService>()
@@ -130,12 +145,26 @@ public class AiController : ControllerBase
 
         await Task.WhenAll(summaryTask, suggestionTask);
 
+        var suggestions = suggestionTask.Result.Value;
+        var suggestionError = suggestionTask.Result.Error;
+        if (suggestions == null)
+        {
+            // Gemini lỗi lúc demo nhưng trước đó đã chạy thành công: giữ nguyên bản gần nhất thay
+            // vì xoá trắng màn chấm. Thông báo vẫn cho biết đây là cache cũ.
+            var cached = await _advisor.GetScoreSuggestionsAsync(councilId, proposalId, userId, isStaffOrAdmin);
+            if (cached != null)
+            {
+                suggestions = cached;
+                suggestionError = "AI đang quá tải; hệ thống đang hiển thị gợi ý đã lưu gần nhất.";
+            }
+        }
+
         var kit = new ReviewKitDto
         {
             Summary = summaryTask.Result.Value,
             SummaryError = summaryTask.Result.Error,
-            Suggestions = suggestionTask.Result.Value ?? [],
-            SuggestionsError = suggestionTask.Result.Error
+            Suggestions = suggestions ?? [],
+            SuggestionsError = suggestionError
         };
 
         return Ok(ApiResponse<ReviewKitDto>.Ok(kit));
