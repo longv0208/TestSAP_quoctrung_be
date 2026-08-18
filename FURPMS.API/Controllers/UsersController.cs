@@ -65,6 +65,16 @@ public class UsersController : ControllerBase
         return Ok(ApiResponse<UserDto>.Ok(result));
     }
 
+    /// <summary>Xoá mềm tài khoản (Admin). Người còn ràng buộc đề tài/hội đồng sẽ bị chặn — dùng vô hiệu hoá thay thế.</summary>
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Delete(Guid id)
+    {
+        var deletedBy = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        await _users.DeleteUserAsync(id, deletedBy);
+        return Ok(ApiResponse.Ok("Đã xoá tài khoản."));
+    }
+
     [HttpPost("{id:guid}/reset-password")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ResetPassword(Guid id)

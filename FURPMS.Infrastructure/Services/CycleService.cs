@@ -455,7 +455,18 @@ public class CycleService : ICycleService
             .Where(t => t.IsActive)
             .ToListAsync();
 
-        return researchTracks.Select(MapTrack);
+        // Đếm một lượt cho cả danh sách (tránh N+1): mỗi lĩnh vực đang được bao nhiêu đợt mở.
+        var usage = await _cycles.CycleTracks
+            .GroupBy(ct => ct.TrackId)
+            .Select(g => new { TrackId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.TrackId, x => x.Count);
+
+        return researchTracks.Select(t =>
+        {
+            var dto = MapTrack(t);
+            dto.CycleCount = usage.GetValueOrDefault(t.Id);
+            return dto;
+        });
     }
 
     public async Task<TrackDto> CreateTrackAsync(CreateTrackRequest request)

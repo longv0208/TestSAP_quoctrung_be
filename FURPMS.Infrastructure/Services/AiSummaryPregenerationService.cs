@@ -43,6 +43,19 @@ public class AiSummaryPregenerationService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        // NHẢ LUỒNG NGAY — bắt buộc, không phải cho đẹp.
+        //
+        // .NET 8: `BackgroundService.StartAsync` **await ExecuteAsync cho tới lần nhả luồng đầu
+        // tiên**. Trước 17/08 hàm này gọi thẳng SweepMissingAsync, nên cả vòng quét sinh tóm tắt
+        // chạy TRƯỚC khi web server kịp lắng nghe cổng: Visual Studio treo ở "Waiting for the web
+        // server to listen on port 7003" và tưởng như build hỏng.
+        //
+        // Bình thường không ai để ý vì Gemini trả lời nhanh. Nhưng khi key hết hạn mức (429),
+        // mỗi đề cương ngốn ~3 giây thử lại + 5 giây nghỉ giữa hai lần gọi ⇒ nhân với số đề cương
+        // là hàng phút. Tức là **API không lên nổi chỉ vì hết quota AI** — một tính năng phụ chặn
+        // toàn bộ hệ thống. Yield xong thì host khởi động xong ngay, vòng quét chạy nền.
+        await Task.Yield();
+
         // .NET 8 mặc định BackgroundServiceExceptionBehavior.StopHost: lỗi lọt ra khỏi đây là
         // GIẾT cả tiến trình. Sinh tóm tắt không đáng để đánh sập API.
         try
@@ -81,8 +94,15 @@ public class AiSummaryPregenerationService : BackgroundService
             var db = scope.ServiceProvider.GetRequiredService<FURPMSDbContext>();
 
             // Đề cương đang chờ/đang chấm mới cần tóm tắt. Bản nháp thì PI còn sửa, sinh sớm là phí.
+            //
+            // BỎ đề tài đã sang NGHIỆM THU trở đi (17/08). Ở vòng 2 màn chấm không còn hiện thẻ AI
+            // nữa — cột trái là hồ sơ nghiệm thu (sản phẩm · báo cáo · BM09), vì bản tóm tắt ĐỀ
+            // CƯƠNG là kế hoạch đầu kỳ, sai hướng với việc kết luận đề tài LÀM RA được gì.
+            // Vẫn sinh cho chúng là đốt hạn mức Gemini cho thứ không ai đọc — mà hạn mức cạn thì
+            // vòng 1 (nơi AI thực sự có ích) cũng chết theo.
             var pending = await db.Proposals
                 .Where(p => p.SubmittedAt != null)
+                .Where(p => p.Project != null && p.Project.Status != "ACCEPTANCE" && p.Project.Status != "COMPLETED")
                 .Where(p => !db.LlmOutputs.Any(o =>
                     o.EntityType == "Proposal" &&
                     o.EntityId == p.Id.ToString() &&

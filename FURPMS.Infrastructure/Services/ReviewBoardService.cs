@@ -40,11 +40,13 @@ public class ReviewBoardService : IReviewBoardService
                 ProjectId = p.ProjectId,
                 ProposalId = p.Id,
                 TitleVi = p.TitleVi,
-                ProjectStatus = p.Project.Status
+                ProjectStatus = p.Project.Status,
+                PiUserId = p.Project.PiUserId
             })
             .ToListAsync();
 
         var titleByProjectId = trackProposals.ToDictionary(p => p.ProjectId, p => p.TitleVi);
+        var piByProjectId = trackProposals.ToDictionary(p => p.ProjectId, p => p.PiUserId);
 
         var rounds = await _review.ReviewRounds
             .Include(r => r.ProjectRounds)
@@ -64,10 +66,13 @@ public class ReviewBoardService : IReviewBoardService
         {
             var extra = await _proposals.Query().IgnoreQueryFilters()
                 .Where(p => p.IsCurrent && missingProjectIds.Contains(p.ProjectId))
-                .Select(p => new { p.ProjectId, p.TitleVi })
+                .Select(p => new { p.ProjectId, p.TitleVi, p.Project.PiUserId })
                 .ToListAsync();
             foreach (var p in extra)
+            {
                 titleByProjectId[p.ProjectId] = p.TitleVi;
+                piByProjectId[p.ProjectId] = p.PiUserId;
+            }
         }
 
         var councils = await _review.Query()
@@ -99,7 +104,8 @@ public class ReviewBoardService : IReviewBoardService
                     ProjectId = pr.ProjectId,
                     TitleVi = titleByProjectId.GetValueOrDefault(pr.ProjectId, "—"),
                     Status = pr.Status,
-                    Result = pr.Result
+                    Result = pr.Result,
+                    PiUserId = piByProjectId.GetValueOrDefault(pr.ProjectId)
                 }).ToList(),
                 Councils = roundCouncils.Select(c => new ReviewBoardCouncilDto
                 {

@@ -13,10 +13,17 @@ public class UserService : IUserService
 
     private readonly INotifier _notifier;
 
-    public UserService(IUserRepository users, INotifier notifier)
+    // Xoá tài khoản phải soi được ràng buộc nghiệp vụ ở nơi khác: người này có đang chủ nhiệm đề
+    // tài hay ngồi hội đồng nào không. Không có hai kho này thì chỉ còn cách xoá mù.
+    private readonly IProposalRepository _proposals;
+    private readonly IReviewRepository _review;
+
+    public UserService(IUserRepository users, INotifier notifier, IProposalRepository proposals, IReviewRepository review)
     {
         _users = users;
         _notifier = notifier;
+        _proposals = proposals;
+        _review = review;
     }
 
     public async Task<IEnumerable<UserDto>> GetUsersAsync()
@@ -53,10 +60,47 @@ public class UserService : IUserService
         return Map(user, degree);
     }
 
+    /// <summary>
+    /// Kiểm định dạng email. Dùng <see cref="System.Net.Mail.MailAddress"/> thay vì biểu thức chính
+    /// quy tự chế: cú pháp email (RFC 5322) rắc rối hơn mọi regex ngắn viết ra được, và regex dài
+    /// thì vừa khó đọc vừa dễ dính bẫy quay lui.
+    /// <para>
+    /// Có hai lần kiểm thêm vì <c>MailAddress</c> vẫn nhận vài dạng không dùng được ở đây:
+    /// nó chấp nhận cả <c>"Tên Hiển Thị &lt;a@b.c&gt;"</c> và cả tên miền không có dấu chấm
+    /// (<c>a@localhost</c>).
+    /// </para>
+    /// </summary>
+    private static bool IsValidEmail(string email)
+    {
+        if (email.Contains(' ')) return false;
+        try
+        {
+            var parsed = new System.Net.Mail.MailAddress(email);
+            if (parsed.Address != email) return false;            // loại dạng "Tên <a@b.c>"
+            var domain = parsed.Host;
+            // Tên miền phải có ít nhất một dấu chấm và đuôi từ 2 ký tự trở lên: "a@localhost" hay
+            // "a@fpt." không phải địa chỉ gửi thư được.
+            var lastDot = domain.LastIndexOf('.');
+            return lastDot > 0 && domain.Length - lastDot - 1 >= 2 && !domain.Contains("..");
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
     public async Task<UserDto> CreateUserAsync(CreateUserRequest request, Guid createdBy)
     {
         if (string.IsNullOrWhiteSpace(request.Email))
             throw new ArgumentException("Phải nhập email.");
+
+        // Trước 18/08 chỉ kiểm "có nhập gì chưa": gõ "abc" hay "a@@b" vẫn tạo được tài khoản, rồi
+        // thư mời hội đồng và mật khẩu tạm gửi đi đâu mất — người dùng không bao giờ đăng nhập được
+        // mà Admin cũng không biết vì sao. Email là ĐỊNH DANH đăng nhập nên phải chặn ngay tại cửa.
+        request.Email = request.Email.Trim();
+        if (!IsValidEmail(request.Email))
+            throw new ArgumentException($"Email \"{request.Email}\" không đúng định dạng — ví dụ hợp lệ: ten.nguoidung@fpt.edu.vn");
+
         if (string.IsNullOrWhiteSpace(request.FullName))
             throw new ArgumentException("Phải nhập họ tên.");
         if (string.IsNullOrWhiteSpace(request.TemporaryPassword))
@@ -167,6 +211,69 @@ public class UserService : IUserService
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword("Furpms@123456", workFactor: 12);
         user.UpdatedAt = DateTime.UtcNow;
+        await _users.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Xoá <b>mềm</b> tài khoản (<c>IsDeleted</c> + dấu vết ai xoá, lúc nào) — bảng
+    /// <c>users</c> có bộ lọc toàn cục nên người bị xoá biến mất khỏi mọi danh sách.
+    ///
+    /// <para>
+    /// <b>Vì sao xoá mềm chứ không xoá thật:</b> tài khoản bị tham chiếu khắp nơi — đề tài, hội
+    /// đồng, điểm chấm, biên bản, nhật ký. Xoá cứng là đứt khoá ngoại hàng loạt, mà những dữ liệu
+    /// đó là hồ sơ pháp lý của đề tài, không được phép mất theo người.
+    /// </para>
+    ///
+    /// <para>
+    /// <b>Vì sao vẫn phải chặn:</b> xoá mềm giấu người khỏi giao diện, nên nếu họ đang chủ nhiệm đề
+    /// tài hay ngồi hội đồng thì màn hình kia sẽ hiện một ô trống không ai giải thích được. Gặp
+    /// những trường hợp đó thì đúng việc phải làm là <b>vô hiệu hoá</b> (khoá đăng nhập, vẫn giữ
+    /// tên), nên thông báo chỉ thẳng sang đó thay vì chỉ nói "không xoá được".
+    /// </para>
+    /// </summary>
+    public async Task DeleteUserAsync(Guid userId, Guid deletedBy)
+    {
+        var user = await _users.Query()
+            .Include(u => u.UserRoles).ThenInclude(ur => ur.Role)
+            .FirstOrDefaultAsync(u => u.Id == userId && !u.IsDeleted)
+            ?? throw new KeyNotFoundException("Không tìm thấy người dùng.");
+
+        // Tự xoá mình thì phiên đang đăng nhập trở thành tài khoản không tồn tại — đăng xuất giữa
+        // chừng, không rõ vì sao.
+        if (userId == deletedBy)
+            throw new InvalidOperationException("Không thể tự xoá tài khoản của chính mình.");
+
+        var isAdmin = user.UserRoles.Any(ur => ur.Role != null && ur.Role.Name == "Admin");
+        if (isAdmin)
+        {
+            // Xoá người quản trị cuối cùng là khoá cửa vứt chìa: không còn ai tạo lại tài khoản nào.
+            var otherAdmins = await _users.UserRoles
+                .CountAsync(ur => ur.Role.Name == "Admin" && ur.UserId != userId && !ur.User.IsDeleted);
+            if (otherAdmins == 0)
+                throw new InvalidOperationException("Đây là quản trị viên duy nhất — xoá xong sẽ không còn ai quản trị hệ thống.");
+        }
+
+        var isPi = await _proposals.Projects.IgnoreQueryFilters().AnyAsync(p => p.PiUserId == userId);
+        if (isPi)
+            throw new InvalidOperationException(
+                "Người này đang là chủ nhiệm đề tài nên không xoá được — hãy dùng \"Vô hiệu hoá\" để khoá đăng nhập mà vẫn giữ tên trên hồ sơ đề tài.");
+
+        var isCouncilMember = await _review.CouncilMembers.AnyAsync(m => m.UserId == userId);
+        if (isCouncilMember)
+            throw new InvalidOperationException(
+                "Người này đang là ủy viên hội đồng nên không xoá được — hãy gỡ khỏi hội đồng trước, hoặc dùng \"Vô hiệu hoá\".");
+
+        var isTeamMember = await _proposals.ProjectMembers.AnyAsync(m => m.UserId == userId);
+        if (isTeamMember)
+            throw new InvalidOperationException(
+                "Người này đang là thành viên tham gia đề tài nên không xoá được — hãy dùng \"Vô hiệu hoá\".");
+
+        user.IsDeleted = true;
+        user.DeletedAt = DateTime.UtcNow;
+        user.DeletedBy = deletedBy;
+        user.Status = "INACTIVE";   // chặn đăng nhập ngay, không phụ thuộc bộ lọc toàn cục
+        user.UpdatedAt = DateTime.UtcNow;
+
         await _users.SaveChangesAsync();
     }
 

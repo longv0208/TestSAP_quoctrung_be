@@ -10,4 +10,7 @@ public interface IUserService
     Task<UserDto> UpdateUserAsync(Guid userId, UpdateUserRequest request);
     Task<UserDto> ToggleActiveAsync(Guid userId);
     Task ResetPasswordAsync(Guid userId);
+
+    /// <summary>Xoá mềm tài khoản. Chặn nếu người này còn ràng buộc nghiệp vụ (chủ nhiệm đề tài, ủy viên hội đồng).</summary>
+    Task DeleteUserAsync(Guid userId, Guid deletedBy);
 }

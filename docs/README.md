@@ -23,6 +23,23 @@
 
 ## 🔧 Việc còn lại / đang dang dở (backlog)
 
+### A-18/08. Bốn lỗi bạn trong nhóm báo — ĐÃ SỬA
+
+Chi tiết + kết quả kiểm chứng chạy thật: `PROGRESS.md` §"Cập nhật 18/08".
+
+| # | Lỗi | Sửa ở đâu |
+|---|---|---|
+| ① | Không xoá được người dùng | BE `UsersController` + `UserService.DeleteUserAsync` (xoá mềm, 5 chốt chặn) · FE `admin/users/columns.tsx` + `UsersPage.tsx` |
+| ② | Email sai định dạng vẫn tạo được tài khoản | BE `UserService.IsValidEmail` · FE `admin/users/user.schema.ts` |
+| ③ | Thêm lĩnh vực xong PI không thấy | BE `TrackDto.CycleCount` · FE `staff/tracks/columns.tsx` (cột "Đợt đang mở" + cảnh báo) |
+| ④ | PI/Admin lọt vào danh sách chọn ủy viên | BE `ReviewBoardDto.PiUserId` · FE `utils/council-eligibility.ts` dùng ở `CreateCouncilSheet` + `AddCouncilMemberDialog` |
+
+> **Kèm theo ④:** `AddCouncilMemberDialog` trước đây gửi chức danh `"Chairman"` (trong khi
+> `CreateCouncilSheet` gửi `"Chair"`) và **không có "Phản biện"** — nên không thể thêm phản biện cho
+> vòng nghiệm thu qua đường này, dù chỉ phản biện mới viết BM10 (Điều 12.3.b). Đã thống nhất về
+> `Chair / Secretary / Member / Opponent` và dịch nhãn thay vì in mã tiếng Anh thô.
+
+
 ### A0. Đã TẠM ẨN khỏi giao diện (code còn nguyên, bật lại dễ)
 
 > Ẩn chứ không xoá — mỗi mục ghi rõ **ẩn ở đâu** và **vì sao**, để lôi ra lại không phải dò.

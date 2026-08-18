@@ -144,6 +144,7 @@ Mọi cột ngày giờ trong PostgreSQL là `timestamptz`. **Từ 17/08/2026** 
 | POST | `/api/users` | Admin | Tạo user |
 | PUT | `/api/users/{id}` | Admin | Cập nhật user |
 | PATCH | `/api/users/{id}/toggle-active` | Admin | Khóa/mở tài khoản (đổi `isActive`) |
+| DELETE | `/api/users/{id}` | Admin | **Xoá mềm** tài khoản (18/08) |
 | POST | `/api/users/{id}/reset-password` | Admin | Reset mật khẩu về mặc định `Furpms@123456` |
 
 **CreateUserRequest**
@@ -152,6 +153,27 @@ Mọi cột ngày giờ trong PostgreSQL là `timestamptz`. **Từ 17/08/2026** 
   "academicDegree": 1, "roles": [3], "temporaryPassword": "..." }
 ```
 `roles` = mảng **Role.Id** (Admin=1, Staff=2, Faculty=3, ReviewCommittee=4).
+
+⚠️ **Email được kiểm ĐỊNH DẠNG từ 18/08** (`400 VALIDATION_FAILED`). Trước đó chỉ kiểm "có nhập
+chưa", nên `abc`, `test@gmail`, `a@localhost` đều tạo được tài khoản rồi thư mời gửi đi đâu mất.
+Quy tắc: phải có `@`, tên miền có ít nhất một dấu chấm và đuôi ≥2 ký tự, không khoảng trắng.
+Thông báo trả về nêu đúng chuỗi đã nhập.
+
+**DELETE `/api/users/{id}` — xoá mềm, có chốt chặn**
+Đặt `is_deleted` + `deleted_at`/`deleted_by`, đồng thời `status = INACTIVE`. Bộ lọc toàn cục khiến
+người bị xoá biến mất khỏi mọi danh sách, nhưng **hồ sơ đã ký vẫn giữ nguyên tên** (đề tài, hội
+đồng, điểm chấm) — nên không dùng xoá cứng.
+
+Trả `409 CONFLICT` kèm lý do cụ thể + hướng xử lý khi:
+| Trường hợp | Thông báo |
+|---|---|
+| Tự xoá chính mình | *Không thể tự xoá tài khoản của chính mình.* |
+| Quản trị viên duy nhất | *…xoá xong sẽ không còn ai quản trị hệ thống.* |
+| Đang là chủ nhiệm đề tài | *…hãy dùng "Vô hiệu hoá" để khoá đăng nhập mà vẫn giữ tên trên hồ sơ đề tài.* |
+| Đang là ủy viên hội đồng | *…hãy gỡ khỏi hội đồng trước, hoặc dùng "Vô hiệu hoá".* |
+| Đang là thành viên tham gia đề tài | *…hãy dùng "Vô hiệu hoá".* |
+
+→ Lối thoát cho mọi trường hợp bị chặn là `PATCH /toggle-active`.
 
 ### Academic Profile — `/api/users/{userId}/profile`
 | Method | Path | Quyền | Mô tả |
@@ -227,7 +249,7 @@ identifier?, volume?, pages?, status?, url?, note?, sortOrder }`
 | GET | `/api/cycles/{id}/deadline-extensions` | * | Lịch sử gia hạn (mới nhất trước) — deadline hiệu lực = `newDeadline` bản đầu list |
 
 > Response cycle (`GET /api/cycles`, `GET /api/cycles/{id}`) nay trả **`submissionDeadline` = hạn HIỆU LỰC** (sau gia hạn), kèm **`originalDeadline`** (hạn gốc, chỉ khi đã gia hạn) + **`extensionCount`**. Trước đây luôn trả hạn gốc → FE hiện hạn cũ sau khi gia hạn.
-| GET | `/api/cycles/tracks` | * | **Toàn bộ** lĩnh vực (dropdown khi PI nộp đề tài) |
+| GET | `/api/cycles/tracks` | * | **Toàn bộ** lĩnh vực + `cycleCount` (số đợt đang mở) |
 | POST | `/api/cycles/tracks` | Admin, Staff | Tạo lĩnh vực toàn cục (không gắn đợt) |
 | GET | `/api/cycles/{id}/tracks` | * | Lĩnh vực **đã gắn vào đợt** `{id}` (bảng nối `cycle_track`) |
 | POST | `/api/cycles/{id}/tracks` | Admin, Staff | Tạo lĩnh vực **và gắn vào đợt** `{id}` (nếu chưa gắn) |
@@ -240,6 +262,10 @@ identifier?, volume?, pages?, status?, url?, note?, sortOrder }`
 > ⚠️ Đợt nộp phải ở trạng thái `OPEN` thì PI mới tạo được đề xuất. FE lấy đợt đang mở bằng cách `GET /api/cycles` rồi lọc `status == "Open"`.
 > **Đợt vs Lĩnh vực (Phase B):** 1 đợt chứa nhiều lĩnh vực qua `cycle_track`. Màn "Đợt & Lĩnh vực" dùng `GET/POST /api/cycles/{id}/tracks` (theo đợt); dropdown nộp đề tài dùng `GET /api/cycles/tracks` (toàn cục).
 > **Lĩnh vực dùng lại nhiều đợt (rule #6):** lĩnh vực là **master data toàn cục** — tạo 1 lần (`POST /api/cycles/tracks`), rồi mỗi đợt **tự gắn/gỡ** (`POST`/`DELETE /api/cycles/{cycleId}/tracks/{trackId}`) để kiểm soát đợt nào mở lĩnh vực nào. Đợt 1 mở AI+IT, đợt 2 chỉ mở AI (gỡ IT) — PI chỉ chọn được lĩnh vực **đã gắn** vào đợt đang nộp. Không gỡ được nếu trong đợt đã có đề tài dùng lĩnh vực đó.
+> **`cycleCount` (18/08):** `GET /api/cycles/tracks` trả kèm số đợt đang mở mỗi lĩnh vực. Vì tạo
+> lĩnh vực xong nó **chưa thuộc đợt nào**, màn quản lý lĩnh vực trước đây im lặng hoàn toàn: người
+> tạo thấy lĩnh vực nằm trong danh sách là yên tâm, rồi bên PI trống trơn — đúng lỗi báo 18/08.
+> Nay `cycleCount = 0` hiện cảnh báo "Chưa đợt nào mở" kèm chỉ dẫn sang Đợt → Quản lý lĩnh vực.
 
 ### Các lookup khác (đều CRUD theo cùng mẫu: GET list / GET {id} / POST / PUT; ghi/sửa = Admin)
 | Resource | Base path | Đọc | Ghi |
@@ -439,7 +465,8 @@ Key hiện có:
 ```jsonc
 {
   "projects": [                    // đề tài của lĩnh vực (loại DRAFT/REJECTED)
-    { "projectId": "guid", "proposalId": "guid", "titleVi": "…", "projectStatus": "UNDER_REVIEW" }
+    { "projectId": "guid", "proposalId": "guid", "titleVi": "…", "projectStatus": "UNDER_REVIEW",
+      "piUserId": "guid" }        // ⬅ 18/08 — FE loại chủ nhiệm khỏi dropdown chọn ủy viên (COI)
   ],
   "rounds": [
     {
@@ -447,7 +474,8 @@ Key hiện có:
       "status": "OPEN", "result": null,
       "canDelete": false,          // server tính: chỉ true khi CHƯA có hội đồng & mọi đề tài PENDING
       "projects": [                // trạng thái TỪNG đề tài trong vòng (từ project_rounds)
-        { "projectId": "guid", "titleVi": "…", "status": "PENDING", "result": null }
+        { "projectId": "guid", "titleVi": "…", "status": "PENDING", "result": null,
+          "piUserId": "guid" }   // ⬅ 18/08 — như trên
       ],
       "councils": [
         {
@@ -459,6 +487,15 @@ Key hiện có:
   ]
 }
 ```
+
+> **`piUserId` (18/08) — ai được vào danh sách chọn ủy viên.** COI (rule #5) vẫn được **chặn ở BE**
+> (`AssertNoCoiAsync`, cả khi thêm ủy viên lẫn khi gán đề tài vào hội đồng) — đó là hàng rào thật và
+> không đổi. Thêm `piUserId` chỉ để FE **không bày ra** cái tên bấm vào là báo lỗi: trước đó dropdown
+> đổ thẳng toàn bộ `/api/users`, nên Staff thấy cả tài khoản quản trị lẫn chính chủ nhiệm đề tài.
+> FE lọc bằng `utils/council-eligibility.ts`: giữ người có vai **Faculty hoặc ReviewCommittee**
+> (QĐ543 Điều 8.2/12.2 — hội đồng là nhà khoa học; lọc theo "đủ tư cách" chứ **không** cấm riêng vai
+> Admin, để người vừa quản trị vừa là giảng viên vẫn vào hội đồng được), bỏ tài khoản đã khoá, bỏ
+> chủ nhiệm các đề tài trong vòng.
 
 **Trạng thái / mã lỗi:**
 | Tình huống | Mã | Ghi chú |

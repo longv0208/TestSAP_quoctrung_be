@@ -16,6 +16,16 @@ public class ReviewBoardProjectDto
     public Guid ProposalId { get; set; }
     public string TitleVi { get; set; } = null!;
     public string ProjectStatus { get; set; } = null!;
+
+    /// <summary>
+    /// Chủ nhiệm đề tài — để giao diện <b>loại sẵn</b> họ khỏi danh sách chọn ủy viên hội đồng.
+    /// <para>
+    /// COI (rule #5) đã được chặn ở tầng dịch vụ, nhưng chặn ở tầng đó nghĩa là Staff vẫn thấy tên
+    /// chủ nhiệm trong danh sách, chọn xong mới ăn lỗi — vừa mất công vừa dễ hiểu nhầm là hệ thống
+    /// hỏng. Có sẵn id ở đây thì danh sách không bao giờ hiện người không được phép.
+    /// </para>
+    /// </summary>
+    public Guid PiUserId { get; set; }
 }
 
 public class ReviewBoardRoundDto
@@ -38,6 +48,9 @@ public class ReviewBoardProjectRoundDto
     public string TitleVi { get; set; } = null!;
     public string Status { get; set; } = null!;
     public string? Result { get; set; }
+
+    /// <summary>Chủ nhiệm đề tài — giao diện dùng để loại khỏi danh sách chọn ủy viên (xem <see cref="ReviewBoardProjectDto.PiUserId"/>).</summary>
+    public Guid PiUserId { get; set; }
 }
 
 public class ReviewBoardCouncilDto

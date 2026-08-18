@@ -10,6 +10,17 @@ public class TrackDto
     public string? OwnerName { get; set; }
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
+
+    /// <summary>
+    /// Số <b>đợt</b> đang mở lĩnh vực này.
+    /// <para>
+    /// Lĩnh vực là dữ liệu dùng chung; tạo xong nó chưa thuộc đợt nào, mà PI chỉ chọn được lĩnh vực
+    /// ĐÃ GẮN vào đợt. Không có con số này thì màn quản lý lĩnh vực im lặng hoàn toàn: người tạo
+    /// thấy lĩnh vực nằm trong danh sách, đinh ninh là xong, rồi không hiểu vì sao phía PI trống
+    /// trơn — đúng lỗi được báo ngày 18/08.
+    /// </para>
+    /// </summary>
+    public int CycleCount { get; set; }
 }
 
 public class ResearchTypeDto
