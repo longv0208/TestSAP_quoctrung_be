@@ -10,4 +10,5 @@ public interface IContractService
     Task<ContractDetailResponse> UpdateAsync(Guid contractId, UpdateContractRequest request);
     Task DeleteAsync(Guid contractId);
     Task<ContractDetailResponse> SignAsync(Guid contractId, Guid signedBy, DateOnly? signedOn = null);
+    Task<ContractDetailResponse> TerminateAsync(Guid contractId, Guid terminatedBy, string reason);
 }

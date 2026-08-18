@@ -105,6 +105,16 @@ public class ContractsController : ControllerBase
         return Ok(ApiResponse<ContractDetailResponse>.Ok(result, "Đã ghi nhận hợp đồng đã ký."));
     }
 
+    [ProducesResponseType(typeof(ApiResponse<ContractDetailResponse>), StatusCodes.Status200OK)]
+    [HttpPost("{id:guid}/terminate")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> Terminate(Guid id, [FromBody] TerminateContractRequest request)
+    {
+        var (userId, _) = GetCaller();
+        var result = await _contracts.TerminateAsync(id, userId!.Value, request.Reason);
+        return Ok(ApiResponse<ContractDetailResponse>.Ok(result, "Đã ghi nhận chấm dứt hợp đồng."));
+    }
+
     // ── Disbursements ─────────────────────────────────────────────────────────
 
     [ProducesResponseType(typeof(ApiResponse<IEnumerable<DisbursementResponse>>), StatusCodes.Status200OK)]

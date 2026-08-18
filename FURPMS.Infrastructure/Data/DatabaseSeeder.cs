@@ -70,6 +70,7 @@ public class DatabaseSeeder
         await SeedPersonnelRoleTypesAsync();
         await SeedBudgetExpenseCategoriesAsync();
         await SeedAmendmentCategoriesAsync();
+        await NormalizeContractClosureStatusesAsync();
         await SeedSystemFinancialConfigsAsync();
         await SeedSystemSettingsAsync();
         await SeedDisbursementTemplatesAsync();
@@ -784,20 +785,54 @@ public class DatabaseSeeder
 
     private async Task SeedAmendmentCategoriesAsync()
     {
+        // BM07 chia đúng 4 nhóm nội dung. Thay đổi nhân sự vẫn được Điều 10.2 cho phép nhưng
+        // biểu mẫu xếp vào "thay đổi khác", không cần một loại riêng làm form dài thêm.
         var cats = new[]
         {
-            new AmendmentCategory { Code = "EXTENSION",     Name = "Gia hạn thời gian thực hiện", IsActive = true },
-            new AmendmentCategory { Code = "BUDGET_ADJUST", Name = "Điều chỉnh kinh phí",         IsActive = true },
-            new AmendmentCategory { Code = "SCOPE_CHANGE",  Name = "Thay đổi nội dung nghiên cứu", IsActive = true },
-            new AmendmentCategory { Code = "TEAM_CHANGE",   Name = "Thay đổi thành viên nhóm",    IsActive = true },
-            new AmendmentCategory { Code = "OTHER",         Name = "Điều chỉnh khác",              IsActive = true },
+            new AmendmentCategory { Code = "SCOPE_CHANGE",  Name = "Thay đổi nội dung nghiên cứu hoặc tên đề tài", IsActive = true },
+            new AmendmentCategory { Code = "EXTENSION",     Name = "Thay đổi tiến độ, thời gian nghiên cứu (gia hạn)", IsActive = true },
+            new AmendmentCategory { Code = "BUDGET_ADJUST", Name = "Thay đổi dự toán kinh phí", IsActive = true },
+            new AmendmentCategory { Code = "OTHER",         Name = "Thay đổi khác (gồm cả nhân sự)", IsActive = true },
         };
         foreach (var c in cats)
         {
-            if (!await _db.AmendmentCategories.AnyAsync(x => x.Code == c.Code))
+            var existing = await _db.AmendmentCategories.FirstOrDefaultAsync(x => x.Code == c.Code);
+            if (existing == null)
                 _db.AmendmentCategories.Add(c);
+            else
+            {
+                existing.Name = c.Name;
+                existing.IsActive = true;
+            }
         }
+
+        var legacyTeam = await _db.AmendmentCategories.FirstOrDefaultAsync(x => x.Code == "TEAM_CHANGE");
+        if (legacyTeam != null) legacyTeam.IsActive = false;
         await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Bù dữ liệu đã có trước khi trạng thái SETTLED/TERMINATED được đưa vào state machine.
+    /// Không xoá hay tạo hồ sơ: chỉ suy trạng thái hợp đồng từ chính mốc pháp lý đã lưu.
+    /// </summary>
+    private async Task NormalizeContractClosureStatusesAsync()
+    {
+        var settledIds = await _db.ContractSettlements
+            .Where(s => s.SettlementSignedAt != null)
+            .Select(s => s.ContractId)
+            .ToListAsync();
+
+        var contracts = await _db.Contracts
+            .Where(c => settledIds.Contains(c.Id) || c.TerminatedAt != null)
+            .ToListAsync();
+        foreach (var contract in contracts)
+        {
+            contract.Status = contract.TerminatedAt.HasValue
+                ? ContractStatus.Terminated
+                : ContractStatus.Settled;
+        }
+
+        if (contracts.Count > 0) await _db.SaveChangesAsync();
     }
 
     private async Task SeedSystemFinancialConfigsAsync()

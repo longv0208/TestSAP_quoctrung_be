@@ -1,4 +1,5 @@
 using FURPMS.Application.DTOs.Contract;
+using FURPMS.Application.Constants;
 using FURPMS.Domain.Entities.AI;
 using FURPMS.Domain.Entities.Contracts;
 using FURPMS.Domain.Entities.MasterData;
@@ -163,5 +164,49 @@ public class ContractSigningTests
         });
 
         Assert.Equal("HĐ-TEST-01-SUA", result.ContractNumber);
+    }
+
+    [Fact]
+    public async Task Terminate_ActiveContract_RecordsReason_AndTerminatesProject()
+    {
+        var (svc, db, contract) = await SetupAsync();
+        AddSignedCopy(db, contract.Id);
+        await svc.SignAsync(contract.Id, Guid.NewGuid());
+
+        var result = await svc.TerminateAsync(contract.Id, Guid.NewGuid(), "Quyết định dừng thử nghiệm");
+
+        Assert.Equal(ContractStatus.Terminated, result.Status);
+        Assert.Equal("Quyết định dừng thử nghiệm", result.TerminatedReason);
+        Assert.NotNull(result.TerminatedAt);
+        Assert.Equal(ProjectStatus.Terminated, (await db.Projects.FindAsync(contract.ProjectId))!.Status);
+    }
+
+    [Fact]
+    public async Task Terminate_PendingSignature_PointsToDeleteInstead()
+    {
+        var (svc, _, contract) = await SetupAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.TerminateAsync(contract.Id, Guid.NewGuid(), "Lập nhầm"));
+
+        Assert.Contains("chưa ký", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("xoá", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task Terminate_AfterAcceptancePassed_PointsToSettlement()
+    {
+        var (svc, db, contract) = await SetupAsync();
+        AddSignedCopy(db, contract.Id);
+        await svc.SignAsync(contract.Id, Guid.NewGuid());
+        var project = (await db.Projects.FindAsync(contract.ProjectId))!;
+        project.Status = ProjectStatus.Completed;
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => svc.TerminateAsync(contract.Id, Guid.NewGuid(), "Đổi ý sau nghiệm thu"));
+
+        Assert.Contains("nghiệm thu Đạt", ex.Message);
+        Assert.Contains("BM13", ex.Message);
     }
 }

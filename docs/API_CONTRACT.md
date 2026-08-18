@@ -632,11 +632,12 @@ Key hiện có:
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
 | GET | `/api/contracts` | * | Danh sách hợp đồng. Staff/Admin xem hết; PI xem của mình. **`?mine=true`** → LUÔN chỉ HĐ mình là PI (kể cả tài khoản đa vai Staff/Admin đang "làm PI") — dùng cho trang PI (báo cáo tiến độ/sản phẩm/tổng kết). |
-| GET | `/api/contracts/{id}` | * | Chi tiết |
+| GET | `/api/contracts/{id}` | * | Chi tiết. DTO có cả `status` của hợp đồng và `projectStatus` của đề tài để không đánh đồng nghiệm thu Đạt với đã thanh lý. |
 | POST | `/api/contracts` | Admin, Staff | Tạo hợp đồng. `maxExtensionMonths` bị chặn theo **QĐ543 Điều 10.4** (≤ 1/2 `DurationMonths` của đề cương) — FE tự điền sẵn đúng trần khi Staff chọn đề tài. |
 | PUT | `/api/contracts/{id}` | Admin, Staff | **Sửa hợp đồng (mới 05/08)** — `UpdateContractRequest` { contractNumber, scopeTitle?, startDate, endDate, maxExtensionMonths, sideARepresentative?, econtractUrl? }. KHÔNG đổi được `proposalId` và `totalAmount`. Trùng số HĐ → 409; `endDate <= startDate` hoặc `maxExtensionMonths` vượt **1/2 thời gian thực hiện của đề cương** → 400 (QĐ543 Điều 10.4). Hợp đồng **chưa từng gia hạn** thì sửa `endDate` dời luôn `originalEndDate` (là sửa cho đúng, không phải gia hạn); đã gia hạn rồi thì giữ nguyên hạn gốc. |
 | DELETE | `/api/contracts/{id}` | Admin, Staff | **Xoá hợp đồng (mới 05/08)** — chỉ khi `status = PENDING_SIGNATURE`, ngược lại **409** (ký rồi thì dùng chấm dứt). Còn chặn 409 nếu đã có: sản phẩm được nộp · báo cáo tiến độ được nộp · báo cáo tổng kết · quyết toán · đơn điều chỉnh. Xoá thành công thì **gỡ** sản phẩm khỏi hợp đồng (giữ lại cho đề tài) và **dọn** lịch giải ngân + kỳ báo cáo tự sinh. |
 | POST | `/api/contracts/{id}/sign` | Admin, Staff | Ký |
+| POST | `/api/contracts/{id}/terminate` | Admin, Staff | Chấm dứt bất thường `{ reason }`; chỉ hợp đồng đã ký, chưa thanh lý/chấm dứt và đề tài chưa `COMPLETED`. Ghi `terminatedAt/by/reason`, đặt Contract + Project = `TERMINATED`. |
 | GET | `/api/contracts/{id}/export-word` | Admin, Staff | **BM05 — tự sinh Word hợp đồng** (rule tuần 10): bốc CN/đề tài/kinh phí/thời gian → `.docx` để ký ngoài |
 | GET/POST | `/api/contracts/{id}/documents` | Admin, Staff | **Hồ sơ hợp đồng đã ký**: list / upload (multipart `file`) bản ký — Document polymorphic EntityType="Contract" |
 | GET | `/api/contracts/{id}/documents/{documentId}/download` | Admin, Staff | Tải/mở bản hợp đồng đã ký (Bearer) |
@@ -648,7 +649,7 @@ Key hiện có:
 | POST | `/api/contracts/{contractId}/amendments` | * | Tạo yêu cầu điều chỉnh. **409 khi đề tài đã đóng** (`COMPLETED`/`CANCELLED`/`TERMINATED`) hoặc hợp đồng đã chấm dứt (mới 06/08). |
 
 **CreateContractRequest**: `{ proposalId, contractNumber, scopeTitle?, startDate, endDate, maxExtensionMonths=6, sideARepresentative?, econtractUrl? }` — nhận `proposalId` nhưng hợp đồng neo **project**; ký HĐ → project sang `IN_PROGRESS`. **1 đề tài có thể ký nhiều hợp đồng** (từng giai đoạn/phần sản phẩm). `ContractDto` trả thêm `projectId`, `scopeTitle`.
-**CreateAmendmentRequest**: `{ categoryId, changeDescription, justification, changePercentage?, oldValue?, newValue?, requiresRectorApproval, reviewerComments? }`
+**CreateAmendmentRequest**: `{ categoryId, changeDescription, justification, changePercentage?, oldValue?, newValue?, requiresRectorApproval, reviewerComments? }`. Theo BM07, UI chỉ yêu cầu `changeDescription + justification`; riêng `EXTENSION` gửi `newValue` là số tháng. `oldValue/newValue` giữ tương thích dữ liệu cũ, không ép người dùng nhập cho nội dung/kinh phí/thay đổi khác.
 
 ### Giải ngân — `/api/disbursements`
 | POST | `/api/disbursements/{id}/confirm` | Admin, Staff | **Đánh dấu đã giải ngân** (rule tuần 10 — không quản tiền): `{ actualAmount?, bankReference?, notes? }` — các trường nhập optional, nhưng **bắt buộc đã upload ít nhất 1 file minh chứng**. Gate theo QĐ543 Điều 16: hợp đồng phải đã ký; đề tài ứng dụng đợt 2/3 cần báo cáo tiến độ giai đoạn 1/2 được đánh giá `PASS`; đợt cuối (kể cả đề tài cơ bản chỉ có 1 đợt) cần project `COMPLETED` sau nghiệm thu Đạt. Vi phạm → 409. |
@@ -715,8 +716,8 @@ Key hiện có:
 
 ### Quyết toán — `/api/contracts/{contractId}/settlement`, `/api/settlements/...`
 | GET | `/api/contracts/{contractId}/settlement` | * | Xem quyết toán |
-| POST | `/api/contracts/{contractId}/settlement` | Admin, Staff | Tạo |
-| POST | `/api/settlements/{id}/sign` | Admin, Staff | Ký |
+| POST | `/api/contracts/{contractId}/settlement` | Admin, Staff | Tạo; **409** nếu đề tài chưa nghiệm thu Đạt (`projectStatus != COMPLETED`), còn đợt giải ngân chưa chi hoặc hợp đồng đã chấm dứt. |
+| POST | `/api/settlements/{id}/sign` | Admin, Staff | Ký BM13; **409** nếu chưa xác nhận cả kế toán + tài sản. Thành công đổi hợp đồng sang `SETTLED`. |
 | POST | `/api/settlements/{id}/accounting-cleared` | Admin, Staff | Xác nhận đã quyết toán kế toán |
 | POST | `/api/settlements/{id}/assets-cleared` | Admin, Staff | Xác nhận đã thanh lý tài sản |
 

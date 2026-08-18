@@ -101,6 +101,10 @@ public static class ContractStatus
     public const string PendingSignature = "PENDING_SIGNATURE";
     public const string Active = "ACTIVE";
     public const string UnderReview = "UNDER_REVIEW";
+    // Chỉ đạt trạng thái này khi Biên bản nghiệm thu & thanh lý BM13 đã được ký.
+    // Nghiệm thu đề tài Đạt chỉ làm Project = COMPLETED, chưa tự coi hợp đồng đã thanh lý.
+    public const string Settled = "SETTLED";
+    public const string Terminated = "TERMINATED";
 }
 
 public static class DisbursementStatus

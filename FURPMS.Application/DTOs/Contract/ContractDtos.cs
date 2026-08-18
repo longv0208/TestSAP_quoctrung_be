@@ -10,6 +10,7 @@ public class ContractListResponse
     public string? ProposalTitle { get; set; }
     public string? PiName { get; set; }        // chủ nhiệm đề tài (hiển thị ở danh sách hợp đồng)
     public string Status { get; set; } = null!;
+    public string? ProjectStatus { get; set; }
     public decimal TotalAmount { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
@@ -35,6 +36,11 @@ public class ContractDetailResponse
     public string? FundingMethod { get; set; }
     public string? ScopeTitle { get; set; }
     public string Status { get; set; } = null!;
+    /// <summary>
+    /// Trạng thái đề tài tách khỏi trạng thái hợp đồng. Nghiệm thu Đạt làm đề tài COMPLETED,
+    /// còn hợp đồng chỉ SETTLED sau khi ký BM13.
+    /// </summary>
+    public string? ProjectStatus { get; set; }
     public decimal TotalAmount { get; set; }
     public DateOnly StartDate { get; set; }
     public DateOnly EndDate { get; set; }
@@ -75,4 +81,9 @@ public class CreateContractRequest
     public int MaxExtensionMonths { get; set; } = 6;
     public string? SideARepresentative { get; set; }
     public string? EcontractUrl { get; set; }
+}
+
+public class TerminateContractRequest
+{
+    public string Reason { get; set; } = null!;
 }

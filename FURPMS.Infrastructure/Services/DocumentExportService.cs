@@ -921,7 +921,7 @@ AppendParagraph(body,
 
     /// <summary>
     /// Hợp đồng đã ký thì KHÔNG sửa đè lên bản gốc — mỗi điều chỉnh phải có văn bản riêng đính
-    /// kèm, dẫn chiếu hợp đồng gốc và ghi rõ <em>trước → sau</em>. Trước đây duyệt điều chỉnh xong
+    /// kèm, dẫn chiếu hợp đồng gốc và ghi rõ nội dung được duyệt. Trước đây duyệt điều chỉnh xong
     /// chỉ đổi vài dòng trong cơ sở dữ liệu, không có giấy tờ nào đem đi ký, nên hồ sơ quyết toán
     /// không giải thích được vì sao thời gian/nội dung khác với hợp đồng gốc.
     /// <para>
@@ -1011,15 +1011,13 @@ AppendParagraph(body,
             AppendParagraph(body, $"Nội dung: {a.ChangeDescription}");
             AppendParagraph(body, "");
 
-            // Trước → sau là phần cốt lõi: người đọc quyết toán phải thấy ngay cái gì đã đổi.
-            var diff = CreateTable(body, new[] { "Nội dung", "Theo Hợp đồng đã ký", "Sau điều chỉnh" },
-                                   new[] { 2600, 3200, 3200 });
-
             // Với gia hạn, hệ thống lưu NewValue là SỐ THÁNG (yêu cầu của AmendmentService). In trần
             // "0 → 3" vào văn bản đem ký thì vô nghĩa — phải quy ra MỐC THỜI GIAN thật của hợp đồng.
             var isExtension = string.Equals(a.Category?.Code, "EXTENSION", StringComparison.OrdinalIgnoreCase);
             if (isExtension && int.TryParse(a.NewValue, out var months) && months > 0)
             {
+                var diff = CreateTable(body, new[] { "Nội dung", "Theo Hợp đồng đã ký", "Sau điều chỉnh" },
+                                       new[] { 2600, 3200, 3200 });
                 var newEnd = c.EndDate;
                 var oldEnd = newEnd.AddMonths(-months);
                 AddTableRowMulti(diff, new[]
@@ -1030,8 +1028,11 @@ AppendParagraph(body,
                 });
                 AddTableRowMulti(diff, new[] { "Số tháng gia hạn", "—", $"{months} tháng" });
             }
-            else
+            else if (!string.IsNullOrWhiteSpace(a.OldValue) || !string.IsNullOrWhiteSpace(a.NewValue))
             {
+                // Giữ cách trình bày trước → sau cho dữ liệu cũ vốn đã khai hai giá trị.
+                var diff = CreateTable(body, new[] { "Nội dung", "Theo Hợp đồng đã ký", "Sau điều chỉnh" },
+                                       new[] { 2600, 3200, 3200 });
                 AddTableRowMulti(diff, new[]
                 {
                     a.Category?.Name ?? "Nội dung điều chỉnh",
@@ -1039,9 +1040,21 @@ AppendParagraph(body,
                     string.IsNullOrWhiteSpace(a.NewValue) ? Blank : a.NewValue!
                 });
             }
+            else
+            {
+                // BM07 không bắt người đề nghị phải bịa cặp "giá trị hiện tại / đề nghị" cho
+                // nội dung, kinh phí hay thay đổi khác. Phiếu mới ghi thẳng nội dung đã được duyệt.
+                var approved = CreateTable(body, new[] { "Hạng mục", "Nội dung điều chỉnh đã được duyệt" },
+                                           new[] { 3000, 6000 });
+                AddTableRowMulti(approved, new[]
+                {
+                    a.Category?.Name ?? "Nội dung điều chỉnh",
+                    a.ChangeDescription
+                });
+            }
 
             if (a.ChangePercentage.HasValue)
-                AddTableRowMulti(diff, new[] { "Tỷ lệ thay đổi", "—", $"{a.ChangePercentage.Value:0.##}%" });
+                AppendParagraph(body, $"Tỷ lệ thay đổi: {a.ChangePercentage.Value:0.##}%");
             AppendParagraph(body, "");
 
             AppendHeading(body, "ĐIỀU 3. LÝ DO ĐIỀU CHỈNH", 13);

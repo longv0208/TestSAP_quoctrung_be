@@ -1067,6 +1067,7 @@ public class DemoScenarioSeeder
             SideASigneeId = ctx.Admin.Id,
             Notes = "Đã quyết toán đủ, không có khoản phải hoàn trả."
         });
+        contract.Status = ContractStatus.Settled;
         await _db.SaveChangesAsync();
 
         // Một PHỤ LỤC GIA HẠN đã duyệt — trước đây bảng `amendment_requests` rỗng hoàn toàn nên

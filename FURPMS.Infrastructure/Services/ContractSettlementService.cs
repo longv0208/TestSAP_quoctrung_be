@@ -34,8 +34,15 @@ public class ContractSettlementService : IContractSettlementService
     public async Task<SettlementDto> CreateAsync(Guid contractId, CreateSettlementRequest request)
     {
         var contract = await _contracts.Query()
+            .Include(c => c.Project)
             .FirstOrDefaultAsync(c => c.Id == contractId)
             ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
+
+        if (contract.Status == ContractStatus.Terminated)
+            throw new InvalidOperationException("Hợp đồng đã chấm dứt — không lập hồ sơ thanh lý theo luồng hoàn thành bình thường.");
+        if (contract.Project.Status != ProjectStatus.Completed)
+            throw new InvalidOperationException(
+                "Đề tài chưa được Hội đồng nghiệm thu kết luận Đạt — chưa thể lập hồ sơ thanh lý BM13.");
 
         var exists = await _contracts.Settlements.AnyAsync(s => s.ContractId == contractId);
         if (exists)
@@ -79,11 +86,21 @@ public class ContractSettlementService : IContractSettlementService
     {
         var settlement = await _contracts.Settlements
             .Include(s => s.SideASignee)
+            .Include(s => s.Contract)
             .FirstOrDefaultAsync(s => s.Id == settlementId)
             ?? throw new KeyNotFoundException("Không tìm thấy hồ sơ quyết toán.");
 
         if (settlement.SettlementSignedAt.HasValue)
             throw new InvalidOperationException("Bản quyết toán đã ký, không sửa được nữa.");
+
+        // BM13 xác nhận đã giao nộp sản phẩm, tiền và tài sản. Ký trước hai xác nhận này làm biên
+        // bản tuyên bố hoàn tất trong khi hồ sơ vẫn còn mở; UI cũ còn xếp nút Ký lên trước nên tự
+        // khoá luôn hai bước sau.
+        if (!settlement.AccountingClearedAt.HasValue || !settlement.AssetsClearedAt.HasValue)
+            throw new InvalidOperationException(
+                "Phải xác nhận đã quyết toán kinh phí và xử lý tài sản trước khi ký Biên bản thanh lý BM13.");
+        if (settlement.Contract.Status == ContractStatus.Terminated)
+            throw new InvalidOperationException("Hợp đồng đã chấm dứt — không thể ký thanh lý theo luồng hoàn thành bình thường.");
 
         var signee = await _users.Query().FirstOrDefaultAsync(u => u.Id == request.SideASigneeId)
             ?? throw new KeyNotFoundException("Không tìm thấy người ký.");
@@ -91,6 +108,8 @@ public class ContractSettlementService : IContractSettlementService
         settlement.SideASigneeId = request.SideASigneeId;
         settlement.SettlementSignedAt = _clock.UtcNow;
         settlement.SideASignee = signee;
+        settlement.Contract.Status = ContractStatus.Settled;
+        settlement.Contract.UpdatedAt = _clock.UtcNow;
 
         await _contracts.SaveChangesAsync();
         return ToDto(settlement);

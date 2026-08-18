@@ -88,7 +88,7 @@
 | D4 | **Đợt CUỐI** chỉ chi sau khi đề tài được **công nhận Đạt**; áp cả đề tài cơ bản chỉ có **1 đợt 100%** | QĐ543 **Điều 16.1.d, 16.2** + BM05 Điều 4.2 | `DisbursementService.AssertMilestoneUnlockedAsync` | 409 |
 | D5 | Còn đợt chưa chi ⇒ **không lập được quyết toán** (quyết toán = bước đóng hợp đồng) | suy ra từ D4 | `ContractSettlementService.CreateAsync` | 409 |
 | D6 | Hợp đồng **chưa ký** mới xoá được; đã có sản phẩm/báo cáo/quyết toán ⇒ không xoá | an toàn dữ liệu | `ContractService.DeleteAsync` | 409 |
-| D7 | Hợp đồng đã ký **không sửa đè bản gốc** — mỗi điều chỉnh phải có **phụ lục** riêng ghi *trước → sau* | QĐ543 **BM05 Điều 6.1** (báo trước 15 ngày) | `DocumentExportService.ExportAmendmentDocAsync` | 409 nếu đơn chưa duyệt |
+| D7 | Hợp đồng đã ký **không sửa đè bản gốc** — mỗi điều chỉnh phải có **phụ lục** riêng ghi nội dung đã được duyệt | QĐ543 **BM05 Điều 6.1** (báo trước 15 ngày) | `DocumentExportService.ExportAmendmentDocAsync` | 409 nếu đơn chưa duyệt |
 | D8 | Đề tài đã **nghiệm thu xong / huỷ / chấm dứt** ⇒ không còn gì để điều chỉnh | thầy bắt lúc demo 05/08 | `AmendmentService.EnsureContractStillOpen` (cả tạo lẫn duyệt) | 409 |
 | D9 | Yêu cầu gia hạn phải ghi **SỐ THÁNG**; gõ "3 tháng" ⇒ báo lỗi rõ, không im lặng bỏ qua | tự phát hiện | `AmendmentService.ApplyExtensionIfNeededAsync` | 400 |
 | D10 | Số tài khoản / CCCD của Bên B: **chính chủ tự khai**, đọc ra **luôn che**, **tuỳ chọn** không chặn lập hợp đồng | QĐ543 **BM05 Điều 7.2** (chứng thư số) + user chốt 08/08 | `ContractIdentityController` (chỉ đường `/me`) | 400 |
@@ -96,6 +96,10 @@
 | D12 | **Lịch giải ngân do LOẠI ĐỀ TÀI quyết định, PI không được chọn.** Ứng dụng **4 đợt 30–30–30–10**; Cơ bản **1 đợt 100% sau nghiệm thu "Đạt"** | QĐ543 **Điều 16** | `DisbursementService.GenerateFromTemplateAsync` đọc `disbursement_templates` theo `ResearchTypeId`; seed ở `DatabaseSeeder.SeedDisbursementTemplatesAsync` | — |
 | D13 | Tỷ lệ từng đợt **để trong master data**, không cắm số vào code; **đợt cuối lấy phần còn lại** để tổng luôn khớp giá trị hợp đồng | tránh lệch tiền do làm tròn | `GenerateFromTemplateAsync` | — |
 | D14 | Xác nhận mốc giải ngân phải đúng thứ tự điều kiện: hợp đồng **đã ký**; Ứng dụng đợt 2/3 cần tiến độ GĐ1/GĐ2 **Đạt**; đợt cuối cần nghiệm thu **Đạt** | QĐ543 **Điều 16** | `DisbursementService.AssertMilestoneUnlockedAsync` | 409 |
+| D15 | BM07 chỉ chia **4 nhóm**: nội dung/tên đề tài · tiến độ/thời gian · dự toán kinh phí · thay đổi khác. Không ép mọi nhóm khai cặp “giá trị hiện tại → đề nghị”; chỉ gia hạn cần số tháng cấu trúc | QĐ543 **BM07**, Điều 10.2 | danh mục `amendment_categories`; form PI; `DocumentExportService.ExportAmendmentDocAsync` | — |
+| D16 | Nghiệm thu `Đạt` ⇒ **Project = COMPLETED**, nhưng hợp đồng chưa phải đã thanh lý | QĐ543 Điều 13.1–13.2 | `ReviewScoringService`; `ContractDto.ProjectStatus` | — |
+| D17 | Chỉ lập quyết toán sau nghiệm thu Đạt và chi xong các đợt; chỉ ký BM13 sau xác nhận quyết toán kinh phí + xử lý tài sản; ký xong ⇒ **Contract = SETTLED** | QĐ543 Điều 13.1.e–13.2, BM13 | `ContractSettlementService` | 409 |
+| D18 | Hợp đồng đang hiệu lực, đề tài chưa hoàn thành có thể **TERMINATED** bất thường khi Staff/Admin nêu lý do; đồng thời Project = TERMINATED. Đã nghiệm thu Đạt thì phải đi thanh lý BM13, không đổi sang chấm dứt. Không có toggle hoàn tác trực tiếp | yêu cầu lưu dấu vết nghiệp vụ | `ContractService.TerminateAsync` | 400 / 409 |
 
 > ⚠️ **"Phương thức khoán chi" (WHOLE/PARTIAL) KHÔNG có trong QĐ543** — rà toàn văn, chữ "khoán" chỉ xuất hiện ở *"thuê khoán chuyên môn"* và *"giao khoán"*. Khái niệm này đến từ mẫu thuyết minh cấp Bộ (`Mau-1_Thuyet-minh`). Cột `Proposal.FundingMethod` **vẫn còn trong DB** để đọc dữ liệu cũ nhưng **không còn quyết định số đợt giải ngân** (D12).
 

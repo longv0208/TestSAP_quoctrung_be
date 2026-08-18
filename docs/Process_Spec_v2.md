@@ -124,7 +124,7 @@ Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
 |---|---|
 | **Ai tham gia** | PI (nộp báo cáo, yêu cầu thay đổi), Staff (duyệt báo cáo — không cần hội đồng) |
 | **Sản phẩm đầu ra** | `ProgressReport[]`; `AmendmentRequest` (nếu có) |
-| **Văn bản QĐ543** | Báo cáo tiến độ định kỳ; Form gia hạn (**tối đa 1/2 thời gian thực hiện** — QĐ543 Điều 10.4; đề tài 12 tháng ⇒ 6 tháng) |
+| **Văn bản QĐ543** | BM06; BM07 gồm 4 nhóm: nội dung/tên · tiến độ/thời gian · dự toán · thay đổi khác; gia hạn tối đa **1/2 thời gian thực hiện** (Điều 10.4) |
 | **Ràng buộc lịch** | Hạn nộp và buổi đánh giá phải ở tương lai, nằm trong thời gian hợp đồng và không trước đầu kỳ báo cáo; buổi đánh giá không được trước hạn nộp. Gia hạn hợp đồng đổi `EndDate`, nên lịch mới được phép tới mốc đã gia hạn. |
 | **Rule** | Staff duyệt báo cáo tiến độ trực tiếp, không cần hội đồng. Ứng dụng mặc định 2 kỳ (cuối GĐ1/GĐ2), Cơ bản 1 kỳ giữa kỳ; kỳ trước phải được đánh giá xong mới nộp kỳ sau. Amendment validate theo QĐ543 (gia hạn ≤ **1/2 thời gian thực hiện**, v.v.) — không phải form trắng. Chữ ký số: ngoài scope. |
 
@@ -141,6 +141,15 @@ Trình bày (PI) → Phản biện nhận xét → Q&A → Họp kín (PI rời)
 > `ReviewRound` chưa có deadline riêng và chưa có tác vụ tự kết luận đề tài. Không tự đánh **Không đạt**
 > khi reviewer chậm chấm: đó không phải lỗi của chủ nhiệm. Hướng cần chốt nghiệp vụ là hết hạn thì khoá
 > nhận phiếu, gắn cờ quá hạn và buộc Staff chọn gia hạn / đổi người / kết luận hành chính có lưu lý do.
+
+### Giai đoạn 9 — Đóng đề tài và hợp đồng
+
+| | |
+|---|---|
+| **Nghiệm thu Đạt** | Chủ tịch duyệt/khóa biên bản ⇒ `Project.COMPLETED`. Đây là mốc hoàn thành chuyên môn, tự hiển thị; không có nút bật/tắt để sửa ngược kết quả đã khóa. |
+| **Thanh lý bình thường** | Nghiệm thu Đạt → chi xong các đợt → lập quyết toán → kế toán xác nhận + xử lý tài sản → ký BM13 ⇒ `Contract.SETTLED`. |
+| **Chấm dứt bất thường** | Staff/Admin nêu lý do ⇒ `Contract.TERMINATED` và `Project.TERMINATED`; không dùng thay cho thanh lý bình thường và không hoàn tác bằng toggle. |
+| **Văn bản QĐ543** | Điều 13.1.e, Điều 13.2, BM13. |
 
 ---
 

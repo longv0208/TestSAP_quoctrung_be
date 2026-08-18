@@ -319,6 +319,54 @@ public class ContractService : IContractService
         return MapDetail(contract);
     }
 
+    /// <summary>
+    /// Chấm dứt bất thường một hợp đồng đang thực hiện. Đây là quyết định có dấu vết, không phải
+    /// nút bật/tắt: muốn sửa một quyết định đã chấm dứt phải có quy trình/biên bản khác.
+    /// </summary>
+    public async Task<ContractDetailResponse> TerminateAsync(Guid contractId, Guid terminatedBy, string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Phải nêu lý do chấm dứt hợp đồng.");
+
+        var contract = await QueryWithProject()
+            .FirstOrDefaultAsync(c => c.Id == contractId)
+            ?? throw new KeyNotFoundException("Không tìm thấy hợp đồng.");
+
+        if (contract.Status == ContractStatus.PendingSignature)
+            throw new InvalidOperationException(
+                "Hợp đồng chưa ký nên chưa có hiệu lực để chấm dứt. Nếu lập nhầm, hãy xoá hợp đồng.");
+        if (contract.Status == ContractStatus.Settled)
+            throw new InvalidOperationException("Hợp đồng đã thanh lý — không thể chuyển sang chấm dứt.");
+        if (contract.Status == ContractStatus.Terminated || contract.TerminatedAt.HasValue)
+            throw new InvalidOperationException("Hợp đồng đã được chấm dứt trước đó.");
+        if (contract.Project.Status == ProjectStatus.Completed)
+            throw new InvalidOperationException(
+                "Đề tài đã nghiệm thu Đạt — hãy hoàn tất quyết toán và thanh lý BM13, không chuyển sang chấm dứt bất thường.");
+
+        contract.Status = ContractStatus.Terminated;
+        contract.TerminatedAt = _clock.UtcNow;
+        contract.TerminatedBy = terminatedBy;
+        contract.TerminatedReason = reason.Trim();
+        contract.UpdatedAt = _clock.UtcNow;
+
+        contract.Project.Status = ProjectStatus.Terminated;
+        contract.Project.UpdatedAt = _clock.UtcNow;
+        await _contracts.SaveChangesAsync();
+
+        await _notifier.NotifyAsync(
+            contract.Project.PiUserId,
+            "CONTRACT_TERMINATED",
+            "Hợp đồng nghiên cứu đã chấm dứt",
+            $"Hợp đồng {contract.ContractNumber} của đề tài \"{contract.Project.TitleVi}\" đã được ghi nhận chấm dứt. " +
+            $"Lý do: {contract.TerminatedReason}",
+            actionUrl: "/my-timeline",
+            entityType: "Contract",
+            entityId: contract.Id.ToString(),
+            priority: "HIGH");
+
+        return MapDetail(contract);
+    }
+
     private static ContractListResponse MapList(Contract c) => new()
     {
         Id = c.Id,
@@ -329,6 +377,7 @@ public class ContractService : IContractService
         ProposalTitle = c.Project?.TitleVi,
         PiName = c.Project?.PiUser?.FullName,
         Status = c.Status,
+        ProjectStatus = c.Project?.Status,
         TotalAmount = c.TotalAmount,
         StartDate = c.StartDate,
         EndDate = c.EndDate,
@@ -349,6 +398,7 @@ public class ContractService : IContractService
         FundingMethod = c.Project?.Proposals.FirstOrDefault()?.FundingMethod,
         ScopeTitle = c.ScopeTitle,
         Status = c.Status,
+        ProjectStatus = c.Project?.Status,
         TotalAmount = c.TotalAmount,
         StartDate = c.StartDate,
         EndDate = c.EndDate,
