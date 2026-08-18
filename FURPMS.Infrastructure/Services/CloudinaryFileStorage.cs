@@ -71,6 +71,37 @@ public class CloudinaryFileStorage : IFileStorage
     private string DeliveryUrl(string blobName) =>
         $"https://res.cloudinary.com/{_cloudName}/raw/upload/{PublicId(blobName)}";
 
+    /// <summary>
+    /// URL tải file <b>có chữ ký</b>, đi qua API chứ không qua CDN.
+    ///
+    /// <para><b>Vì sao phải có (18/08):</b> Cloudinary <b>chặn phát hành (delivery) file kiểu
+    /// <c>raw</c></b> — mọi tài liệu của hệ thống đều là .docx/.pdf nên rơi hết vào diện này. Bấm
+    /// vào URL CDN dựng theo <see cref="DeliveryUrl"/> nay trả <c>401</c> kèm
+    /// <c>X-Cld-Error: deny or ACL failure</c>, và BE hiểu thành "file không còn trên storage" ⇒
+    /// người dùng ăn 404 khi mở tài liệu <b>vừa mới nộp</b>. File cũ (tải lên trước khi Cloudinary
+    /// đổi mặc định) vẫn phát hành được, nên lỗi chỉ lộ ra với file mới — rất dễ tưởng là hết.</para>
+    ///
+    /// <para>Đã đo từng cách: URL trần <c>401</c> · thêm chữ ký <c>s--…--</c> (SHA1/SHA256, có/không
+    /// version) <c>401</c> · upload kèm <c>access_mode=public</c> vẫn <c>401</c>. Chỉ endpoint
+    /// <c>/download</c> có chữ ký này trả <c>200</c> kèm đúng nội dung.</para>
+    ///
+    /// <para>Cách này còn <b>an toàn hơn</b> chỗ khác: tài liệu vẫn không phát hành công khai, ai
+    /// có URL cũng không tải được — muốn lấy phải qua BE, mà BE thì có <c>[Authorize]</c>.</para>
+    /// </summary>
+    private string SignedDownloadUrl(string blobName)
+    {
+        var signed = new SortedDictionary<string, string>
+        {
+            ["public_id"] = PublicId(blobName),
+            ["timestamp"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+            ["type"] = "upload",
+        };
+
+        var query = string.Join("&", signed.Select(p => $"{p.Key}={Uri.EscapeDataString(p.Value)}"));
+        return $"https://api.cloudinary.com/v1_1/{_cloudName}/raw/download" +
+               $"?{query}&api_key={_apiKey}&signature={Sign(signed)}";
+    }
+
     public async Task<StoredFile> SaveAsync(
         string blobName, Stream content, string contentType, CancellationToken ct = default)
     {
@@ -143,7 +174,8 @@ public class CloudinaryFileStorage : IFileStorage
         // storageUrl bỏ qua có chủ ý — nó là URL tải của BE, không phải của Cloudinary.
         try
         {
-            using var resp = await _http.GetAsync(DeliveryUrl(blobName), ct);
+            // Qua API có chữ ký, KHÔNG qua CDN: file raw bị chặn phát hành (xem SignedDownloadUrl).
+            using var resp = await _http.GetAsync(SignedDownloadUrl(blobName), ct);
             if (resp.IsSuccessStatusCode)
                 return await resp.Content.ReadAsByteArrayAsync(ct);
         }

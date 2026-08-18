@@ -173,7 +173,11 @@ sẵn**. Đã đưa lên đầu `00_INDEX.md` tầng 1.
 
 ---
 
-## 9. FE bật lỗi server dù BE đang chạy — 🔶 CHƯA DỰNG LẠI ĐƯỢC, nhưng vá 4 lỗ khác
+## 9. FE bật lỗi server dù BE đang chạy — ✅ ĐÓNG 18/08 (đã bỏ Render), vẫn giữ 4 bản vá
+
+> **Cập nhật 18/08:** đã chuyển hẳn sang **Railway**, **bỏ Render**. Giả thuyết bên dưới (Render
+> bản free ngủ sau ~15 phút nên request đầu treo rồi timeout, nhìn y như "lỗi máy chủ") vì thế
+> không còn đất sống. Đóng mục này; gặp lại thì mở mục mới, đừng nối vào đây.
 
 **Anh quan sát:** khi **tạo đợt từ đầu**, BE vẫn chạy mà FE báo lỗi server.
 
@@ -199,12 +203,13 @@ gán để bắt trạng thái cuối cùng.
 
 ---
 
-## 10. Hạ tầng — dự tính mua Railway ~20$
+## 10. Hạ tầng — dự tính mua Railway ~20$ ✅ ĐÃ LÀM (18/08: BE + Postgres chạy trên Railway, bỏ Render)
 
 **Anh nói:** *"gần như chắc chắn sẽ làm — bỏ ra 20 đô mua Railway để deploy BE cho mượt. Chắc mai sẽ làm."*
 
-**Không phải việc code.** Ghi lại để không quên. Hiện BE ở Render (bản free **ngủ sau ~15 phút**
-không dùng ⇒ lần bấm đầu rất lâu — đây có thể chính là nguyên nhân mục 9 nếu lúc đó trỏ vào Render).
+**Không phải việc code.** ~~Hiện BE ở Render (bản free ngủ sau ~15 phút…)~~ — **đã mua và chuyển
+sang Railway**, BE + PostgreSQL cùng một project, không còn dùng Render. Xem `HANDOFF_HIEN_HANH.md`
+§2 "Bản deploy" để biết nhánh nào đang được deploy và bộ biến môi trường.
 
 ---
 

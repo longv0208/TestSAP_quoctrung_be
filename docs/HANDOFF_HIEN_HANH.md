@@ -73,6 +73,35 @@ commit một lượt trung gian *(vai MỚI, địa chỉ CŨ)* và `RoleGuard` 
 > ⚠️ Rút ra: thấy lại triệu chứng "đổi vai ăn 403 oan" thì **đừng cho là hồi quy của bản vá cũ** —
 > đã có hai nguyên nhân độc lập cùng ra một màn hình.
 
+### 1.4 🔴 Cloudinary CHẶN phát hành file `raw` — mọi tài liệu mới nộp đều không mở được (18/08)
+
+**Triệu chứng:** nộp file xong, mở ra ăn **404 "File không còn trên storage"**. Nhưng file **cũ**
+vẫn mở bình thường — nên rất dễ tưởng hệ thống vẫn ổn.
+
+**Nguyên nhân:** Cloudinary chặn *delivery* các tài nguyên kiểu `raw` (mọi tài liệu ở đây đều là
+.docx/.pdf ⇒ rơi hết vào diện này). URL CDN mà `CloudinaryFileStorage` dựng ra nay trả `401` kèm
+`X-Cld-Error: deny or ACL failure`, BE dịch thành "file không còn trên storage". Tài sản upload từ
+trước khi Cloudinary đổi mặc định vẫn phát hành được — đó là lý do lỗi chỉ lộ ra với file mới.
+
+**Đã đo từng cách trước khi sửa** (cloud `dq6dp3g3v`, thư mục `furpms-dev`):
+
+| Cách đọc | Kết quả |
+|---|---|
+| URL CDN trần | 401 |
+| URL CDN + chữ ký `s--…--` (SHA1/SHA256, có/không version) | 401 |
+| Upload kèm `access_mode=public` rồi đọc URL CDN | 401 |
+| URL CDN của tài sản **không tồn tại** | 404 ⇒ chặn theo TỪNG tài sản, không phải cả tài khoản |
+| **`api.cloudinary.com/v1_1/{cloud}/raw/download` có chữ ký** | **200, đúng nội dung** |
+
+**Đã sửa:** `CloudinaryFileStorage.ReadAllBytesAsync` đọc qua endpoint `/download` có chữ ký thay
+vì URL CDN (`SignedDownloadUrl`). Cách này **an toàn hơn** bản cũ: tài liệu không còn phát hành
+công khai, ai có URL cũng không tải được — muốn lấy phải qua BE có `[Authorize]`.
+
+> ⚠️ **Phải kiểm trên bản deploy.** Railway dùng **cùng tài khoản Cloudinary**, chỉ khác thư mục,
+> nên nhiều khả năng đang dính y hệt. Cách kiểm nhanh: đăng nhập bản deploy → nộp một file bất kỳ →
+> bấm mở lại. Ra 404 thì đúng lỗi này, deploy bản vá là hết. **Đây là lỗi chặn demo**: hội đồng
+> không mở được đề cương thì không chấm được gì.
+
 ---
 
 ## 2. Chạy dự án
@@ -108,7 +137,7 @@ docker exec -i furpms-db-1 psql -U postgres -c "CREATE DATABASE furpms"
 | BE | Railway — `https://furpmsbev2-production.up.railway.app` (project `abundant-endurance`) |
 | DB | PostgreSQL service **cùng project** (bắt buộc — mạng nội bộ `.railway.internal` không thông giữa hai project) |
 | FE | Vercel — `https://furpms-web.vercel.app` (project `furpms-web`, tài khoản `trunghq54`, deploy từ **fork**) |
-| Nhánh BE đang deploy | `thu-nghiem/postgres` |
+| Nhánh BE đang deploy | **`master`** (đổi 18/08; trước là `thu-nghiem/postgres`). Commit ở `dev` **không tự lên Railway** — phải merge sang `master` |
 | Nhánh FE đang deploy | **`dev`** — repo gốc `github.com/immanhdung/FURPMS-Web`. `main` đi sau `dev` **154 commit** (dừng ở 15/07), deploy nhầm `main` là ra bản của tháng trước |
 
 Fork mặc định lấy nhánh `main`, nên sau khi fork **phải đổi Production Branch sang `dev`** (GitHub →
@@ -175,7 +204,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 
 | Việc | Ai làm |
 |---|---|
-| Đặt `EmailSettings__FrontendUrl = https://furpms-web.vercel.app` trên Railway | **Bạn** — chưa đặt, link trong email đang trỏ localhost |
+| ~~Đặt `EmailSettings__FrontendUrl` trên Railway~~ | ✅ **Xong** — kiểm 18/08 trên Railway: đã đặt `https://furpms.vercel.app`. ⚠️ Lưu ý có **hai** tên miền cùng sống: `furpms.vercel.app` và `furpms-web.vercel.app`. Biến đang trỏ cái thứ nhất; chốt hẳn một cái rồi sửa mọi doc theo, không thì link trong email dẫn về bản người dùng không dùng |
 | ~~Deploy FE lên Vercel~~ | ✅ **Xong 14/08** — `furpms-web.vercel.app`, nhánh `dev`. Đã thử thật: đăng nhập admin vào được `/dashboard`, F5 giữa chừng vẫn đúng, không lỗi console, không API ≥ 400 |
 | Tạo tài khoản thật cho từng vai trên bản deploy | Bạn — không còn tài khoản demo. DB deploy đang **rỗng**: 0 đợt, 0 đề cương, 0 hội đồng, 0 hợp đồng |
 | Đi hết luồng chính trên bản deploy | Bạn |
