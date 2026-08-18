@@ -26,7 +26,22 @@ public class ProposalExtractionServiceTests
                   "transferPotential": "Chuyển giao",
                   "facilities": "Phòng lab",
                   "durationMonths": 18,
-                  "totalBudget": 100000000
+                  "totalBudget": "100.000.000 đ",
+                  "budgetItems": [
+                    { "category": "LABOR", "amount": "60,000,000 VND" },
+                    { "category": "EQUIPMENT", "amount": 40000000 }
+                  ],
+                  "teamMembers": [
+                    {
+                      "fullName": "Trần Thị Bình",
+                      "email": "binh@example.edu.vn",
+                      "department": "SE",
+                      "academicTitle": "ThS.",
+                      "role": "Thành viên chính",
+                      "workMonths": 6,
+                      "isSecretary": true
+                    }
+                  ]
                 }
                 ```
                 """
@@ -45,6 +60,12 @@ public class ProposalExtractionServiceTests
         Assert.Equal("Phòng lab", result.Facilities);
         Assert.Equal(18, result.DurationMonths);
         Assert.Equal(100_000_000m, result.TotalBudget);
+        Assert.Equal(2, result.BudgetItems.Count);
+        Assert.Equal(60_000_000m, result.BudgetItems.Single(x => x.Category == "LABOR").Amount);
+        var member = Assert.Single(result.TeamMembers);
+        Assert.Equal("Trần Thị Bình", member.FullName);
+        Assert.Equal("binh@example.edu.vn", member.Email);
+        Assert.True(member.IsSecretary);
         Assert.Null(result.Warning);
     }
 
@@ -85,6 +106,22 @@ public class ProposalExtractionServiceTests
     }
 
     [Fact]
+    public async Task ExtractAsync_LoiProvider_KhongTraThongBaoKyThuatRaGiaoDien()
+    {
+        var service = new ProposalExtractionService(new FakeGeminiService
+        {
+            Error = new InvalidOperationException("Gemini API lỗi 404: models/gemini-old is unavailable")
+        });
+        await using var stream = new MemoryStream(Encoding.UTF8.GetBytes("Nội dung"));
+
+        var result = await service.ExtractAsync(stream, "proposal.txt", "text/plain");
+
+        Assert.Contains("Mô hình AI", result.Warning);
+        Assert.DoesNotContain("gemini-old", result.Warning);
+        Assert.DoesNotContain("404", result.Warning);
+    }
+
+    [Fact]
     public void CleanText_BoKyTuRac_GopKhoangTrang_VaGioiHanContext()
     {
         var clean = GeminiFileInput.CleanText("A\0   B\r\n\r\n C\t D");
@@ -98,14 +135,16 @@ public class ProposalExtractionServiceTests
     {
         public bool IsConfigured { get; init; } = true;
         public string Response { get; init; } = "{}";
+        public Exception? Error { get; init; }
 
         public Task<string> GenerateTextAsync(string prompt, CancellationToken ct = default) =>
-            Task.FromResult(Response);
+            Error == null ? Task.FromResult(Response) : Task.FromException<string>(Error);
 
         public Task<string> GenerateFromInlineDataAsync(
             byte[] data,
             string mimeType,
             string prompt,
-            CancellationToken ct = default) => Task.FromResult(Response);
+            CancellationToken ct = default) =>
+            Error == null ? Task.FromResult(Response) : Task.FromException<string>(Error);
     }
 }

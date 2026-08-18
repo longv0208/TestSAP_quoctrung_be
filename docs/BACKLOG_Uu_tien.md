@@ -143,7 +143,8 @@ giữ bản đã ký làm bằng chứng, và từ lúc ký thì khoá lại —
 ### AI chống gãy khi demo — 19/08
 
 - Giữ `llm_outputs` làm **single source of truth**, không tạo thêm bảng `ProposalAiAnalyses` trùng dữ liệu.
-- Gemini thử tối đa 3 lượt: 2 lượt model chính, lượt cuối fallback `gemini-2.5-flash-lite`; delay exponential + jitter cho 429/5xx.
+- Gemini thử tối đa 3 lượt: 2 lượt model chính `gemini-3.5-flash-lite`, lượt cuối fallback ổn định `gemini-3.1-flash-lite`; delay exponential + jitter cho 429/5xx. Đã bỏ 2.5 vì Gemini từ chối model này với tài khoản mới dù endpoint liệt kê model vẫn có thể còn trả tên.
+- AI upload đề cương nay trích xuất cả **06 hạng mục kinh phí** và **thành viên nhóm** để điền bước 3/4; chỉ điền khi dữ liệu người dùng còn trống. Nếu tài liệu chỉ ghi tổng mà không có phân bổ, UI chỉ báo tổng để PI tự phân bổ, tuyệt đối không gán tiền vào một hạng mục tuỳ tiện.
 - DOCX/TXT được làm sạch ký tự/khoảng trắng rác và cắt trần context trước khi gửi.
 - Gợi ý điểm lưu cache theo `(proposal, council)`; mở lại trang reviewer tải cache ngay. Khi chạy lại lỗi, giữ bản thành công gần nhất.
 - FE khóa nút AI và đếm ngược 10 giây sau mỗi lượt; lỗi quá tải hiện câu thân thiện, không lộ raw 429/503.

@@ -19,8 +19,11 @@ public class GeminiService : IGeminiService
     {
         _http = http;
         _apiKey = config["GeminiAI:ApiKey"];
-        _model = config["GeminiAI:Model"] ?? "gemini-flash-latest";
-        _fallbackModel = config["GeminiAI:FallbackModel"] ?? "gemini-2.5-flash-lite";
+        // 2.5 Flash-Lite đã bị Gemini từ chối với một số tài khoản mới dù vẫn xuất hiện trong
+        // danh sách model. Dùng tên model ổn định, đã kiểm tra generateContent thực tế, thay vì
+        // alias "latest" khó biết đang trỏ vào phiên bản nào khi demo.
+        _model = config["GeminiAI:Model"] ?? "gemini-3.5-flash-lite";
+        _fallbackModel = config["GeminiAI:FallbackModel"] ?? "gemini-3.1-flash-lite";
     }
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
@@ -122,6 +125,7 @@ public class GeminiService : IGeminiService
                 503 => "Gemini đang quá tải. Đã thử lại vài lần — chờ một lát rồi bấm lại.",
                 403 => "Key bị từ chối (có thể đã bị Google đánh dấu lộ). Hãy tạo key mới.",
                 400 => "Yêu cầu không hợp lệ. Kiểm tra lại tên model.",
+                404 => "Model AI đang cấu hình không còn khả dụng. Hãy cập nhật GeminiAI:Model/FallbackModel.",
                 _ => "Kiểm tra lại API key/model."
             };
             throw new InvalidOperationException($"Gemini API lỗi {(int)status}: {hint}{(reason != null ? $" ({reason})" : "")}");
