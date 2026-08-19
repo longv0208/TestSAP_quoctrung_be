@@ -426,6 +426,10 @@ public class CouncilServiceTests
         await service.AddMemberAsync(council.Id, new AddCouncilMemberRequest { UserId = chair.Id, MemberRole = "Chair", IsExternal = false });
         await service.AddMemberAsync(council.Id, new AddCouncilMemberRequest { UserId = secretary.Id, MemberRole = "Secretary", IsExternal = false });
 
+        // Mô phỏng request HTTP mới: không còn relationship fix-up từ context đã dùng để gán đề tài.
+        // Regression: SendInvitations từng chỉ Include Members nên luôn tưởng ProjectAssignments = 0.
+        db.ChangeTracker.Clear();
+
         var deadline = DateTime.UtcNow.AddDays(5);
         var count = await service.SendInvitationsAsync(council.Id, deadline);
 

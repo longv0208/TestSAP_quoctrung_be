@@ -87,7 +87,7 @@ Hệ quả về cấu trúc: mỗi luồng cần **đúng 1 slide dẫn** (nói 
 
 ### 2.3. Phân vai — **4 người** (cập nhật 18/08)
 
-Nhóm còn **4 người**: Chinh nghỉ vì lý do cá nhân (báo tối 18/08). **Thứ gánh luôn phần của Chinh.**
+Nhóm trình bày gồm **4 người**; Thứ phụ trách liền WF3 và WF4.
 
 Bám theo **RP6 — Software User Guides**, vốn đã chia sẵn 8 workflow:
 

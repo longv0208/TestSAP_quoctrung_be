@@ -3,7 +3,7 @@
 > Xếp theo **tác dụng thực tế**, không theo bảng chữ cái. Đọc từ trên xuống: tầng 1 là thứ **phải
 > tuân theo**, tầng 5 là thứ chỉ tra khi cần.
 >
-> Cập nhật 18/08/2026. Mỗi lần thêm/xoá file trong `docs/` phải sửa file này.
+> Cập nhật 19/08/2026. Mỗi lần thêm/xoá file trong `docs/` phải sửa file này.
 >
 > 18/08: hai repo đã gom về `D:\capstone\newroot\` (`FURPMS_BEv2` + `furpms-web`). Mọi đường dẫn
 > `core/FURPMS-Web` trong docs đã được sửa theo — gặp lại chỗ nào còn sót thì sửa luôn.
@@ -20,6 +20,8 @@
 | **`RANG_BUOC_TREN_MAN_HINH.md`** | **Ràng buộc nhìn từ màn hình** — định làm gì → bị chặn thế nào → phải làm gì mới đi tiếp. Câu chữ **nguyên văn chụp từ màn hình thật**. Kèm kịch bản "khoe ràng buộc" 3 phút | Khi bị hỏi *"sao bấm không được?"*, và để chuẩn bị câu trả lời cho hội đồng |
 | **`HANDOFF_HIEN_HANH.md`** | **★★ ĐỌC ĐẦU TIÊN nếu bạn/AI mới tiếp nhận.** Trạng thái hiện hành: đã đổi sang **PostgreSQL**, đã deploy Railway, 3 bẫy deploy đã gặp thật, việc còn lại, và câu mẫu để bàn giao cho AI khác. Thay cho `HANDOFF_Week10.md` ở phần hạ tầng | **Đầu mỗi phiên mới**, và khi bàn giao |
 | **`KICH_BAN_DEMO.md`** | **★ Kịch bản demo — mở file này trước mỗi buổi demo.** Bấm theo từng bước: chuẩn bị · tài khoản · luồng chính 12 phút · chỗ dễ vấp · câu hội đồng hay hỏi kèm câu trả lời sẵn | **Ngay trước khi demo**, và khi cần đi lại luồng chính để test |
+| **`DEMO_SCRIPT_SUBMISSION.md`** | **Bản Demo Script để nộp trước buổi bảo vệ:** danh sách UC demo · thứ tự 8 workflow · phân công 4 người · tài khoản/data test · lời thoại chuyển phần · phương án dự phòng · checklist ký xác nhận | Khi chốt kịch bản với nhóm và khi nộp tài liệu demo cho giảng viên/hội đồng |
+| **`SOFTWARE_PACKAGE_INSTALLATION_GUIDE.md`** | **Hướng dẫn cài đặt gói phần mềm:** đặt cạnh BE/FE khi nộp; có cấu trúc package, phiên bản, lệnh cài, migration/seed, cách xuất/restore sample SQL, tài khoản theo vai và checklist loại bí mật/file sinh | Khi đóng gói mục 3 “Software Package” và khi kiểm tra cài trên máy sạch |
 | **`GOPY_Thay_Demo_1408.md`** | **Góp ý của thầy buổi demo 14/08** — 10 mục, mỗi mục ghi *thầy nói gì → hiểu thành việc gì → trạng thái* | Trước khi sửa bất cứ gì liên quan tới góp ý sau demo |
 | **`TEST_CHECKLIST.md`** | **Bảng kiểm thử** — mọi thứ đã làm 05→09/08, chia theo vai (PI · Staff · Hội đồng · Admin), mỗi dòng ghi *bấm gì → phải thấy gì*. Kèm mục "chỗ còn mỏng" và "việc còn treo" | **Trước mỗi buổi demo** và khi cần test lại sau thay đổi lớn |
 | **`BUSINESS_RULES.md`** | **Bảng tra quy tắc nghiệp vụ** — 62 luật chia 6 nhóm: luật → căn cứ (điều/biểu mẫu QĐ543 hoặc buổi chốt với thầy) → **nơi thực thi trong code** → mã lỗi. Kèm mục "đã rà và KHÔNG có luật" + độ phủ test | Khi bị hỏi *"quy tắc này ở đâu ra?"*, trước khi sửa một ràng buộc, và khi ôn bảo vệ |

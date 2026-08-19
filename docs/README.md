@@ -16,8 +16,16 @@
 >
 > 🔎 **MỚI 14/08 — `RA_SOAT_LUONG_HAPPY_CASE.md`**: user tự đi lại toàn bộ luồng happy case từ trải nghiệm và ghi ra mọi chỗ thấy "cấn"; file này **kiểm chứng từng nghi ngờ với code thật + QĐ543**. Kết quả: **8 chỗ hoá ra ĐÃ CÓ** (PI xem được lịch họp, Chủ tịch trả biên bản về Thư ký, lưu biên bản chỉ cần quorum 2/3 nên vắng 1 người không kẹt, giải ngân đã đúng Điều 16…) và **12 lỗ hổng THẬT**, nặng nhất là **AI vòng nghiệm thu vẫn đọc đề cương gốc thay vì sản phẩm** và **thư mời không nói mời chấm đề tài nào**. Có §4 xếp thứ tự nên làm theo đau÷công. **Chưa sửa code.**
 
-> Điểm vào cho thư mục `docs/`. Cập nhật: 2026-08-04.
+> Điểm vào cho thư mục `docs/`. Cập nhật: 2026-08-19.
 > Lưu ý: KHÔNG đổi tên / di chuyển các file (CLAUDE.md + docs khác đang tham chiếu path) — file này để tra cứu + theo dõi việc dở.
+
+## Chuẩn bị bảo vệ
+
+| Tài liệu | Mục đích |
+|---|---|
+| `SOFTWARE_PACKAGE_INSTALLATION_GUIDE.md` | Hướng dẫn cài đặt để đặt ở gốc gói nộp cùng BE/FE: cấu trúc source, prerequisites, Docker/PostgreSQL, migration/seed, SQL dump tùy chọn, tài khoản test và checklist đóng gói. |
+| `DEMO_SCRIPT_SUBMISSION.md` | Bản Demo Script nộp trước buổi: 8 workflow, UC demo, phân công 4 người, tài khoản/data test, lời thoại, dự phòng và checklist chạy thử. |
+| `USE_CASE_STATUS_TRACEABILITY.md` | Bảng trạng thái và traceability đầy đủ 35 Use Case dùng cho slide hội đồng kín. |
 
 ---
 
@@ -196,6 +204,7 @@ Trước đây cả Staff lẫn thành viên hội đồng chỉ thấy **tên +
 ### Chuẩn bị Review 2 (mới nhất)
 | File | Nội dung |
 |---|---|
+| `USE_CASE_STATUS_TRACEABILITY.md` | **Bảng đối chiếu 35 UC Report 3 ↔ code hiện tại**, số Completed/Partial/Not completed/Superseded, nội dung sẵn cho Slide 5–7, luồng transaction chính và traceability BE–FE. |
 | `DB_Redesign_v3_PostReview2.md` | **★ Thiết kế DB v3 Project-centric theo biên bản Review 2** (a)–(e) → schema đích · bảng thay đổi từng thực thể · roadmap code Phase A/B · câu hỏi mở Q1–Q5. |
 | `00_INDEX.md` | **📇 MỤC LỤC — mở đầu tiên.** Xếp 26 file trong `docs/` theo 5 tầng tác dụng + đối chiếu cẩm nang tránh lỗi Capstone với hiện trạng dự án. |
 | `Cam-nang-tranh-loi-Capstone-SE.pdf` | Cẩm nang tránh lỗi bảo vệ Capstone (19 tr.): 6 nguyên nhân không đạt, lỗi hardcode/AI/BR, checklist D-14/D-7. |

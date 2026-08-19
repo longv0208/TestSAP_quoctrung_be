@@ -348,7 +348,13 @@ public class CouncilService : ICouncilService
     // Gán reviewer hết rồi gửi thư mời ĐỒNG LOẠT (1 nút) — set deadline xác nhận cho từng người.
     public async Task<int> SendInvitationsAsync(Guid councilId, DateTime? confirmDeadline)
     {
-        var council = await _review.Query().Include(c => c.Members)
+        // Mỗi HTTP request dùng DbContext mới, vì vậy navigation không tự có dữ liệu từ thao tác
+        // gán đề tài trước đó. Phải eager-load assignment (và Project để viết nội dung thư mời),
+        // nếu không hội đồng đã gán thật trong DB vẫn luôn bị hiểu là có 0 đề tài.
+        var council = await _review.Query()
+            .Include(c => c.Members)
+            .Include(c => c.ProjectAssignments)
+                .ThenInclude(a => a.Project)
             .FirstOrDefaultAsync(c => c.Id == councilId)
             ?? throw new KeyNotFoundException("Không tìm thấy hội đồng.");
 
