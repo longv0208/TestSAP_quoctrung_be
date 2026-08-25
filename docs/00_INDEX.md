@@ -3,7 +3,7 @@
 > Xếp theo **tác dụng thực tế**, không theo bảng chữ cái. Đọc từ trên xuống: tầng 1 là thứ **phải
 > tuân theo**, tầng 5 là thứ chỉ tra khi cần.
 >
-> Cập nhật 19/08/2026. Mỗi lần thêm/xoá file trong `docs/` phải sửa file này.
+> Cập nhật 25/08/2026. Mỗi lần thêm/xoá file trong `docs/` phải sửa file này.
 >
 > 18/08: hai repo đã gom về `D:\capstone\newroot\` (`FURPMS_BEv2` + `furpms-web`). Mọi đường dẫn
 > `core/FURPMS-Web` trong docs đã được sửa theo — gặp lại chỗ nào còn sót thì sửa luôn.
@@ -18,13 +18,14 @@
 | `Mau-1_Thuyet-minh-khoa-hoc_V-14082020_v5.docx` | Mẫu thuyết minh đề cương (BM01) — đúng từng mục PI phải điền | Khi sửa wizard nộp đề cương, hoặc export thuyết minh |
 | `NH_Son_Mau 3-Du toan kinh phi_Final-Tri_v5_final.xlsx` | Mẫu dự toán kinh phí (BM03) | Khi sửa phần dự toán / export Excel |
 | **`RANG_BUOC_TREN_MAN_HINH.md`** | **Ràng buộc nhìn từ màn hình** — định làm gì → bị chặn thế nào → phải làm gì mới đi tiếp. Câu chữ **nguyên văn chụp từ màn hình thật**. Kèm kịch bản "khoe ràng buộc" 3 phút | Khi bị hỏi *"sao bấm không được?"*, và để chuẩn bị câu trả lời cho hội đồng |
+| **`KE_HOACH_BAO_VE_LAN2.md`** | **★★★ DANH SÁCH VIỆC HIỆN HÀNH (25/08).** Nhóm bị cho **bảo vệ lần 2**. Biên bản 4 điểm + 3 góp ý miệng đã chốt → 7 nhóm việc, mỗi nhóm ghi rõ sửa file nào, migration gì, test gì. Kèm bảng **hiện trạng đã xác minh bằng cách đọc code** và phần quy ước bắt buộc cho AI mới | **Đầu mỗi phiên**, ngay sau `HANDOFF_HIEN_HANH.md`. Đây là thứ thay `PLAN_Week13` ở vai trò "đang làm gì" |
 | **`HANDOFF_HIEN_HANH.md`** | **★★ ĐỌC ĐẦU TIÊN nếu bạn/AI mới tiếp nhận.** Trạng thái hiện hành: đã đổi sang **PostgreSQL**, đã deploy Railway, 3 bẫy deploy đã gặp thật, việc còn lại, và câu mẫu để bàn giao cho AI khác. Thay cho `HANDOFF_Week10.md` ở phần hạ tầng | **Đầu mỗi phiên mới**, và khi bàn giao |
 | **`KICH_BAN_DEMO.md`** | **★ Kịch bản demo — mở file này trước mỗi buổi demo.** Bấm theo từng bước: chuẩn bị · tài khoản · luồng chính 12 phút · chỗ dễ vấp · câu hội đồng hay hỏi kèm câu trả lời sẵn | **Ngay trước khi demo**, và khi cần đi lại luồng chính để test |
 | **`DEMO_SCRIPT_SUBMISSION.md`** | **Bản Demo Script để nộp trước buổi bảo vệ:** danh sách UC demo · thứ tự 8 workflow · phân công 4 người · tài khoản/data test · lời thoại chuyển phần · phương án dự phòng · checklist ký xác nhận | Khi chốt kịch bản với nhóm và khi nộp tài liệu demo cho giảng viên/hội đồng |
 | **`SOFTWARE_PACKAGE_INSTALLATION_GUIDE.md`** | **Hướng dẫn cài đặt gói phần mềm:** đặt cạnh BE/FE khi nộp; có cấu trúc package, phiên bản, lệnh cài, migration/seed, cách xuất/restore sample SQL, tài khoản theo vai và checklist loại bí mật/file sinh | Khi đóng gói mục 3 “Software Package” và khi kiểm tra cài trên máy sạch |
 | **`GOPY_Thay_Demo_1408.md`** | **Góp ý của thầy buổi demo 14/08** — 10 mục, mỗi mục ghi *thầy nói gì → hiểu thành việc gì → trạng thái* | Trước khi sửa bất cứ gì liên quan tới góp ý sau demo |
 | **`TEST_CHECKLIST.md`** | **Bảng kiểm thử** — mọi thứ đã làm 05→09/08, chia theo vai (PI · Staff · Hội đồng · Admin), mỗi dòng ghi *bấm gì → phải thấy gì*. Kèm mục "chỗ còn mỏng" và "việc còn treo" | **Trước mỗi buổi demo** và khi cần test lại sau thay đổi lớn |
-| **`BUSINESS_RULES.md`** | **Bảng tra quy tắc nghiệp vụ** — 62 luật chia 6 nhóm: luật → căn cứ (điều/biểu mẫu QĐ543 hoặc buổi chốt với thầy) → **nơi thực thi trong code** → mã lỗi. Kèm mục "đã rà và KHÔNG có luật" + độ phủ test | Khi bị hỏi *"quy tắc này ở đâu ra?"*, trước khi sửa một ràng buộc, và khi ôn bảo vệ |
+| **`BUSINESS_RULES.md`** | **Bảng tra quy tắc nghiệp vụ** — 86 luật chia 6 nhóm: luật → căn cứ (điều/biểu mẫu QĐ543 hoặc buổi chốt với thầy) → **nơi thực thi trong code** → mã lỗi. Kèm mục "đã rà và KHÔNG có luật" + độ phủ test | Khi bị hỏi *"quy tắc này ở đâu ra?"*, trước khi sửa một ràng buộc, và khi ôn bảo vệ |
 | **`QD543_Compliance.md`** | **Bảng đối chiếu QĐ543 ↔ code**: từng biểu mẫu map vào entity/endpoint nào, đã làm chưa. §2 map từng mục BM04 ↔ field BE | Mở **cùng lúc** với file .docx ở trên — nó là bản dịch từ văn bản luật sang code |
 
 > ⚠️ File `.docx`/`.xlsx` đọc bằng cách bóc XML (xem lệnh mẫu ở cuối file này), đừng đoán nội dung.
@@ -35,7 +36,7 @@
 
 | File | Là gì | Khi nào mở |
 |---|---|---|
-| **`PLAN_Week13_Demo_0508.md`** | **★ MỚI NHẤT.** 43 đầu việc gộp từ 2 note của nhóm sau demo 05/08, có trạng thái ✅/🔶/⬜/❓ từng mục + thứ tự làm + 8 câu phải hỏi thầy | **Đầu mỗi phiên.** Đây là danh sách việc hiện hành |
+| **`PLAN_Week13_Demo_0508.md`** | *(đã bị `KE_HOACH_BAO_VE_LAN2.md` thay ở vai trò "đang làm gì" — giữ để tra lịch sử)* 43 đầu việc gộp từ 2 note của nhóm sau demo 05/08, có trạng thái ✅/🔶/⬜/❓ từng mục + thứ tự làm + 8 câu phải hỏi thầy | **Đầu mỗi phiên.** Đây là danh sách việc hiện hành |
 | `PLAN_Week12.md` | Kế hoạch sau demo 29/07 (P0–P8) + rà CRUD toàn hệ thống + các mục "chờ user quyết định" (Q1–Q5) | Khi cần biết lý do một quyết định cũ, hoặc tra Q1–Q5 |
 | `PROGRESS.md` | **% hoàn thiện theo 8 nhóm chức năng** + "còn thiếu gì" | Khi cần trả lời "xong bao nhiêu %" |
 | `README.md` | Backlog tổng + mục lục sống + thứ tự đọc cho người mới | Khi onboard người mới |

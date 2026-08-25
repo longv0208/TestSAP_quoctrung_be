@@ -41,6 +41,9 @@
 | A13 | **Dự toán chỉ gồm 06 hạng mục của Điều 15**: thù lao · thiết bị/vật tư · thuê ngoài · hội nghị/hội thảo · VPP & chi khác · phát sinh/SHTT | QĐ543 **Điều 15.1** | `DatabaseSeeder.SeedBudgetExpenseCategoriesAsync`; 12 hạng mục cũ (mẫu cấp Bộ) chuyển `IsActive = false`, **không xoá** để dự toán cũ không gãy FK | — |
 | A14 | **Tỷ lệ tối đa từng hạng mục trên TỔNG dự toán**: 100 · 60 · 60 · 30 · 20 · 10 (%) | QĐ543 **Điều 15.1** | `BudgetPolicyService.AssertCategoryLimitsAsync` — gọi từ `SyncBudgetItemsAsync` + `ProposalBudgetService.UpdateBudgetAsync`; lỗi liệt kê **tất cả** hạng mục vi phạm một lần | 400 |
 | A15 | Tổng dự toán = **tổng các hạng mục**, không nhập tay | tránh hai con số đá nhau | `SyncBudgetItemsAsync`; FE `BudgetBreakdownTable` tự cộng | — |
+| A16 | **Hiển thị kinh phí là BẮT BUỘC, không phải tuỳ chọn.** Hệ thống quản *hồ sơ kinh phí* (dự toán · trần · giá trị HĐ · lịch giải ngân · quyết toán) — chỉ KHÔNG quản *dòng tiền* (không thanh toán, không nối ngân hàng) | rule #15 **viết lại 25/08** sau biên bản bảo vệ lần 2 | `GET /api/projects/{projectId}/budget` → `ProjectBudgetOverviewService`; FE `BudgetOverviewPanel.tsx` | — |
+| A17 | **Đợt đã đánh dấu chi mà chưa có số thực chi ⇒ tổng là TẠM TÍNH theo kế hoạch, và phải nói ra.** Hệ thống không tự suy diễn thay kế toán | rule #15 (ghi nhận lại, không tự tính) | cờ `hasUnreportedActuals` trong `ProjectBudgetOverviewService`; FE hiện câu cảnh báo dưới thanh tiến độ | — |
+| A18 | **Còn lại = giá trị HỢP ĐỒNG − đã chi**, KHÔNG phải dự toán − đã chi. Dự toán là số *xin*, hợp đồng mới là số *cam kết chi* | phân biệt hai giai đoạn hồ sơ | `ProjectBudgetOverviewService.GetAsync` (`RemainingTotal`) | — |
 
 ## B. Hội đồng
 

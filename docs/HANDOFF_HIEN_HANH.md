@@ -1,8 +1,12 @@
-# HANDOFF — trạng thái hiện hành (cập nhật 18/08/2026)
+# HANDOFF — trạng thái hiện hành (cập nhật 25/08/2026)
 
 > **Đọc file này ĐẦU TIÊN** nếu bạn là người/AI mới tiếp nhận dự án. Nó thay cho
 > `HANDOFF_Week10.md` (đã lỗi thời ở phần hạ tầng). Sau file này thì đọc `../CLAUDE.md` (quy tắc
 > nghiệp vụ đánh số) và `KICH_BAN_DEMO.md` (bấm theo từng bước).
+>
+> 🔴 **25/08 — nhóm bị hội đồng cho BẢO VỆ LẦN 2.** Danh sách việc hiện hành nay nằm ở
+> **`KE_HOACH_BAO_VE_LAN2.md`** (7 nhóm việc, có bảng hiện trạng đã xác minh bằng cách đọc code).
+> Đọc file này để biết *hệ thống đang chạy thế nào*, rồi sang file kia để biết *phải làm gì tiếp*.
 
 ---
 
@@ -101,6 +105,33 @@ công khai, ai có URL cũng không tải được — muốn lấy phải qua B
 > nên nhiều khả năng đang dính y hệt. Cách kiểm nhanh: đăng nhập bản deploy → nộp một file bất kỳ →
 > bấm mở lại. Ra 404 thì đúng lỗi này, deploy bản vá là hết. **Đây là lỗi chặn demo**: hội đồng
 > không mở được đề cương thì không chấm được gì.
+
+### 1.5 🔴 Rule #15 đã được VIẾT LẠI (25/08) — đọc trước khi đụng bất cứ chỗ nào có tiền
+
+Câu cũ — *"Tài chính = minh chứng, hệ thống KHÔNG quản tiền… scope = **strip + ẩn nav/UI tiền**"* —
+bị hiểu thành **"không được HIỆN tiền"**. Hậu quả: `Contract.TotalAmount` bị giấu khỏi mọi màn dù BE
+vẫn trả về, và **hội đồng bảo vệ lần 2 bắt đúng chỗ này** (yêu cầu số 1: *"thể hiện rõ ngân sách
+tương ứng cho các đề tài"*).
+
+Nay tách hai khái niệm bị gộp nhầm:
+
+| | |
+|---|---|
+| **CÓ — hiển thị đầy đủ** | dự toán duyệt (Điều 15) · trần loại đề tài (Điều 14) · **giá trị hợp đồng** · lịch giải ngân theo %/mốc · trạng thái từng đợt · quyết toán. Đây là **hồ sơ hành chính** của đề tài |
+| **KHÔNG làm** | thanh toán · nối ngân hàng · thay sổ kế toán. `ActualAmount` là **ghi nhận lại** con số Phòng Tài chính báo, không tự tính |
+
+⇒ Ẩn *cấu hình* tài chính thì đúng; ẩn *số tiền của đề tài* thì sai. Toàn văn ở `CLAUDE.md` #15.
+
+**Hệ quả đang chạy trong code:** màn Hợp đồng có tab **"Ngân sách"**
+(`GET /api/projects/{projectId}/budget`, xem `API_CONTRACT.md` §13.2b) · danh sách có cột **Giá trị
+hợp đồng** + bộ lọc giai đoạn · đợt giải ngân hiện **% và số tiền** · KPI Thống kê hết 0.
+
+> Một nguyên tắc phải giữ khi làm tiếp: **đợt đã đánh dấu chi mà chưa có `actualAmount` thì tổng là
+> TẠM TÍNH theo kế hoạch, và màn hình phải nói ra**. Im lặng là để người đọc tưởng đó là số quyết
+> toán — hệ thống không được tự quyết thay kế toán.
+
+**Trạng thái công việc bảo vệ lần 2:** Sprint 0 và Nhóm 1 (Ngân sách) ✅ xong 25/08. Việc còn lại
+xem `KE_HOACH_BAO_VE_LAN2.md` §12.
 
 ---
 
@@ -223,7 +254,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 ## 6. Cách kiểm tra nhanh mọi thứ còn chạy
 
 ```bash
-cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 204/204 xanh
+cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 255/255 xanh
 cd furpms-web  && npx tsc -p tsconfig.app.json --noEmit && npm run build
 ```
 

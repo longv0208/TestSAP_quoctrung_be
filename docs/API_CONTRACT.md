@@ -728,7 +728,7 @@ Key hiện có:
 ### Analytics — `/api/analytics`
 | Method | Path | Quyền | Mô tả |
 |---|---|---|---|
-| GET | `/api/analytics/overview` | Admin, Staff | Tổng quan |
+| GET | `/api/analytics/overview` | Admin, Staff | Tổng quan. **Bổ sung 25/08:** `totalBudget` · `totalContracted` · `totalDisbursed` — FE vốn đã đọc `data.totalBudget` mà BE không trả key đó nên KPI "Tổng kinh phí" **luôn hiện 0** |
 | GET | `/api/analytics/by-track?cycleId=` | Admin, Staff | Theo track |
 | GET | `/api/analytics/funnel?cycleId=` | Admin, Staff | Phễu trạng thái |
 | GET | `/api/analytics/dashboard/staff` | Admin, Staff | Dashboard Staff: `{ kpis[], reviewProgress[], councilPerformance[], activity[] }` |
@@ -1077,6 +1077,50 @@ và **`isTotalValid`** (`totalCriteriaScore === maxTotalScore`).
 ```
 - PUT validate: tổng `items[].amount` = `totalAmount`.
 - `categoryId` lấy từ `/api/budget-expense-categories` (12 khoản seed sẵn theo Mẫu 3).
+
+### 13.2b Kinh phí nhìn theo ĐỀ TÀI — `GET /api/projects/{projectId}/budget` (mới 25/08)
+
+Gom bức tranh kinh phí một đề tài từ 4 nguồn đang nằm rời: dự toán đề cương (Điều 15) · trần loại
+đề tài (Điều 14) · hợp đồng đã ký · lịch giải ngân. Sinh ra để trả lời yêu cầu số (1) của hội đồng
+bảo vệ lần 2 — *"thể hiện rõ ngân sách tương ứng cho các đề tài"*.
+
+**Quyền:** Admin · Staff · chủ nhiệm đề tài · **ủy viên hội đồng được gán chấm đề tài đó**
+(nghiệm thu phải đối chiếu kinh phí với sản phẩm — Điều 13.1.e). Ngoài ra → **403**.
+
+```json
+{
+  "projectId": "…", "projectCode": "DT-001", "titleVi": "…", "researchTypeName": "Nghiên cứu ứng dụng",
+  "fundingCap": 150000000,            // null = loại đề tài này KHÔNG đặt trần (khác trần = 0)
+  "approvedTotal": 145000000,
+  "approvedByHeading": [ { "code": "LABOR", "amount": 80000000, "percentage": 55.2 } ],
+  "approvedItems":    [ { "categoryName": "…", "amount": 0, "sourceKhoan": 0, "sourceNgoaiKhoan": 0,
+                          "sourceNsnn": 0, "sourceOther": 0, "note": null } ],
+  "contractedTotal": 145000000,
+  "contracts": [ { "id": "…", "contractNumber": "HĐ-001", "totalAmount": 145000000,
+                   "status": "ACTIVE", "signedAt": "…" } ],
+  "plannedTotal": 145000000,
+  "markedDisbursedTotal": 145000000,
+  "hasUnreportedActuals": true,        // xem chú ý bên dưới
+  "remainingTotal": 0,
+  "tranches": [ { "id": 1, "roundNumber": 1, "percentage": 30, "plannedAmount": 43500000,
+                  "actualAmount": null, "status": "DISBURSED", "conditionDescription": "…",
+                  "disbursedAt": "…", "isBlockedByDeliverable": false } ],
+  "nextTranche": null,                 // đợt CHƯA chi có roundNumber nhỏ nhất
+  "settlement": { "totalContractedAmount": 0, "totalDisbursedAmount": 0, "totalReturnedAmount": 0,
+                  "settlementDeadline": "2026-12-01", "settlementSignedAt": null },
+  "capExceeded": false
+}
+```
+
+- `approvedByHeading` giữ **đủ 06 hạng mục Điều 15 kể cả hạng mục = 0** — "không xin đồng nào" khác
+  hẳn "không có hạng mục này". `percentage` = 0 khi tổng dự toán = 0 (không chia 0).
+- ⚠️ **`hasUnreportedActuals`**: đợt đã đánh dấu chi mà `actualAmount` còn trống nghĩa là Phòng Tài
+  chính **chưa báo lại con số**. Khi đó `markedDisbursedTotal` **tạm lấy theo kế hoạch** — giao diện
+  BẮT BUỘC nói rõ đây là số tạm tính, không được để người đọc tưởng là số quyết toán (rule #15: hệ
+  thống ghi nhận lại, không tự tính thay kế toán).
+- `remainingTotal = contractedTotal − markedDisbursedTotal` (tính trên **giá trị hợp đồng**, không
+  phải dự toán — dự toán là số xin, hợp đồng mới là số cam kết).
+- `capExceeded` chỉ bật khi trần bị **siết SAU** lúc duyệt (Phòng QLKH sửa master data).
 
 ### 13.3 Tiền công (labor details) — `/api/proposals/{id}/budget/labor`
 ```json
