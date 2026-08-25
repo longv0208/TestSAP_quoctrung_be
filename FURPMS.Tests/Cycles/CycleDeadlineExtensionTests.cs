@@ -13,7 +13,7 @@ public class CycleDeadlineExtensionTests
 {
     private static CycleService MakeSvc(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
         new(new CycleRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new ReviewRepository(db),
-            TestNotifier.Create(db));
+            TestNotifier.Create(db), new DeadlineResolver(new CycleRepository(db)));
 
     private static ResearchCycle MakeCycle() => new()
     {

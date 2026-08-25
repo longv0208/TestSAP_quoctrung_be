@@ -113,7 +113,8 @@ public class MissingNotificationsTests
             new ReviewRepository(db),
             new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)),
             TestNotifier.Create(db),
-            summaryQueue);
+            summaryQueue,
+            new DeadlineResolver(new CycleRepository(db)));
 
         await svc.SubmitProposalAsync(proposal.Id, pi.Id);
 
@@ -199,7 +200,8 @@ public class MissingNotificationsTests
         await db.SaveChangesAsync();
 
         var svc = new CycleService(new CycleRepository(db), new MasterDataRepository(db),
-            new ProposalRepository(db), new ReviewRepository(db), TestNotifier.Create(db));
+            new ProposalRepository(db), new ReviewRepository(db), TestNotifier.Create(db),
+            new DeadlineResolver(new CycleRepository(db)));
 
         var newDeadline = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(20));
         await svc.ExtendCycleDeadlineAsync(ctA.CycleId,

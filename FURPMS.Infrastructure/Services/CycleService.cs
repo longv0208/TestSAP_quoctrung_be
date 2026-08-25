@@ -18,16 +18,18 @@ public class CycleService : ICycleService
     private readonly IReviewRepository _review;
 
     private readonly INotifier _notifier;
+    private readonly IDeadlineResolver _deadlines;
 
     public CycleService(ICycleRepository cycles, IMasterDataRepository masterData,
         IProposalRepository proposals, IReviewRepository review,
-        INotifier notifier)
+        INotifier notifier, IDeadlineResolver deadlines)
     {
         _cycles = cycles;
         _masterData = masterData;
         _proposals = proposals;
         _review = review;
         _notifier = notifier;
+        _deadlines = deadlines;
     }
 
     public async Task<IEnumerable<CycleDto>> GetCyclesAsync()
@@ -631,14 +633,11 @@ public class CycleService : ICycleService
         });
     }
 
-    private async Task<DateOnly> GetEffectiveDeadlineAsync(int cycleId, DateOnly original)
-    {
-        var latest = await _cycles.DeadlineExtensions
-            .Where(e => e.TargetType == TargetTypeCycle && e.TargetId == cycleId.ToString())
-            .OrderByDescending(e => e.CreatedAt)
-            .FirstOrDefaultAsync();
-        return latest?.NewDeadline ?? original;
-    }
+    // Hạn hiệu lực nay do `IDeadlineResolver` giữ — cùng một phép tính cho MỌI nơi hỏi "hạn là ngày
+    // nào". Trước 25/08 hàm này là `private` ở đây, nên `ProposalService` không với tới và tự so với
+    // ngày gốc ⇒ gia hạn xong chủ nhiệm vẫn bị chặn nộp (xem chú thích trong ProposalService).
+    private Task<DateOnly> GetEffectiveDeadlineAsync(int cycleId, DateOnly original) =>
+        _deadlines.EffectiveAsync(IDeadlineResolver.TargetTypeCycle, cycleId.ToString(), original);
 
     private static CycleDto MapCycle(ResearchCycle c, int trackCount = 0, List<TrackDto>? tracks = null) => new()
     {

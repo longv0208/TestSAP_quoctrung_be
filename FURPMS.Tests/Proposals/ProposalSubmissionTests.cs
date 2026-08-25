@@ -128,7 +128,8 @@ public class ProposalSubmissionTests
         new ReviewRepository(db),
         new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)),
         TestNotifier.Create(db),
-        new TestAiSummaryQueue());
+        new TestAiSummaryQueue(),
+        new DeadlineResolver(new CycleRepository(db)));
 
     // ── 1: nộp quá hạn → 409 (InvalidOperationException) ─────────────────────
     [Fact]

@@ -91,6 +91,25 @@ public class AnalyticsController : ControllerBase
             .OrderByDescending(x => x.amount)
             .ToListAsync();
 
+        // Ba con số tiền toàn hệ thống. Trước 25/08 màn Thống kê đọc `data.totalBudget` mà đây KHÔNG
+        // trả key đó ⇒ thẻ "Tổng kinh phí" luôn hiện 0 — hội đồng bảo vệ lần 2 bắt đúng chỗ này.
+        //
+        // Phân biệt rõ ba tầng, đừng gộp làm một (rule #15 sửa 25/08 — hệ thống quản HỒ SƠ kinh phí):
+        //   • totalBudget      = dự toán ĐƯỢC DUYỆT trong đề cương (Điều 15)
+        //   • totalContracted  = giá trị đã ký hợp đồng — luôn ≤ tổng dự toán vì chỉ đề tài được
+        //                        duyệt mới có hợp đồng
+        //   • totalDisbursed   = phần đã ĐÁNH DẤU giải ngân. `ActualAmount` có thể để trống khi
+        //                        Phòng Tài chính chưa báo lại con số, khi đó lấy theo kế hoạch.
+        var totalBudget = await _db.ProposalBudgets
+            .Where(b => b.Proposal!.IsCurrent)
+            .SumAsync(b => (decimal?)b.TotalAmount) ?? 0m;
+
+        var totalContracted = await _db.Contracts.SumAsync(c => (decimal?)c.TotalAmount) ?? 0m;
+
+        var totalDisbursed = await _db.ContractDisbursements
+            .Where(d => d.Status == DisbursementStatus.Disbursed)
+            .SumAsync(d => (decimal?)(d.ActualAmount ?? d.PlannedAmount)) ?? 0m;
+
         // Tiến độ chấm từng vòng. Một hội đồng chấm NHIỀU đề tài (quan hệ M-N), nên số phiếu cần
         // có = số thành viên × số đề tài được gán, chứ không phải chỉ số thành viên — tính thiếu
         // vế đó thì "còn lại" ra số ÂM ngay khi hội đồng chấm từ 2 đề tài trở lên.
@@ -143,6 +162,9 @@ public class AnalyticsController : ControllerBase
             pendingReviews,
             totalCouncils,
             totalContracts,
+            totalBudget,
+            totalContracted,
+            totalDisbursed,
             monthlyTrend,
             budgetDistribution,
             reviewProgress,

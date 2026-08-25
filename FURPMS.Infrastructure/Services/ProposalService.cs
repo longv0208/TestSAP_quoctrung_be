@@ -25,6 +25,7 @@ public class ProposalService : IProposalService
     private readonly IBudgetPolicyService _budgetPolicy;
     private readonly INotifier _notifier;
     private readonly IAiSummaryQueue _summaryQueue;
+    private readonly IDeadlineResolver _deadlines;
 
     public ProposalService(
         IProposalRepository proposals,
@@ -36,11 +37,13 @@ public class ProposalService : IProposalService
         IReviewRepository review,
         IBudgetPolicyService budgetPolicy,
         INotifier notifier,
-        IAiSummaryQueue summaryQueue)
+        IAiSummaryQueue summaryQueue,
+        IDeadlineResolver deadlines)
     {
         _budgetPolicy = budgetPolicy;
         _notifier = notifier;
         _summaryQueue = summaryQueue;
+        _deadlines = deadlines;
         _proposals = proposals;
         _cycles = cycles;
         _masterData = masterData;
@@ -402,11 +405,17 @@ public class ProposalService : IProposalService
             throw new InvalidOperationException($"Đề cương đang ở trạng thái {StatusText.Vi(proposal.Status)} — chỉ sửa được bản nháp. Hãy rút lại trước khi sửa.");
 
         // Hết hạn đợt → khoá, không cho sửa nháp nữa (đồng bộ với chặn nộp quá hạn).
+        // Phải so với hạn HIỆU LỰC (rule #19), không phải hạn gốc — xem chú thích ở SubmitProposalAsync.
         var todayEdit = DateOnly.FromDateTime(_clock.UtcNow);
         var cycle = project.CycleTrack.Cycle;
-        if (cycle != null && todayEdit > cycle.SubmissionDeadline)
-            throw new InvalidOperationException(
-                $"Đã quá hạn nộp của đợt (hạn {cycle.SubmissionDeadline:dd/MM/yyyy}). Không thể sửa đề cương.");
+        if (cycle != null)
+        {
+            var editDeadline = await _deadlines.EffectiveAsync(
+                IDeadlineResolver.TargetTypeCycle, cycle.Id.ToString(), cycle.SubmissionDeadline);
+            if (todayEdit > editDeadline)
+                throw new InvalidOperationException(
+                    $"Đã quá hạn nộp của đợt (hạn {editDeadline:dd/MM/yyyy}). Không thể sửa đề cương.");
+        }
 
         if (string.IsNullOrWhiteSpace(request.TitleVI))
             throw new ArgumentException("Phải nhập tên đề tài.");
@@ -562,11 +571,21 @@ public class ProposalService : IProposalService
 
         // Chặn nộp quá hạn (dùng đồng hồ hệ thống — công cụ tua thời gian test được).
         // Bản revision (v2+) không bị chặn deadline nộp lần đầu — deadline sửa nằm ở RevisionDeadline.
+        //
+        // ⚠️ Phải so với hạn HIỆU LỰC, không phải `cycle.SubmissionDeadline` thô. Rule #19: gia hạn
+        // là LOG (bảng deadline_extension), ngày gốc giữ nguyên. Trước 25/08 chỗ này đọc ngày gốc
+        // nên Admin gia hạn xong, hệ thống vẫn gửi thông báo "đã gia hạn" cho chủ nhiệm, mà chủ
+        // nhiệm bấm nộp thì VẪN bị chặn theo hạn cũ — hai chỗ trong cùng hệ thống hiểu "hạn" khác nhau.
         var today = DateOnly.FromDateTime(_clock.UtcNow);
         var cycle = project.CycleTrack.Cycle;
-        if (proposal.VersionNo == 1 && cycle != null && today > cycle.SubmissionDeadline)
-            throw new InvalidOperationException(
-                $"Đã quá hạn nộp của đợt (hạn {cycle.SubmissionDeadline:dd/MM/yyyy}). Không thể nộp.");
+        if (proposal.VersionNo == 1 && cycle != null)
+        {
+            var submitDeadline = await _deadlines.EffectiveAsync(
+                IDeadlineResolver.TargetTypeCycle, cycle.Id.ToString(), cycle.SubmissionDeadline);
+            if (today > submitDeadline)
+                throw new InvalidOperationException(
+                    $"Đã quá hạn nộp của đợt (hạn {submitDeadline:dd/MM/yyyy}). Không thể nộp.");
+        }
 
         // QĐ543 Điều 14 — cửa chốt. Trần có thể bị siết SAU khi PI lưu nháp (Phòng QLKH sửa master
         // data), nên không thể tin vào lần kiểm lúc nhập.

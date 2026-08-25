@@ -38,7 +38,7 @@ public class CycleValidationTests
 
         var svc = new CycleService(
             new CycleRepository(db), new MasterDataRepository(db), new ProposalRepository(db),
-            new ReviewRepository(db), TestNotifier.Create(db));
+            new ReviewRepository(db), TestNotifier.Create(db), new DeadlineResolver(new CycleRepository(db)));
         return (svc, db);
     }
 
