@@ -27,4 +27,9 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Bộ gán nhãn đo chất lượng rà trùng lặp — test đọc từ thư mục chạy nên phải chép theo. -->
+    <None Update="Ai\duplicate-eval-set.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

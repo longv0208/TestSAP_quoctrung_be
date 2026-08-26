@@ -130,9 +130,13 @@ hợp đồng** + bộ lọc giai đoạn · đợt giải ngân hiện **% và 
 > TẠM TÍNH theo kế hoạch, và màn hình phải nói ra**. Im lặng là để người đọc tưởng đó là số quyết
 > toán — hệ thống không được tự quyết thay kế toán.
 
-**Trạng thái công việc bảo vệ lần 2:** Sprint 0 và Nhóm 1–5 ✅ xong (Ngân sách · Deadline · Lưu trữ
-quyết định · Cảnh báo điểm lệch · Chuyên môn người chấm). Còn lại: **Nhóm 6** (AI kiểm tra trùng
-proposal) và **Nhóm 7** (tài liệu) — xem `KE_HOACH_BAO_VE_LAN2.md` §12.
+**Trạng thái công việc bảo vệ lần 2:** Sprint 0 và **Nhóm 1–6 ✅ xong** (Ngân sách · Deadline · Lưu
+trữ quyết định · Cảnh báo điểm lệch · Chuyên môn người chấm · AI rà trùng lặp + bộ đo metric).
+Còn lại **Nhóm 7** (tài liệu — nhóm tự sửa `.docx`) — xem `KE_HOACH_BAO_VE_LAN2.md` §12.
+
+⚠️ **Sau khi deploy, ngoài backfill hồ sơ quyết định (§1.6) còn phải:** gọi
+`POST /api/admin/reindex-embeddings` một lần để vector hoá kho đề cương — không chạy thì tab
+"Rà trùng lặp" báo *"chưa lập chỉ mục"* cho mọi đề tài. Cần `GeminiAI:ApiKey` trên môi trường deploy.
 
 ### 1.6 🔴 SAU KHI DEPLOY phải chạy backfill hồ sơ quyết định (25/08)
 
@@ -288,7 +292,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 ## 6. Cách kiểm tra nhanh mọi thứ còn chạy
 
 ```bash
-cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 308/308 xanh
+cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 313/313 xanh
 cd furpms-web  && npx tsc -p tsconfig.app.json --noEmit && npm run build
 ```
 

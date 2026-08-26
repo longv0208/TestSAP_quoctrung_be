@@ -96,6 +96,15 @@ public class SystemSettingService : ISystemSettingService
         return string.IsNullOrWhiteSpace(raw) ? fallback : raw;
     }
 
+    public async Task<decimal> GetDecimalAsync(string key, decimal fallback)
+    {
+        var raw = await RawAsync(key);
+        return decimal.TryParse(raw, System.Globalization.NumberStyles.Any,
+            System.Globalization.CultureInfo.InvariantCulture, out var d)
+            ? d
+            : fallback;
+    }
+
     public async Task<IReadOnlyList<int>> GetIntListAsync(string key, IReadOnlyList<int> fallback)
     {
         var raw = await RawAsync(key);
@@ -169,6 +178,19 @@ public class SystemSettingService : ISystemSettingService
                     throw new ArgumentException(
                         $"Số ngày phải trong khoảng 1–{SystemSettingKeys.MaxStageWindowDays}.");
                 return stageDays.ToString();
+
+            case SystemSettingKeys.AiDuplicateThreshold:
+            case SystemSettingKeys.AiDuplicateBlockThreshold:
+                if (!decimal.TryParse(value, System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out var sim)
+                    || sim < 0m || sim > 1m)
+                    throw new ArgumentException("Ngưỡng tương đồng phải là số thực từ 0 đến 1 (vd 0.78).");
+                return sim.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            case SystemSettingKeys.AiDuplicateTopK:
+                if (!int.TryParse(value, out var topK) || topK < 1 || topK > 20)
+                    throw new ArgumentException("Số đề tài đối chiếu phải từ 1 đến 20.");
+                return topK.ToString();
 
             case SystemSettingKeys.ReviewPassThresholdPct:
                 if (!int.TryParse(value, out var pct) || pct < 0 || pct > 100)

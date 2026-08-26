@@ -112,6 +112,41 @@ public static class SystemSettingKeys
     /// <summary>Thang điểm dùng khi không tra được bộ tiêu chí của vòng (phiếu chấm chuẩn là /100).</summary>
     public const decimal FallbackRubricTotal = 100m;
 
+    // ── Rà trùng lặp đề cương (thêm 26/08 — gạch 3 của biên bản) ──────────────
+    //
+    // Ba ngưỡng, KHÔNG phải một. Một ngưỡng thì hoặc là cảnh báo quá nhiều (Phòng QLKH tắt đi),
+    // hoặc chặn oan đề tài chỉ trùng chủ đề. Xem docs/AI_Duplicate_Detection.md để biết ba con số
+    // này chọn ra từ đâu — chúng là kết quả quét ngưỡng trên bộ gán nhãn, không phải số bịa.
+
+    /// <summary>
+    /// Từ độ tương đồng này trở lên thì cảnh báo cho Phòng QLKH xem lại.
+    ///
+    /// <para><b>0.86 ở đâu ra:</b> quét ngưỡng trên bộ 35 cặp gán nhãn với
+    /// <c>gemini-embedding-001</c> (26/08) cho thấy hai nhóm tách rời nhau — cặp trùng thật thấp
+    /// nhất 0.889, cặp cùng lĩnh vực khác đề tài cao nhất 0.835. Chọn 0.86 là <b>giữa khoảng trống
+    /// đó</b>, để chừa biên độ cho cả hai phía thay vì bám sát mép một nhóm.</para>
+    ///
+    /// <para>⚠️ Bộ đo chỉ có 35 cặp và do chính nhóm soạn, nên F1 = 1.000 <b>không</b> có nghĩa hệ
+    /// thống không bao giờ sai — nó chỉ nói ngưỡng này nằm trong một khoảng trống có thật trên bộ
+    /// đó. Xem <c>docs/AI_Duplicate_Detection.md</c> để biết giới hạn của phép đo.</para>
+    /// </summary>
+    public const string AiDuplicateThreshold = "AI_DUPLICATE_THRESHOLD";
+    public const string DefaultAiDuplicateThreshold = "0.86";
+
+    /// <summary>Lấy bao nhiêu đề tài giống nhất để đối chiếu.</summary>
+    public const string AiDuplicateTopK = "AI_DUPLICATE_TOP_K";
+    public const int DefaultAiDuplicateTopK = 5;
+
+    /// <summary>
+    /// Từ độ tương đồng này trở lên thì coi là gần như trùng khít.
+    ///
+    /// <para>⚠️ <b>Vẫn KHÔNG tự chặn nộp.</b> Hệ thống không kết luận thay người — nó chỉ đánh dấu
+    /// mức nghiêm trọng để Phòng QLKH biết cần xem trước. Tự chặn là lặp lại đúng lỗi mà rule #12
+    /// đã cấm ở chỗ chấm điểm.</para>
+    /// </summary>
+    public const string AiDuplicateBlockThreshold = "AI_DUPLICATE_BLOCK_THRESHOLD";
+    public const string DefaultAiDuplicateBlockThreshold = "0.92";
+
     // ── Tài chính ─────────────────────────────────────────────────────────────
     /// <summary>Số đợt giải ngân cho đề tài cấp trọn gói (rule #6: tối thiểu 3 — đầu/giữa/cuối).</summary>
 

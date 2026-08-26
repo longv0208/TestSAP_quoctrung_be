@@ -64,6 +64,10 @@
 | A36 | **"Chưa khai chuyên môn" khác "khác lĩnh vực"** — hai câu báo lỗi khác nhau | gộp là oan cho người chưa được ai nhập hồ sơ: hệ thống đang KHÔNG BIẾT chứ không phải đã xác định sai | `AssertExpertiseAsync` · `CouncilCandidateDto.ExpertiseUnknown` | — |
 | A37 | **Danh sách ứng viên xếp "chọn được" TRƯỚC "đúng chuyên môn"** | người vướng COI hoặc đã trong hội đồng bấm vào cũng không được, không được chiếm mấy dòng đầu — nhưng vẫn hiện để hiểu vì sao không chọn được | `CouncilCandidateService` | — |
 | A38 | **Hội đồng chấm nhiều lĩnh vực: khớp MỘT lĩnh vực là đủ** | đòi khớp hết thì gần như không ai gán được | `AssertExpertiseAsync` | — |
+| A39 | **Rà trùng lặp CẢNH BÁO, không loại đề tài** — kể cả mức `HIGH` | lặp lại lỗi rule #12 đã cấm ở chỗ chấm điểm; và một con số cosine không đủ căn cứ để loại một đề tài | `DuplicateCheckService` | — |
+| A40 | **Kết luận rà trùng có vấn đề thì phải ghi căn cứ** (`DUPLICATE` / `NEEDS_REVISION`) | chủ nhiệm cần biết phải sửa gì, và hồ sơ sau này phải đọc hiểu được | `ReviewAsync` → sổ quyết định | 400 |
+| A41 | **Ngưỡng trùng lặp phải đo được, không phải số bịa** — 0.86 nằm giữa khoảng trống [0.835–0.889] đo trên bộ 35 cặp gán nhãn | cẩm nang chống trượt phạt nặng AI *"không giải thích được ngưỡng ở đâu ra"* | `docs/AI_Duplicate_Detection.md` · `DuplicateThresholdEvaluationTests` | — |
+| A42 | **Không vector hoá lại khi nội dung không đổi** (so `content_hash`) | khống chế quota: chạy lại lập chỉ mục nhiều lần chỉ tốn cho bản thật sự mới | `ReindexAsync` | — |
 
 ## B. Hội đồng
 

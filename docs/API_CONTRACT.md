@@ -1349,6 +1349,45 @@ Body thêm `acceptWithoutExpertise` (bool) và `expertiseNote` (string).
 Hội đồng chấm nhiều đề tài thuộc nhiều lĩnh vực: **khớp một lĩnh vực là đủ** — đòi khớp hết thì gần
 như không ai gán được. Xung đột lợi ích (rule #5) vẫn chặn như cũ, luật chuyên môn không làm yếu nó.
 
+### 13.2m Rà trùng lặp đề cương (mới 26/08)
+
+Chi tiết đầy đủ — metric, ngưỡng ở đâu ra, giới hạn của phép đo — ở **`docs/AI_Duplicate_Detection.md`**.
+
+| Endpoint | Quyền | Việc |
+|---|---|---|
+| `GET /api/proposals/{id}/duplicate-check` | như sổ quyết định | Tầng 1: top-K đề tài giống nhất. **Đọc thuần, không gọi AI** |
+| `POST /api/proposals/{id}/duplicate-check/explain?force=` | Staff, Admin | Tầng 2: AI giải thích giống ở chỗ nào. Có cache thì trả cache |
+| `POST /api/proposals/{id}/duplicate-check/review` | Staff, Admin | Phòng QLKH chốt kết luận → sổ quyết định |
+| `POST /api/admin/reindex-embeddings?max=` | Admin | Vector hoá kho; bỏ qua bản nội dung không đổi |
+| `POST /api/admin/embed-eval-set?force=` | Admin, **ngoài Production** | Vector hoá bộ gán nhãn để đo metric |
+
+```json
+{ "proposalId": "…", "titleVi": "…", "indexed": true, "corpusSize": 14,
+  "warnThreshold": 0.86, "highThreshold": 0.92,
+  "matches": [
+    { "proposalId": "…", "titleVi": "…", "piName": "…", "cycleYear": 2026,
+      "similarity": 0.8894, "severity": "WARN" } ],
+  "explanation": "…", "explanationModel": "gemini-3.5-flash-lite",
+  "verdict": "NEEDS_REVISION", "verdictNote": "…", "reviewedByName": "…" }
+```
+
+| Quy tắc | Chi tiết |
+|---|---|
+| `severity` | `LOW` (dưới ngưỡng) · `WARN` (≥ `AI_DUPLICATE_THRESHOLD`) · `HIGH` (≥ `AI_DUPLICATE_BLOCK_THRESHOLD`) |
+| `similarity` | cosine trong [0,1], **tất định** — cùng cặp luôn ra cùng số. Không phải "phần trăm câu chữ trùng" |
+| `verdict` | `NOT_DUPLICATE` · `NEEDS_REVISION` · `DUPLICATE`. Hai loại sau **bắt buộc** kèm `note` → 400 nếu thiếu |
+| Cache tầng 2 | `llm_outputs` với `OutputType = "DUPLICATE_CHECK"` + `IsActive`; ghi kèm `tokens_input`/`tokens_output`/`latency_ms` |
+| Lập chỉ mục | so `content_hash` — nội dung không đổi thì `unchanged++`, không gọi model |
+
+⚠️ **`HIGH` KHÔNG chặn nộp.** Hệ thống xếp thứ tự và giải thích; kết luận là của Phòng QLKH (rule #12).
+
+**Model nhúng:** `gemini-embedding-001`, **không phải** `text-embedding-004` như RP1/RP3/RP7 ghi —
+model đó không còn phục vụ `embedContent` (kiểm bằng `ListModels` ngày 26/08).
+
+`IGeminiService` thêm `EmbedAsync`, `GenerateWithUsageAsync` (trả token + độ trễ) và `EmbeddingModel`.
+Vòng HTTP/retry tách thành `SendAsync` dùng chung cho `generateContent` lẫn `embedContent` — nó đang
+giữ lời giải cho các lỗi 429/503 gặp thật hồi 17/08, chép lần hai là chép luôn cả phần dễ chép sai.
+
 ### 13.3 Tiền công (labor details) — `/api/proposals/{id}/budget/labor`
 ```json
 { "teamMemberId": 3, "workDays": 215, "coefficient": 0.49,

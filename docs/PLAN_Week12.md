@@ -467,7 +467,7 @@ Nay để tuỳ chọn (bỏ trống = 0). BE vốn đã nhận 0 (chỉ chặn 
 |---|---|---|
 | **A. Bỏ semantic → "Tìm kiếm nâng cao"** ⭐ *khuyến nghị* | **nhỏ** | BE **đã có sẵn** `GET /api/proposals?cycleId&trackId&status&type&search`. Chỉ còn: (i) mở rộng `search` quét thêm mục tiêu/phương pháp/sản phẩm (**hiện chỉ quét tiêu đề VI/EN**), (ii) đổi `SemanticSearchPage` (144 dòng) sang gọi endpoint có sẵn |
 | **A+. Như A, thêm quét bản tóm tắt AI** | nhỏ | Cho `search` quét luôn nội dung trong `llm_outputs`. Tóm tắt do AI viết nên hay dùng **từ khác bản gốc** ⇒ bắt được kha khá ca "khác chữ cùng nghĩa" — lấy ~nửa lợi ích semantic mà **không cần embedding** |
-| B. Làm semantic thật | lớn | Embedding + `semantic_search_vector` + backfill + cosine trong C# |
+| B. Làm semantic thật | lớn | Embedding + `semantic_search_vector` + backfill + cosine trong C# — ✅ **đã làm 26/08** nhưng cho **rà trùng lặp**, không phải cho ô tìm kiếm (xem `AI_Duplicate_Detection.md`) |
 | C. Ẩn nút, không làm gì | ~0 | Mất một mục trong scope |
 
 **Nếu chọn A/A+:** nhớ xoá luôn `similarity-check` (chết cả 2 đầu).

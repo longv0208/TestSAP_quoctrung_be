@@ -1013,6 +1013,31 @@ public class DatabaseSeeder
                 RecommendedValue = SystemSettingKeys.DefaultDeadlineReminderDays,
                 Description = "Nhắc PI trước hạn nộp sản phẩm bao nhiêu ngày, cách nhau bằng dấu phẩy (vd: 30,14,7)."
             },
+            // ── Rà trùng lặp đề cương (thêm 26/08 — gạch 3 của biên bản) ──
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.AiDuplicateThreshold,
+                Value = SystemSettingKeys.DefaultAiDuplicateThreshold,
+                RecommendedValue = SystemSettingKeys.DefaultAiDuplicateThreshold,
+                Description = "Độ tương đồng từ mức này trở lên thì cảnh báo Phòng QLKH xem lại (0–1). " +
+                              "Con số 0.86 nằm GIỮA khoảng trống đo được: cặp trùng thật thấp nhất 0.889, cặp cùng lĩnh vực " +
+                              "khác đề tài cao nhất 0.835 (bộ 35 cặp gán nhãn, gemini-embedding-001). Xem docs/AI_Duplicate_Detection.md."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.AiDuplicateTopK,
+                Value = SystemSettingKeys.DefaultAiDuplicateTopK.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultAiDuplicateTopK.ToString(),
+                Description = "Lấy bao nhiêu đề tài giống nhất để đối chiếu (1–20)."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.AiDuplicateBlockThreshold,
+                Value = SystemSettingKeys.DefaultAiDuplicateBlockThreshold,
+                RecommendedValue = SystemSettingKeys.DefaultAiDuplicateBlockThreshold,
+                Description = "Từ mức này trở lên thì đánh dấu 'gần như trùng khít'. " +
+                              "Hệ thống VẪN không tự chặn nộp — kết luận là của Phòng QLKH (rule #12)."
+            },
             // ── Ngưỡng cảnh báo kết luận lệch điểm (thêm 25/08 — góp ý hội đồng) ──
             new SystemSetting
             {

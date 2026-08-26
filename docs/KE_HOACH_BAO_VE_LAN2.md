@@ -531,7 +531,56 @@ theo **vai trò hệ thống** (`council-eligibility.ts:14-16`, chính comment t
 
 ---
 
-## 10. Nhóm 6 — AI kiểm tra trùng proposal (gạch 3) · **3 cột nullable trên bảng đang rỗng**
+## 10b. Nhóm 6 — AI kiểm tra trùng proposal — ✅ **XONG 26/08** (3 cột nullable trên bảng rỗng)
+
+**Đã chạy được, bấm thấy ngay:**
+
+| Việc | Ở đâu |
+|---|---|
+| 3 cột `embedding` / `dimensions` / `model_used` trên `semantic_search_vectors` (bảng vốn **rỗng**) | migration `20260826033025` |
+| `GeminiService`: tách `SendAsync` dùng chung, thêm `EmbedAsync` + `GenerateWithUsageAsync` | `API_CONTRACT` §13.2m |
+| `GET /api/proposals/{id}/duplicate-check` — tầng 1, đọc thuần, không tốn quota | `DuplicateCheckService` |
+| `POST .../duplicate-check/explain` — tầng 2, cache vào `llm_outputs` | |
+| `POST .../duplicate-check/review` — Phòng QLKH chốt → sổ quyết định | nối sang nhóm 3 |
+| `POST /api/admin/reindex-embeddings` — vector hoá kho, bỏ qua bản không đổi | |
+| **Bộ gán nhãn 35 cặp + quét ngưỡng P/R/F1/F2** | `FURPMS.Tests/Ai/` |
+| Tab **Rà trùng lặp** ở màn xét duyệt đề cương | `DuplicateCheckPanel.tsx` |
+| **`docs/AI_Duplicate_Detection.md`** — vấn đề · dữ liệu · metric · ngưỡng · người trong vòng lặp · quota | ← *thứ hội đồng thật sự chấm* |
+
+**Năm quyết định thiết kế đáng nhớ:**
+- **Hai tầng, và tầng 1 phải TẤT ĐỊNH.** Để mô hình sinh chữ tự chấm "giống bao nhiêu phần trăm" thì
+  mỗi lần chạy ra một số khác, không có Precision/Recall nào bảo vệ được. Cosine trên vector luôn ra
+  cùng một số.
+- **Không dùng pgvector.** Ảnh `postgres:16` chuẩn không kèm extension; `CREATE EXTENSION vector`
+  fail là `Migrate()` lúc khởi động làm app **không lên nổi** trên bản deploy có dữ liệu thật. Vài
+  trăm bản ghi thì quét tuần tự dưới một giây — lợi ích bằng không, rủi ro thì không.
+- **Ba ngưỡng chứ không phải một.** Một ngưỡng thì hoặc cảnh báo quá nhiều (Phòng QLKH tắt đi), hoặc
+  bỏ sót. Và **`HIGH` vẫn không tự chặn nộp** — lặp lại đúng lỗi rule #12 đã cấm ở chỗ chấm điểm.
+- **Ghi `tokens_input`/`tokens_output`/`latency_ms`** — ba cột có sẵn từ đầu mà chưa luồng nào ghi.
+  Không ghi thì không trả lời được câu *"nhóm có quản lý chi phí AI không"*.
+- **Nói ra giới hạn của phép đo.** 35 cặp do chính nhóm soạn ⇒ F1 = 1.000 **không** có nghĩa hệ
+  thống không bao giờ sai. Ghi thẳng vào tài liệu, đừng để hội đồng phải hỏi ra.
+
+**Hai phát hiện khi chạy thật:**
+1. **`text-embedding-004` không còn tồn tại.** Tài liệu RP1/RP3/RP7 hứa model này; hỏi `ListModels`
+   bằng chính khoá của nhóm thì nó **không còn phục vụ `embedContent`**. Đổi sang
+   `gemini-embedding-001` — tài liệu phải sửa theo cái đang chạy, không phải ngược lại.
+2. **Ngưỡng 0.78 trong kế hoạch là số bịa.** Đo thật ra khoảng trống **[0.835 – 0.889]** giữa cặp
+   trùng và cặp cùng lĩnh vực. Đổi mặc định thành **0.86** — giữa khoảng trống, chừa biên độ hai phía.
+
+**Dọn mã chết:** gỡ `checkSimilarity` + `SimilarityWarningDialog` (không màn nào import) + type +
+mock + khoá i18n. Endpoint `/ai/similarity-check` **chưa bao giờ tồn tại** ở máy chủ.
+
+> **Kiểm chứng đã chạy thật (26/08, model thật):** vector hoá 28 văn bản bộ gán nhãn + 15 đề cương
+> trong kho · chạy lại lập chỉ mục: **thêm 0, bỏ qua 15** (không đốt quota) · rà trùng đề tài dự báo
+> bỏ học → **hai đề tài cùng chủ đề gắn WARN (0.889 / 0.884)**, còn lại LOW · tầng 2 viết ra phân
+> tích đúng chừng mực (*"thực chất chỉ cùng chủ đề"*) và ghi 463/296 token, 1.897 ms · gọi lại
+> explain dùng bản cache, không tạo dòng mới · kết luận "trùng" thiếu căn cứ → **400** · có căn cứ →
+> 200 và sổ quyết định có dòng `DUPLICATE_REVIEWED` · **đã trả dữ liệu demo về nguyên trạng**.
+
+---
+
+## 10. Nhóm 6 — bản thiết kế gốc *(đã thực hiện, xem §10b)*
 
 **Hai tầng — "lọc bằng embedding, giải thích bằng Gemini"**:
 
@@ -656,7 +705,7 @@ hội đồng thực sự chấm** cho phần AI.
 | 3 | Quyết định | +1 bảng | schema thấp; **rủi ro thật ở backfill** | ✅ **XONG 25/08** |
 | 4 | Cảnh báo điểm lệch | +1 cột nullable | thấp | ✅ **XONG 26/08** |
 | 5 | Chuyên môn người chấm | +1 bảng nối | thấp | ✅ **XONG 26/08** |
-| 6 | AI trùng + bộ đo metric | +3 cột nullable trên bảng **rỗng** | thấp nhất trong hạng mục mới | ⬜ |
+| 6 | AI trùng + bộ đo metric | +3 cột nullable trên bảng **rỗng** | thấp nhất trong hạng mục mới | ✅ **XONG 26/08** |
 | 7 | Tài liệu | — | chạy **song song** từ đầu, không phụ thuộc code | ⬜ |
 
 Không hạng mục nào đụng cột đang có dữ liệu, không đổi kiểu, không cần `CREATE EXTENSION`
@@ -672,7 +721,7 @@ sinh `/ai/search` → tầng 2 của AI (giữ tầng 1 + metric). **Đừng c�
 
 ```bash
 cd FURPMS_BEv2 && dotnet build          # 0 error
-cd FURPMS_BEv2 && dotnet test           # xanh hết (308 sau nhóm 5)
+cd FURPMS_BEv2 && dotnet test           # xanh hết (313 sau nhóm 6)
 cd furpms-web  && npm run typecheck     # sạch — PHẢI dùng lệnh này, KHÔNG phải npx tsc
 cd furpms-web  && npm run build         # xanh
 ```

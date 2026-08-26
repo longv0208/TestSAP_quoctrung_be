@@ -146,5 +146,17 @@ public class ProposalExtractionServiceTests
             string prompt,
             CancellationToken ct = default) =>
             Error == null ? Task.FromResult(Response) : Task.FromException<string>(Error);
+
+        // Ba thành viên dưới đây thêm 26/08 cùng lúc với rà trùng lặp. Test này không dùng tới,
+        // chỉ cần thoả interface.
+        public string EmbeddingModel => "text-embedding-004";
+
+        public Task<GeminiUsage> GenerateWithUsageAsync(string prompt, CancellationToken ct = default) =>
+            Error == null
+                ? Task.FromResult(new GeminiUsage(Response, null, null, 0, "fake"))
+                : Task.FromException<GeminiUsage>(Error);
+
+        public Task<float[]> EmbedAsync(string text, CancellationToken ct = default) =>
+            Error == null ? Task.FromResult(new float[768]) : Task.FromException<float[]>(Error);
     }
 }

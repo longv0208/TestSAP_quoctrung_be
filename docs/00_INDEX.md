@@ -107,7 +107,8 @@ Ví dụ sống: **tổng điểm bộ tiêu chí = 100 nhưng tạo được h�
 - *"Không quản lý giới hạn token / chi phí AI"* → ⬜ **chưa có**.
 - *"Không có metric đánh giá chất lượng đầu ra"* → ⬜ **chưa có**.
 - *"Model chỉ đúng với đúng một mẫu đã chuẩn bị sẵn"* → phải demo **nhiều mẫu file khác nhau**.
-- *"Đưa AI vào chỗ mà một truy vấn đơn giản đã giải quyết tốt hơn"* → đây chính là lý do khuyến nghị **bỏ semantic search**, thay bằng tìm kiếm nâng cao (`PLAN_Week12` Q1).
+- *"Đưa AI vào chỗ mà một truy vấn đơn giản đã giải quyết tốt hơn"* → lý do khuyến nghị **bỏ semantic search cho việc TÌM KIẾM**, thay bằng tìm kiếm nâng cao (`PLAN_Week12` Q1).
+  ⚠️ **Đảo ngược một phần, 26/08:** hạ tầng embedding nay ĐÃ LÀM, nhưng cho **rà trùng lặp đề cương** (gạch 3 của biên bản bảo vệ lần 2) — chỗ mà truy vấn từ khoá thực sự không giải được, vì đề cương trùng thường được viết lại hoàn toàn. Xem `AI_Duplicate_Detection.md`. Khuyến nghị bỏ semantic search cho ô tìm kiếm vẫn giữ nguyên.
 
 ---
 
