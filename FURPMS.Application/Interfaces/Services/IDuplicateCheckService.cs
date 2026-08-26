@@ -27,6 +27,15 @@ public interface IDuplicateCheckService
     Task<DuplicateCheckResponse> GetAsync(Guid proposalId, Guid userId, IEnumerable<string> roles);
 
     /// <summary>
+    /// Cờ trùng lặp rút gọn cho NHIỀU đề cương cùng lúc — dùng cho màn danh sách xét duyệt, để
+    /// Phòng QLKH thấy đề tài nào cần xem trước khi phải mở từng cái ra.
+    ///
+    /// <para>Không kiểm quyền theo từng đề cương như <see cref="GetAsync"/>: chỉ Staff/Admin gọi
+    /// được (kiểm ở controller), và họ vốn xem được toàn bộ danh sách rồi.</para>
+    /// </summary>
+    Task<Dictionary<Guid, DuplicateFlagDto>> GetFlagsAsync(IEnumerable<Guid> proposalIds);
+
+    /// <summary>
     /// Chạy tầng 2: nhờ mô hình sinh chữ giải thích các cặp giống nhất.
     ///
     /// <para>Kết quả lưu vào <c>llm_outputs</c> kèm số token và độ trễ; gọi lại mà đề cương chưa

@@ -37,6 +37,19 @@ public class DuplicateCheckController : ControllerBase
     }
 
     /// <summary>
+    /// Cờ trùng lặp rút gọn cho nhiều đề cương — để màn danh sách hiện badge mà không phải mở
+    /// từng đề cương một mới biết cái nào cần xem.
+    /// </summary>
+    [Authorize(Roles = "Admin,Staff")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<Guid, DuplicateFlagDto>>), StatusCodes.Status200OK)]
+    [HttpPost("api/proposals/duplicate-flags")]
+    public async Task<IActionResult> GetFlags([FromBody] List<Guid> proposalIds)
+    {
+        var result = await _service.GetFlagsAsync(proposalIds);
+        return Ok(ApiResponse<Dictionary<Guid, DuplicateFlagDto>>.Ok(result));
+    }
+
+    /// <summary>
     /// Chạy tầng 2 — nhờ AI giải thích giống ở chỗ nào.
     ///
     /// <para>Có bản đã lưu thì trả lại bản đó; <c>force=true</c> mới gọi lại Gemini.</para>

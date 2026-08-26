@@ -38,6 +38,14 @@ public class ReviewBoardRoundDto
     public string? Result { get; set; }
     public int? RubricTemplateId { get; set; }   // bộ tiêu chí gắn RIÊNG cho vòng này (null = theo đợt/lĩnh vực)
     public bool CanDelete { get; set; }
+
+    /// <summary>Hạn chấm HIỆU LỰC (đã tính gia hạn) — null = chưa đặt hạn.</summary>
+    public string? ScoringDeadline { get; set; }
+    /// <summary>Chỉ true khi vòng còn MỞ và đã quá hạn hiệu lực — vòng đã chốt thì hạn hết ý nghĩa.</summary>
+    public bool IsScoringOverdue { get; set; }
+    /// <summary>Số ngày còn lại tới hạn, âm = quá hạn — máy chủ tính (xem <c>DeadlineMath</c>), FE không tự trừ ngày.</summary>
+    public int? ScoringDaysLeft { get; set; }
+
     public List<ReviewBoardProjectRoundDto> Projects { get; set; } = new();
     public List<ReviewBoardCouncilDto> Councils { get; set; } = new();
 }

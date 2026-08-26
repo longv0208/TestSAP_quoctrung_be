@@ -96,9 +96,9 @@ public class DeadlineReminderScanner : IDeadlineReminderScanner
                 : $"Sản phẩm \"{deliverable.ProductName}\" đến hạn ngày {dueDate} " +
                   $"(còn {daysUntilDue} ngày).";
 
-            string actionUrl = isOverdue
-                ? $"/api/contracts/{deliverable.ContractId}/amendments"
-                : $"/api/contracts/{deliverable.ContractId}/deliverables";
+            // actionUrl phải là đường GIAO DIỆN của FE — /api/... không khớp route nào, bấm vào
+            // rơi vào trang 404 (bug thật, người dùng phát hiện qua thao tác bấm thử).
+            string actionUrl = isOverdue ? "/my-amendments" : "/deliverables";
 
             await _notifications.AddAsync(new Notification
             {
@@ -253,7 +253,9 @@ public class DeadlineReminderScanner : IDeadlineReminderScanner
                 : $"Báo cáo nghiệm thu của đề tài \"{contract.Project?.TitleVi}\" đến hạn ngày {due:dd/MM/yyyy}.";
 
             await _notifier.NotifyAsync(pi.Id, type, title, body,
-                actionUrl: $"/api/final-reports/{contract.Id}",
+                // actionUrl phải là ĐƯỜNG GIAO DIỆN của FE, không phải đường API — bấm vào một
+                // đường /api/... thì router FE không khớp được route nào, rơi vào trang 404.
+                actionUrl: "/final-reports",
                 entityType: "FinalReport", entityId: entityId,
                 priority: overdue ? "URGENT" : "HIGH");
         }
@@ -289,7 +291,7 @@ public class DeadlineReminderScanner : IDeadlineReminderScanner
                 : $"Vòng chấm số {round.RoundNumber} phải xong trước {due:dd/MM/yyyy}.";
 
             await _notifier.NotifyRoleAsync("Staff", type, title, body,
-                actionUrl: "/api/review-board",
+                actionUrl: "/review-board",
                 entityType: "ReviewRound", entityId: entityId,
                 priority: overdue ? "URGENT" : "HIGH");
         }
@@ -321,7 +323,7 @@ public class DeadlineReminderScanner : IDeadlineReminderScanner
                        " Cần ký Biên bản thanh lý (BM13) để đóng hồ sơ.";
 
             await _notifier.NotifyRoleAsync("Staff", type, title, body,
-                actionUrl: $"/api/contracts/{settlement.ContractId}/settlement",
+                actionUrl: "/contracts",
                 entityType: "ContractSettlement", entityId: entityId,
                 priority: overdue ? "URGENT" : "NORMAL");
         }

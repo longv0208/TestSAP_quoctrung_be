@@ -179,9 +179,10 @@ public class CouncilsController : ControllerBase
     // POST /api/councils/{councilId}/projects — gán 1 đề tài vào hội đồng có sẵn
     [HttpPost("{councilId:guid}/projects")]
     [Authorize(Roles = "Staff,Admin")]
-    public async Task<ActionResult<ApiResponse>> AssignProject(Guid councilId, [FromBody] AddProjectToRoundRequest request)
+    public async Task<ActionResult<ApiResponse>> AssignProject(Guid councilId, [FromBody] AssignProjectToCouncilRequest request)
     {
-        await _service.AssignProjectToCouncilAsync(councilId, request.ProjectId);
+        await _service.AssignProjectToCouncilAsync(
+            councilId, request.ProjectId, request.AcceptWithoutExpertise, request.ExpertiseNote);
         return Ok(ApiResponse.Ok("Đã gán đề tài vào hội đồng."));
     }
 

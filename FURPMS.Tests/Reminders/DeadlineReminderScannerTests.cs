@@ -292,7 +292,9 @@ public class DeadlineReminderScannerTests
         var notification = db.Notifications.Single();
         Assert.Equal("DEADLINE_OVERDUE", notification.NotificationType);
         Assert.Equal("URGENT", notification.Priority);
-        Assert.Contains("/amendments", notification.ActionUrl);
+        // actionUrl phải là route thật của FE (/my-amendments) — trước đây là "/api/contracts/.../
+        // amendments", một đường API mà router FE không khớp được, bấm vào rơi thẳng vào trang 404.
+        Assert.Equal("/my-amendments", notification.ActionUrl);
     }
 
     // ── Test 4: No notification for deliverable with no due date ─────────────

@@ -49,7 +49,8 @@ public interface ICouncilService
     Task DeleteCouncilAsync(Guid councilId);
 
     // Gán / gỡ 1 đề tài vào hội đồng có sẵn (dropdown ở màn Hội đồng & Chấm).
-    Task AssignProjectToCouncilAsync(Guid councilId, Guid projectId);
+    Task AssignProjectToCouncilAsync(
+        Guid councilId, Guid projectId, bool acceptWithoutExpertise = false, string? expertiseNote = null);
     Task RemoveProjectFromCouncilAsync(Guid councilId, Guid projectId);
 
     // Cảnh báo trùng lịch: thành viên hội đồng này có mặt ở hội đồng khác họp giao giờ.

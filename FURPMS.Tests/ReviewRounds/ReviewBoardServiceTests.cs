@@ -1,4 +1,7 @@
+using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.ReviewRounds;
+using FURPMS.Domain.Entities.Cycles;
+using FURPMS.Domain.Entities.MasterData;
 using FURPMS.Domain.Entities.Proposals;
 using FURPMS.Domain.Entities.Progress;
 using FURPMS.Domain.Entities.Review;
@@ -6,6 +9,7 @@ using FURPMS.Domain.Entities.Users;
 using FURPMS.Infrastructure.Repositories;
 using FURPMS.Infrastructure.Services;
 using FURPMS.Tests.Helpers;
+using FURPMS.Tests.Reminders; // FakeClock
 using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.Tests.ReviewRounds;
@@ -65,7 +69,7 @@ public class ReviewBoardServiceTests
     };
 
     private static ReviewBoardService MakeService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
-        new(new ReviewRepository(db), new ProposalRepository(db), new CycleRepository(db));
+        TestServices.ReviewBoards(db);
 
     // ── Xóa vòng ─────────────────────────────────────────────────────────────
 
@@ -269,6 +273,113 @@ public class ReviewBoardServiceTests
         }, Guid.NewGuid()));
     }
 
+    // ── Chuyên môn (QĐ543 Điều 8.2) — đường "tạo cả gói cùng lúc" ────────────
+    //
+    // Trước 26/08, đường add-từng-người (CouncilService.AddMemberAsync, xem CouncilExpertiseTests)
+    // đã kiểm chuyên môn; đường "tạo cả gói cùng lúc" — đúng nút Staff thực sự bấm khi bắt đầu từ
+    // màn "Hội đồng & Chấm" — hoàn toàn bỏ qua, phát hiện khi bấm thử trực tiếp trên trình duyệt.
+
+    private const int TrackAi = 21;
+    private const int TrackIt = 22;
+
+    private static async Task<(FURPMS.Infrastructure.Data.FURPMSDbContext db, FURPMS.Domain.Entities.Projects.Project project, User pi)>
+        SeedTrackedProjectAsync(FURPMS.Infrastructure.Data.FURPMSDbContext db)
+    {
+        db.ResearchTracks.AddRange(
+            new ResearchTrack { Id = TrackAi, Code = "AI", Name = "Trí tuệ nhân tạo", IsActive = true },
+            new ResearchTrack { Id = TrackIt, Code = "IT", Name = "Công nghệ thông tin", IsActive = true });
+        var cycleTrack = new CycleTrack { Id = 900, CycleId = 1, TrackId = TrackAi };
+        db.CycleTracks.Add(cycleTrack);
+        var pi = MakeUser();
+        db.Users.Add(pi);
+        var (project, proposal) = MakeProjectWithProposal(pi.Id, cycleTrackId: cycleTrack.Id);
+        db.Projects.Add(project);
+        db.Proposals.Add(proposal);
+        await db.SaveChangesAsync();
+        return (db, project, pi);
+    }
+
+    private static User MakeExpert(FURPMS.Infrastructure.Data.FURPMSDbContext db, string name, params int[] trackIds)
+    {
+        var u = MakeUser();
+        u.FullName = name;
+        db.Users.Add(u);
+        db.SaveChanges();
+        foreach (var t in trackIds)
+            db.UserResearchTracks.Add(new UserResearchTrack { UserId = u.Id, TrackId = t });
+        db.SaveChanges();
+        return u;
+    }
+
+    [Fact]
+    public async Task CreateCouncilPackage_MemberNgoaiLinhVuc_KhongLyDo_Throws_KhongTaoNuaVoi()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (_, project, _) = await SeedTrackedProjectAsync(db);
+        var chair = MakeExpert(db, "Chủ tịch đúng ngành", TrackAi);
+        var secretary = MakeExpert(db, "Thư ký đúng ngành", TrackAi);
+        var outsider = MakeExpert(db, "Ủy viên khác ngành", TrackIt);
+
+        var round = MakeRound(cycleTrackId: project.CycleTrackId);
+        db.ReviewRounds.Add(round);
+        db.ProjectRounds.Add(new ProjectRound { ProjectId = project.Id, RoundId = round.Id, Status = "PENDING" });
+        await db.SaveChangesAsync();
+
+        var service = MakeService(db);
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() => service.CreateCouncilPackageAsync(round.Id, new CreateCouncilPackageRequest
+        {
+            ProjectIds = new List<Guid> { project.Id },
+            Members = new List<CouncilPackageMemberRequest>
+            {
+                new() { UserId = chair.Id, MemberRole = "Chair" },
+                new() { UserId = secretary.Id, MemberRole = "Secretary" },
+                new() { UserId = outsider.Id, MemberRole = "Member" }
+            }
+        }, Guid.NewGuid()));
+
+        Assert.Contains("Trí tuệ nhân tạo", ex.Message);
+        Assert.Equal(0, await db.ReviewCouncils.CountAsync());
+    }
+
+    [Fact]
+    public async Task CreateCouncilPackage_MemberNgoaiLinhVuc_CoLyDo_TaoDuoc_VaGhiVaoSoQuyetDinh()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (_, project, _) = await SeedTrackedProjectAsync(db);
+        var chair = MakeExpert(db, "Chủ tịch đúng ngành", TrackAi);
+        var secretary = MakeExpert(db, "Thư ký đúng ngành", TrackAi);
+        var outsider = MakeExpert(db, "Ủy viên khác ngành", TrackIt);
+
+        var round = MakeRound(cycleTrackId: project.CycleTrackId);
+        db.ReviewRounds.Add(round);
+        db.ProjectRounds.Add(new ProjectRound { ProjectId = project.Id, RoundId = round.Id, Status = "PENDING" });
+        await db.SaveChangesAsync();
+
+        const string lyDo = "Đề tài có cấu phần hệ thống lớn, cần chuyên gia kiến trúc phần mềm.";
+        var service = MakeService(db);
+        var result = await service.CreateCouncilPackageAsync(round.Id, new CreateCouncilPackageRequest
+        {
+            ProjectIds = new List<Guid> { project.Id },
+            Members = new List<CouncilPackageMemberRequest>
+            {
+                new() { UserId = chair.Id, MemberRole = "Chair" },
+                new() { UserId = secretary.Id, MemberRole = "Secretary" },
+                new()
+                {
+                    UserId = outsider.Id, MemberRole = "Member",
+                    AcceptWithoutExpertise = true, ExpertiseNote = lyDo
+                }
+            }
+        }, Guid.NewGuid());
+
+        Assert.Equal(3, result.Members.Count);
+
+        var row = await db.ProjectDecisions.FirstOrDefaultAsync(
+            d => d.ProjectId == project.Id && d.DecisionType == DecisionTypes.ExpertiseOverride);
+        Assert.NotNull(row);
+        Assert.Equal(lyDo, row!.Reason);
+    }
+
     // ── Thêm / bỏ đề tài khỏi vòng ───────────────────────────────────────────
 
     [Fact]
@@ -380,6 +491,128 @@ public class ReviewBoardServiceTests
             () => service.AddProjectToRoundAsync(acceptanceRound.Id, project.Id));
 
         Assert.Contains("chưa sẵn sàng", error.Message);
+    }
+
+    // ── Hạn chấm hiện ra ở màn "Hội đồng & Chấm" (27/08) ─────────────────
+    //
+    // Trước đó luật hạn chấm (nhóm 2, 25/08) chỉ hiện ở màn "Đề cương" của TỪNG đề tài — người
+    // dùng phải mở đúng đề tài rồi đúng vòng mới đặt được hạn, dù đây mới là màn Staff thực sự
+    // quản lý vòng chấm của cả một track.
+
+    [Fact]
+    public async Task GetBoard_VongDaDatHan_TraHanHieuLuc_VaKhongQuaHan()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var clock = new FakeClock { UtcNow = new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc) };
+
+        db.ResearchTypes.Add(new ResearchType { Id = 1, Code = "APPLIED", Name = "Ứng dụng", IsActive = true });
+        db.ResearchTracks.Add(new ResearchTrack { Id = 1, Code = "IT", Name = "CNTT", IsActive = true });
+        var cycle = new ResearchCycle
+        {
+            CycleYear = 2026, SemesterCode = "SU26", ResearchTypeId = 1,
+            SubmissionOpenDate = DateOnly.FromDateTime(clock.UtcNow).AddDays(-30),
+            SubmissionDeadline = DateOnly.FromDateTime(clock.UtcNow).AddDays(30),
+            Status = "OPEN", CreatedBy = Guid.NewGuid()
+        };
+        db.ResearchCycles.Add(cycle);
+        await db.SaveChangesAsync();
+        var track = new CycleTrack { CycleId = cycle.Id, TrackId = 1 };
+        db.CycleTracks.Add(track);
+        await db.SaveChangesAsync();
+
+        var round = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = track.Id, RoundNumber = 1, Sequence = 1,
+            Dimension = "SCIENCE", RoundType = "REVIEW", Status = "OPEN",
+            ScoringDeadline = DateOnly.FromDateTime(clock.UtcNow).AddDays(10)
+        };
+        db.ReviewRounds.Add(round);
+        await db.SaveChangesAsync();
+
+        var service = TestServices.ReviewBoards(db, clock);
+        var board = await service.GetReviewBoardAsync(cycle.CycleYear == 2026 ? cycle.Id : cycle.Id, track.TrackId);
+
+        var boardRound = board.Rounds.Single(r => r.Id == round.Id);
+        Assert.Equal("2026-06-28", boardRound.ScoringDeadline);
+        Assert.False(boardRound.IsScoringOverdue);
+        // Badge cần con số này để hiện "Còn N ngày" — chỉ có ngày trơ thì FE lại phải tự trừ,
+        // đúng thứ rule A24 cấm (đã lộ ra khi bấm thử trên trình duyệt: badge chỉ in ngày).
+        Assert.Equal(10, boardRound.ScoringDaysLeft);
+    }
+
+    [Fact]
+    public async Task GetBoard_VongQuaHan_GanCo_ChuKhongTuDong()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var clock = new FakeClock { UtcNow = new DateTime(2026, 6, 18, 0, 0, 0, DateTimeKind.Utc) };
+
+        db.ResearchTypes.Add(new ResearchType { Id = 1, Code = "APPLIED", Name = "Ứng dụng", IsActive = true });
+        db.ResearchTracks.Add(new ResearchTrack { Id = 1, Code = "IT", Name = "CNTT", IsActive = true });
+        var cycle = new ResearchCycle
+        {
+            CycleYear = 2026, SemesterCode = "SU26", ResearchTypeId = 1,
+            SubmissionOpenDate = DateOnly.FromDateTime(clock.UtcNow).AddDays(-30),
+            SubmissionDeadline = DateOnly.FromDateTime(clock.UtcNow).AddDays(30),
+            Status = "OPEN", CreatedBy = Guid.NewGuid()
+        };
+        db.ResearchCycles.Add(cycle);
+        await db.SaveChangesAsync();
+        var track = new CycleTrack { CycleId = cycle.Id, TrackId = 1 };
+        db.CycleTracks.Add(track);
+        await db.SaveChangesAsync();
+
+        // Vòng CÒN MỞ mà hạn đã qua 5 ngày trước "hôm nay" của đồng hồ giả.
+        var round = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = track.Id, RoundNumber = 1, Sequence = 1,
+            Dimension = "SCIENCE", RoundType = "REVIEW", Status = "OPEN",
+            ScoringDeadline = DateOnly.FromDateTime(clock.UtcNow).AddDays(-5)
+        };
+        db.ReviewRounds.Add(round);
+        await db.SaveChangesAsync();
+
+        var service = TestServices.ReviewBoards(db, clock);
+        var board = await service.GetReviewBoardAsync(cycle.Id, track.TrackId);
+
+        var boardRound = board.Rounds.Single(r => r.Id == round.Id);
+        Assert.True(boardRound.IsScoringOverdue);
+        // Chỉ GẮN CỜ — vòng vẫn ở trạng thái OPEN, hệ thống không tự đóng (rule #12).
+        Assert.Equal("OPEN", boardRound.Status);
+    }
+
+    [Fact]
+    public async Task GetBoard_VongChuaDatHan_TraNull_KhongBiaNgay()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+
+        db.ResearchTypes.Add(new ResearchType { Id = 1, Code = "APPLIED", Name = "Ứng dụng", IsActive = true });
+        db.ResearchTracks.Add(new ResearchTrack { Id = 1, Code = "IT", Name = "CNTT", IsActive = true });
+        var cycle = new ResearchCycle
+        {
+            CycleYear = 2026, SemesterCode = "SU26", ResearchTypeId = 1,
+            SubmissionOpenDate = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-30),
+            SubmissionDeadline = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(30),
+            Status = "OPEN", CreatedBy = Guid.NewGuid()
+        };
+        db.ResearchCycles.Add(cycle);
+        await db.SaveChangesAsync();
+        var track = new CycleTrack { CycleId = cycle.Id, TrackId = 1 };
+        db.CycleTracks.Add(track);
+        await db.SaveChangesAsync();
+
+        var round = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = track.Id, RoundNumber = 1, Sequence = 1,
+            Dimension = "SCIENCE", RoundType = "REVIEW", Status = "PENDING"
+        };
+        db.ReviewRounds.Add(round);
+        await db.SaveChangesAsync();
+
+        var service = TestServices.ReviewBoards(db);
+        var board = await service.GetReviewBoardAsync(cycle.Id, track.TrackId);
+
+        // Vòng tạo trước khi có luật hạn (hoặc chưa ai đặt) phải hiện null, KHÔNG bịa một ngày.
+        Assert.Null(board.Rounds.Single(r => r.Id == round.Id).ScoringDeadline);
     }
 
     [Fact]

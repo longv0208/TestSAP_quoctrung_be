@@ -1,9 +1,11 @@
+using FURPMS.Application.Interfaces;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Councils;
 using FURPMS.Application.DTOs.ReviewRounds;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Review;
+using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.Infrastructure.Services;
@@ -16,12 +18,22 @@ public class ReviewBoardService : IReviewBoardService
     private readonly IReviewRepository _review;
     private readonly IProposalRepository _proposals;
     private readonly ICycleRepository _cycles;
+    private readonly IDeadlineResolver _deadlines;
+    private readonly IClock _clock;
+    private readonly FURPMSDbContext _db;
+    private readonly IDecisionLogger _decisions;
 
-    public ReviewBoardService(IReviewRepository review, IProposalRepository proposals, ICycleRepository cycles)
+    public ReviewBoardService(
+        IReviewRepository review, IProposalRepository proposals, ICycleRepository cycles,
+        IDeadlineResolver deadlines, IClock clock, FURPMSDbContext db, IDecisionLogger decisions)
     {
         _review = review;
         _proposals = proposals;
         _cycles = cycles;
+        _deadlines = deadlines;
+        _clock = clock;
+        _db = db;
+        _decisions = decisions;
     }
 
     public async Task<ReviewBoardDto> GetReviewBoardAsync(int cycleId, int trackId)
@@ -83,8 +95,34 @@ public class ReviewBoardService : IReviewBoardService
 
         var councilsByRound = councils.GroupBy(c => c.RoundId!.Value).ToDictionary(g => g.Key, g => g.ToList());
 
+        // Hạn hiệu lực (đã tính gia hạn) cho MỌI vòng có đặt hạn — một truy vấn cho cả track,
+        // tránh N+1. Trước 27/08 màn "Hội đồng & Chấm" hoàn toàn không hiện hạn chấm, dù luật đã
+        // có sẵn từ 25/08 — người dùng phải mở đúng màn "Đề cương" của TỪNG đề tài mới đặt được.
+        var roundsWithDeadline = rounds.Where(r => r.ScoringDeadline is not null).Select(r => r.Id.ToString());
+        var effectiveDeadlines = await _deadlines.EffectiveManyAsync(
+            IDeadlineResolver.TargetTypeReviewRound, roundsWithDeadline);
+        var today = DateOnly.FromDateTime(_clock.UtcNow);
+
         var boardRounds = rounds.Select(r =>
         {
+            string? effectiveDeadline = null;
+            var isOverdue = false;
+            int? daysLeft = null;
+            if (r.ScoringDeadline is { } original)
+            {
+                // EffectiveManyAsync chỉ trả về mục ĐÃ TỪNG gia hạn (nó đọc bảng deadline_extension,
+                // không biết gì về ScoringDeadline gốc) — khác EffectiveAsync đơn lẻ đã tự rơi về
+                // original khi tra không ra. Quên bước rơi về này thì mọi vòng CHƯA từng dời hạn
+                // (đa số) hiện null dù rõ ràng đã có hạn — bắt được lỗi này nhờ viết test trước khi
+                // tin bằng mắt.
+                var eff = effectiveDeadlines.TryGetValue(r.Id.ToString(), out var extended)
+                    ? extended : original;
+                effectiveDeadline = eff.ToString("yyyy-MM-dd");
+                // Chỉ vòng CÒN MỞ mới tính là quá hạn — vòng đã chốt thì hạn không còn ý nghĩa.
+                isOverdue = r.Status == ReviewRoundStatus.Open && today > eff;
+                daysLeft = eff.DayNumber - today.DayNumber;
+            }
+
             var roundCouncils = councilsByRound.GetValueOrDefault(r.Id) ?? new List<ReviewCouncil>();
             var canDelete = roundCouncils.Count == 0
                 && r.ProjectRounds.All(pr => pr.Status == ReviewRoundStatus.Pending && pr.FinalizedAt == null);
@@ -99,6 +137,9 @@ public class ReviewBoardService : IReviewBoardService
                 Result = r.Result,
                 RubricTemplateId = r.RubricTemplateId,
                 CanDelete = canDelete,
+                ScoringDeadline = effectiveDeadline,
+                IsScoringOverdue = isOverdue,
+                ScoringDaysLeft = daysLeft,
                 Projects = r.ProjectRounds.Select(pr => new ReviewBoardProjectRoundDto
                 {
                     ProjectId = pr.ProjectId,
@@ -374,9 +415,19 @@ public class ReviewBoardService : IReviewBoardService
         // COI (rule #5) — check TRƯỚC khi Add gì vào context (vi phạm → không tạo nửa vời).
         await ReviewShared.AssertNoCoiAsync(_proposals, request.ProjectIds, request.Members.Select(m => m.UserId).ToList());
 
+        // Chuyên môn (QĐ543 Điều 8.2, rule #35-38) — TRƯỚC 26/08 chỉ "thêm 1 người vào hội đồng có
+        // sẵn" (AddMemberAsync) kiểm luật này; đường "tạo cả gói cùng lúc" mà Staff thực sự bấm khi
+        // bắt đầu từ màn "Hội đồng & Chấm" bỏ qua hoàn toàn. Council chưa có Id thật cho tới khi tạo
+        // entity bên dưới, nên sinh Id TRƯỚC để dùng chung cho cả assert lẫn entity.
+        var councilId = Guid.NewGuid();
+        foreach (var m in request.Members)
+            await ReviewShared.AssertExpertiseAsync(
+                _db, _decisions, councilId, m.UserId,
+                m.AcceptWithoutExpertise, m.ExpertiseNote, request.ProjectIds);
+
         var council = new ReviewCouncil
         {
-            Id = Guid.NewGuid(),
+            Id = councilId,
             RoundId = roundId,
             CouncilType = request.CouncilType ?? round.RoundType,
             MinMembersRequired = 3,

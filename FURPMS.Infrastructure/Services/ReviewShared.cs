@@ -1,7 +1,9 @@
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Councils;
 using FURPMS.Application.Interfaces.Repositories;
+using FURPMS.Application.Interfaces.Services;
 using FURPMS.Domain.Entities.Review;
+using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace FURPMS.Infrastructure.Services;
@@ -129,6 +131,78 @@ internal static class ReviewShared
         var isTeam = await proposals.ProjectMembers
             .AnyAsync(tm => projectIds.Contains(tm.ProjectId) && tm.UserId != null && userIds.Contains(tm.UserId.Value));
         if (isTeam) throw new ArgumentException(msg);
+    }
+
+    /// <summary>
+    /// QĐ543 Điều 8.2 đòi hội đồng gồm người <b>có chuyên môn trong lĩnh vực</b>. Dùng chung giữa
+    /// <c>CouncilService.AddMemberAsync</c> (thêm 1 người vào hội đồng có sẵn) và
+    /// <c>ReviewBoardService.CreateCouncilPackageAsync</c> (tạo cả gói cùng lúc) — trước 26/08 chỉ
+    /// đường đầu có kiểm, đường tạo-hội-đồng-trọn-gói (đường Staff thực sự dùng khi bắt đầu từ màn
+    /// "Hội đồng &amp; Chấm") hoàn toàn bỏ qua luật này.
+    ///
+    /// <para><b>Chặn có kiểm soát, không khoá cứng:</b> vẫn gán được người ngoài lĩnh vực (chuyên
+    /// gia liên ngành, hoặc lĩnh vực hẹp không đủ người), nhưng phải bật cờ và <b>ghi rõ lý do</b>,
+    /// và lý do đó vào sổ quyết định của đề tài.</para>
+    ///
+    /// <para>Hội đồng chưa được gán đề tài nào thì không có lĩnh vực để so — bỏ qua, không bịa ra
+    /// một phán quyết từ chỗ không có dữ liệu.</para>
+    /// </summary>
+    public static async Task AssertExpertiseAsync(
+        FURPMSDbContext db, IDecisionLogger decisions,
+        Guid councilId, Guid userId, bool acceptWithoutExpertise, string? expertiseNote,
+        List<Guid> assignedProjectIds)
+    {
+        if (assignedProjectIds.Count == 0) return;
+
+        var trackIds = await db.Projects
+            .IgnoreQueryFilters()
+            .Where(p => assignedProjectIds.Contains(p.Id))
+            .Select(p => p.CycleTrack.TrackId)
+            .Distinct()
+            .ToListAsync();
+        if (trackIds.Count == 0) return;
+
+        var myTracks = await db.UserResearchTracks
+            .Where(x => x.UserId == userId)
+            .Select(x => x.TrackId)
+            .ToListAsync();
+
+        // Hội đồng chấm nhiều đề tài thuộc nhiều lĩnh vực: khớp MỘT lĩnh vực là đủ — đòi khớp hết
+        // thì gần như không ai gán được.
+        if (myTracks.Intersect(trackIds).Any()) return;
+
+        var trackNames = await db.ResearchTracks
+            .Where(t => trackIds.Contains(t.Id))
+            .Select(t => t.Name)
+            .ToListAsync();
+        var linhVuc = string.Join(", ", trackNames);
+        var chuaKhai = myTracks.Count == 0;
+
+        if (!acceptWithoutExpertise)
+            throw new ArgumentException(
+                (chuaKhai
+                    ? "Người này chưa khai lĩnh vực chuyên môn nào. "
+                    : $"Người này không khai lĩnh vực \"{linhVuc}\". ") +
+                "QĐ543 Điều 8.2 yêu cầu hội đồng gồm người có chuyên môn trong lĩnh vực của đề tài. " +
+                "Nếu vẫn muốn mời (chuyên gia liên ngành, hoặc lĩnh vực hẹp không đủ người), " +
+                "hãy xác nhận và ghi rõ lý do.");
+
+        var lyDo = expertiseNote?.Trim();
+        if (string.IsNullOrWhiteSpace(lyDo))
+            throw new ArgumentException(
+                "Gán người ngoài lĩnh vực thì phải ghi rõ lý do — hồ sơ hội đồng cần giải thích được " +
+                "vì sao chọn người này.");
+
+        var name = await db.Users.Where(u => u.Id == userId)
+            .Select(u => u.FullName).FirstOrDefaultAsync() ?? "ủy viên";
+
+        // Ghi cho TỪNG đề tài hội đồng chấm: hồ sơ là của đề tài, không phải của hội đồng.
+        foreach (var pid in assignedProjectIds)
+            decisions.Log(
+                pid, DecisionTypes.ExpertiseOverride,
+                $"Mời {name} vào hội đồng dù không khai lĩnh vực \"{linhVuc}\"",
+                "CouncilMember", $"{councilId}:{userId}",
+                reason: lyDo, decidedByRole: "Phòng QLKH");
     }
 
     // DÙNG CHUNG round theo track: tái dùng round cùng dimension+type còn mở (PENDING/OPEN), hoặc tạo mới

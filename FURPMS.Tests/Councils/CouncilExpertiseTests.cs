@@ -221,6 +221,81 @@ public class CouncilExpertiseTests
         Assert.Equal(unknown.Id, member.UserId);
     }
 
+    // ══ Gán đề tài SAU vào hội đồng đã có thành viên ═══════════════════════
+    //
+    // `CreateCouncilSheet` (màn "Hội đồng & Chấm") luôn tạo hội đồng với 0 đề tài rồi mới gán qua
+    // dropdown — kiểm chuyên môn lúc TẠO (assignedProjectIds rỗng) là một phép so không có gì để
+    // so. Đây mới là chỗ chuyên môn của thành viên đã có thật sự bị đối chiếu với đề tài thật.
+
+    [Fact]
+    public async Task GanDeTaiSau_MemberNgoaiLinhVuc_KhongLyDo_Throws()
+    {
+        var (db, council, project, _) = await SeedAsync();
+        // Council trong SeedAsync đã gán sẵn `project` — xoá để mô phỏng đúng luồng "trọn gói"
+        // (tạo hội đồng xong mới gán đề tài).
+        db.CouncilProjectAssignments.RemoveRange(
+            db.CouncilProjectAssignments.Where(a => a.CouncilId == council.Id));
+        await db.SaveChangesAsync();
+
+        var outsider = AddExpert(db, "Chuyên gia IT", TrackIt);
+        db.CouncilMembers.Add(new CouncilMember
+        {
+            Id = Guid.NewGuid(), CouncilId = council.Id, UserId = outsider.Id,
+            MemberRole = CouncilMemberRole.Member, Status = CouncilMemberStatus.Assigned
+        });
+        var round = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = project.CycleTrackId, RoundNumber = 1, Sequence = 1,
+            Dimension = "SCIENCE", RoundType = "REVIEW", Status = ReviewRoundStatus.Open
+        };
+        db.ReviewRounds.Add(round);
+        council.RoundId = round.Id;
+        db.ProjectRounds.Add(new ProjectRound { ProjectId = project.Id, RoundId = round.Id, Status = ReviewRoundStatus.Pending });
+        await db.SaveChangesAsync();
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(() =>
+            TestServices.Councils(db).AssignProjectToCouncilAsync(council.Id, project.Id));
+
+        Assert.Contains("Trí tuệ nhân tạo", ex.Message);
+        Assert.False(await db.CouncilProjectAssignments.AnyAsync(a => a.CouncilId == council.Id));
+    }
+
+    [Fact]
+    public async Task GanDeTaiSau_MemberNgoaiLinhVuc_CoLyDo_GanDuoc_VaGhiVaoSoQuyetDinh()
+    {
+        var (db, council, project, _) = await SeedAsync();
+        db.CouncilProjectAssignments.RemoveRange(
+            db.CouncilProjectAssignments.Where(a => a.CouncilId == council.Id));
+        await db.SaveChangesAsync();
+
+        var outsider = AddExpert(db, "Chuyên gia IT", TrackIt);
+        db.CouncilMembers.Add(new CouncilMember
+        {
+            Id = Guid.NewGuid(), CouncilId = council.Id, UserId = outsider.Id,
+            MemberRole = CouncilMemberRole.Member, Status = CouncilMemberStatus.Assigned
+        });
+        var round = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = project.CycleTrackId, RoundNumber = 1, Sequence = 1,
+            Dimension = "SCIENCE", RoundType = "REVIEW", Status = ReviewRoundStatus.Open
+        };
+        db.ReviewRounds.Add(round);
+        council.RoundId = round.Id;
+        db.ProjectRounds.Add(new ProjectRound { ProjectId = project.Id, RoundId = round.Id, Status = ReviewRoundStatus.Pending });
+        await db.SaveChangesAsync();
+
+        const string lyDo = "Hội đồng đã lập từ trước, lĩnh vực hẹp không đủ người thay thế.";
+        await TestServices.Councils(db).AssignProjectToCouncilAsync(
+            council.Id, project.Id, acceptWithoutExpertise: true, expertiseNote: lyDo);
+
+        Assert.True(await db.CouncilProjectAssignments.AnyAsync(a => a.CouncilId == council.Id && a.ProjectId == project.Id));
+
+        var row = await db.ProjectDecisions.FirstOrDefaultAsync(
+            d => d.ProjectId == project.Id && d.DecisionType == DecisionTypes.ExpertiseOverride);
+        Assert.NotNull(row);
+        Assert.Equal(lyDo, row!.Reason);
+    }
+
     // ══ Danh sách ứng viên đã xếp hạng ════════════════════════════════════
 
     [Fact]

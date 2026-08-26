@@ -137,6 +137,24 @@ public static class TestServices
         Decisions(db, clock),
         db);
 
+    public static ReviewBoardService ReviewBoards(FURPMSDbContext db, IClock? clock = null) => new(
+        new ReviewRepository(db),
+        new ProposalRepository(db),
+        new CycleRepository(db),
+        new DeadlineResolver(new CycleRepository(db)),
+        clock ?? new FakeClock(),
+        db,
+        Decisions(db, clock));
+
+    public static DuplicateCheckService DuplicateChecks(FURPMSDbContext db, IClock? clock = null) => new(
+        db,
+        new TestGeminiService(),
+        new SystemSettingService(new MasterDataRepository(db)),
+        Decisions(db, clock),
+        clock ?? new FakeClock(),
+        NullLogger<DuplicateCheckService>.Instance,
+        TestNotifier.Create(db));
+
     public static CycleService Cycles(FURPMSDbContext db) => new(
         new CycleRepository(db),
         new MasterDataRepository(db),

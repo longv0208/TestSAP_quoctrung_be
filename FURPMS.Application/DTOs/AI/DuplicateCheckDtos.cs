@@ -77,6 +77,20 @@ public class ReviewDuplicateRequest
     public string? Note { get; set; }
 }
 
+/// <summary>
+/// Cờ trùng lặp RÚT GỌN cho một đề cương — dùng ở màn DANH SÁCH, không phải màn chi tiết.
+///
+/// <para>Chỉ đủ để vẽ một badge: có vượt ngưỡng không và mức cao nhất. Không kèm danh sách các đề
+/// tài giống — đó là việc của <see cref="DuplicateCheckResponse"/> khi mở chi tiết một đề cương.</para>
+/// </summary>
+public class DuplicateFlagDto
+{
+    public bool Indexed { get; set; }
+    /// <summary>Mức nghiêm trọng CAO NHẤT trong các đề tài đối chiếu được — null nếu không có gì vượt LOW.</summary>
+    public string? MaxSeverity { get; set; }
+    public double? MaxSimilarity { get; set; }
+}
+
 /// <summary>Kết quả một lần vector hoá lại toàn kho.</summary>
 public class ReindexEmbeddingsResponse
 {

@@ -30,6 +30,7 @@ public class DuplicateCheckService : IDuplicateCheckService
     private readonly IDecisionLogger _decisions;
     private readonly IClock _clock;
     private readonly ILogger<DuplicateCheckService> _logger;
+    private readonly INotifier _notifier;
 
     public DuplicateCheckService(
         FURPMSDbContext db,
@@ -37,7 +38,8 @@ public class DuplicateCheckService : IDuplicateCheckService
         ISystemSettingService settings,
         IDecisionLogger decisions,
         IClock clock,
-        ILogger<DuplicateCheckService> logger)
+        ILogger<DuplicateCheckService> logger,
+        INotifier notifier)
     {
         _db = db;
         _gemini = gemini;
@@ -45,6 +47,7 @@ public class DuplicateCheckService : IDuplicateCheckService
         _decisions = decisions;
         _clock = clock;
         _logger = logger;
+        _notifier = notifier;
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -102,6 +105,53 @@ public class DuplicateCheckService : IDuplicateCheckService
 
         await FillReviewStateAsync(dto, proposalId);
         return dto;
+    }
+
+    public async Task<Dictionary<Guid, DuplicateFlagDto>> GetFlagsAsync(IEnumerable<Guid> proposalIds)
+    {
+        var ids = proposalIds.Distinct().ToList();
+        var result = ids.ToDictionary(id => id, _ => new DuplicateFlagDto());
+        if (ids.Count == 0) return result;
+
+        var warn = await GetDecimalSettingAsync(
+            SystemSettingKeys.AiDuplicateThreshold, SystemSettingKeys.DefaultAiDuplicateThreshold);
+        var high = await GetDecimalSettingAsync(
+            SystemSettingKeys.AiDuplicateBlockThreshold, SystemSettingKeys.DefaultAiDuplicateBlockThreshold);
+
+        // Một truy vấn cho MỌI vector đang có — kho cỡ vài trăm bản ghi nên tải hết vào bộ nhớ rồi
+        // so chéo trong C# rẻ hơn nhiều so với N truy vấn (N = số đề cương trên trang danh sách).
+        var idStrings = ids.Select(id => id.ToString()).ToHashSet();
+        var all = await _db.SemanticSearchVectors
+            .Where(v => v.EntityType == VectorEntityType && v.Embedding != null)
+            .Select(v => new { v.EntityId, v.Embedding })
+            .ToListAsync();
+
+        var vectorsById = all.ToDictionary(v => v.EntityId, v => VectorMath.Deserialize(v.Embedding));
+
+        foreach (var id in ids)
+        {
+            var key = id.ToString();
+            if (!vectorsById.TryGetValue(key, out var mine) || mine.Length == 0) continue;
+
+            var best = 0d;
+            foreach (var (otherId, otherVec) in vectorsById)
+            {
+                if (otherId == key) continue;
+                var sim = VectorMath.CosineSimilarity(mine, otherVec);
+                if (sim > best) best = sim;
+            }
+
+            result[id] = new DuplicateFlagDto
+            {
+                Indexed = true,
+                MaxSimilarity = best > 0 ? Math.Round(best, 4) : null,
+                MaxSeverity = (decimal)best >= high ? DuplicateSeverity.High
+                    : (decimal)best >= warn ? DuplicateSeverity.Warn
+                    : null
+            };
+        }
+
+        return result;
     }
 
     /// <summary>Ghép điểm số với thông tin đề tài để giao diện hiện được tên, chủ nhiệm, năm.</summary>
@@ -276,22 +326,28 @@ public class DuplicateCheckService : IDuplicateCheckService
             .FirstOrDefaultAsync(o => o.EntityType == VectorEntityType && o.EntityId == proposalId.ToString()
                                       && o.OutputType == DuplicateOutputType && o.IsActive);
 
-        // Chưa chạy tầng 2 thì vẫn kết luận được — Phòng QLKH có quyền đọc danh sách rồi quyết
-        // luôn, không bắt họ gọi AI cho đủ thủ tục.
-        output ??= new LlmOutput
+        if (output is null)
         {
-            EntityType = VectorEntityType,
-            EntityId = proposalId.ToString(),
-            OutputType = DuplicateOutputType,
-            ModelUsed = "(không dùng AI)",
-            PromptVersion = PromptVersion,
-            Content = "",
-            GeneratedAt = _clock.UtcNow,
-            IsActive = true
-        };
-        if (output.Id == Guid.Empty || !_db.LlmOutputs.Local.Contains(output))
-            _db.LlmOutputs.Update(output);
-        if (_db.Entry(output).State == EntityState.Detached) _db.LlmOutputs.Add(output);
+            // Chưa chạy tầng 2 thì vẫn kết luận được — Phòng QLKH có quyền đọc danh sách rồi
+            // quyết luôn, không bắt họ gọi AI cho đủ thủ tục.
+            output = new LlmOutput
+            {
+                EntityType = VectorEntityType,
+                EntityId = proposalId.ToString(),
+                OutputType = DuplicateOutputType,
+                ModelUsed = "(không dùng AI)",
+                PromptVersion = PromptVersion,
+                Content = "",
+                GeneratedAt = _clock.UtcNow,
+                IsActive = true
+            };
+            // BẢN GHI MỚI → Add. Gọi Update() cho một thực thể EF chưa từng biết tới sẽ báo
+            // "sửa/xoá một dòng không tồn tại" (DbUpdateConcurrencyException) — bắt được lỗi này
+            // đúng lúc viết test cho luồng thông báo, không phải khi chạy tay.
+            _db.LlmOutputs.Add(output);
+        }
+        // else: đã có sẵn từ FirstOrDefaultAsync → EF đang TRACK nó, chỉ cần sửa field rồi
+        // SaveChanges là đủ, không cần Update()/Add() gì thêm.
 
         output.IsReviewedByHuman = true;
         output.ReviewedBy = reviewerId;
@@ -305,6 +361,28 @@ public class DuplicateCheckService : IDuplicateCheckService
             decidedBy: reviewerId, decidedByRole: "Phòng QLKH");
 
         await _db.SaveChangesAsync();
+
+        // Trước đây kết luận chỉ nằm phía Staff — PI không hề biết đề cương mình có bị đối chiếu
+        // hay không, kể cả khi kết luận là "cần chỉnh sửa"/"trùng lặp" và họ phải làm gì đó ngay.
+        // Cùng lỗi cũ đã sửa ở luồng nộp đề cương: im lặng đúng chỗ người ta cần biết nhất.
+        var ketQua = request.Verdict switch
+        {
+            DuplicateVerdict.NotDuplicate => "không phát hiện trùng lặp đáng kể",
+            DuplicateVerdict.NeedsRevision => "cần chỉnh sửa để phân biệt rõ hơn với đề tài đã có",
+            DuplicateVerdict.Duplicate => "được đánh giá là trùng lặp",
+            _ => request.Verdict
+        };
+        await _notifier.NotifyAsync(
+            proposal.PiUserId,
+            "DUPLICATE_CHECK_REVIEWED",
+            "Kết quả rà trùng lặp đề cương",
+            $"Đề cương \"{proposal.TitleVi}\" đã được Phòng QLKH đối chiếu với kho đề tài: {ketQua}."
+                + (string.IsNullOrWhiteSpace(note) ? "" : $" Ghi chú: {note}"),
+            // Thiếu actionUrl thì thông báo chỉ là một dòng chữ thoáng qua trong chuông — bấm vào
+            // không đi đâu cả, và một khi PI gạt qua thì kết luận biến mất khỏi tầm mắt vĩnh viễn.
+            // Đưa thẳng về trang chi tiết đề cương, nơi vừa thêm thẻ kết luận cố định.
+            actionUrl: $"/my-proposals/{proposalId}",
+            entityType: "Proposal", entityId: proposalId.ToString());
 
         return await GetAsync(proposalId, reviewerId, roles);
     }

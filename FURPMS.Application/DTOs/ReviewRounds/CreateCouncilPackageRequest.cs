@@ -14,4 +14,10 @@ public class CouncilPackageMemberRequest
     public Guid UserId { get; set; }
     public string MemberRole { get; set; } = "Member";
     public bool IsExternal { get; set; }
+
+    /// <summary>Đồng ý gán người không khai đúng lĩnh vực (QĐ543 Điều 8.2) — xem <see cref="ExpertiseNote"/>.</summary>
+    public bool AcceptWithoutExpertise { get; set; }
+
+    /// <summary>Lý do gán người ngoài lĩnh vực — bắt buộc khi <see cref="AcceptWithoutExpertise"/> = true.</summary>
+    public string? ExpertiseNote { get; set; }
 }

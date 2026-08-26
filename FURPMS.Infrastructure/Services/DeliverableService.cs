@@ -258,7 +258,9 @@ public class DeliverableService : IDeliverableService
                     contract,
                     "DELIVERABLE_PASSED",
                     $"Sản phẩm \"{deliverable.ProductName}\" đã được nghiệm thu. Vui lòng xem xét giải ngân.",
-                    $"/contracts/{contract.Id}");
+                    // Không có route chi tiết /contracts/{id} riêng ở FE (mở hợp đồng là sheet trên
+                    // trang danh sách) — trỏ về danh sách thay vì một đường không route nào khớp.
+                    "/contracts");
             }
 
             // PI phải biết sản phẩm mình nộp đã ĐẠT — trước đây chỉ báo khi KHÔNG đạt,
@@ -284,7 +286,7 @@ public class DeliverableService : IDeliverableService
                 contract,
                 "DELIVERABLE_FAILED",
                 $"Sản phẩm \"{deliverable.ProductName}\" không đạt nghiệm thu. Hợp đồng cần xem xét lại.",
-                $"/api/contracts/{contract.Id}");
+                "/contracts");
 
             if (contract.Project?.PiUserId is Guid failedPiUserId)
             {

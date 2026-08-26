@@ -365,61 +365,11 @@ public class CouncilService : ICouncilService
     /// <para>Hội đồng chưa được gán đề tài nào thì không có lĩnh vực để so — bỏ qua, không bịa ra
     /// một phán quyết từ chỗ không có dữ liệu.</para>
     /// </summary>
-    private async Task AssertExpertiseAsync(
-        ReviewCouncil council, AddCouncilMemberRequest request, List<Guid> assignedProjectIds)
-    {
-        if (assignedProjectIds.Count == 0) return;
-
-        var trackIds = await _db.Projects
-            .IgnoreQueryFilters()
-            .Where(p => assignedProjectIds.Contains(p.Id))
-            .Select(p => p.CycleTrack.TrackId)
-            .Distinct()
-            .ToListAsync();
-        if (trackIds.Count == 0) return;
-
-        var myTracks = await _db.UserResearchTracks
-            .Where(x => x.UserId == request.UserId)
-            .Select(x => x.TrackId)
-            .ToListAsync();
-
-        // Hội đồng chấm nhiều đề tài thuộc nhiều lĩnh vực: khớp MỘT lĩnh vực là đủ — đòi khớp hết
-        // thì gần như không ai gán được.
-        if (myTracks.Intersect(trackIds).Any()) return;
-
-        var trackNames = await _db.ResearchTracks
-            .Where(t => trackIds.Contains(t.Id))
-            .Select(t => t.Name)
-            .ToListAsync();
-        var linhVuc = string.Join(", ", trackNames);
-        var chuaKhai = myTracks.Count == 0;
-
-        if (!request.AcceptWithoutExpertise)
-            throw new ArgumentException(
-                (chuaKhai
-                    ? "Người này chưa khai lĩnh vực chuyên môn nào. "
-                    : $"Người này không khai lĩnh vực \"{linhVuc}\". ") +
-                "QĐ543 Điều 8.2 yêu cầu hội đồng gồm người có chuyên môn trong lĩnh vực của đề tài. " +
-                "Nếu vẫn muốn mời (chuyên gia liên ngành, hoặc lĩnh vực hẹp không đủ người), " +
-                "hãy xác nhận và ghi rõ lý do.");
-
-        var lyDo = request.ExpertiseNote?.Trim();
-        if (string.IsNullOrWhiteSpace(lyDo))
-            throw new ArgumentException(
-                "Gán người ngoài lĩnh vực thì phải ghi rõ lý do — hồ sơ hội đồng cần giải thích được " +
-                "vì sao chọn người này.");
-
-        var name = await _db.Users.Where(u => u.Id == request.UserId)
-            .Select(u => u.FullName).FirstOrDefaultAsync() ?? "ủy viên";
-
-        // Ghi cho TỪNG đề tài hội đồng chấm: hồ sơ là của đề tài, không phải của hội đồng.
-        foreach (var pid in assignedProjectIds)
-            _decisions.Log(
-                pid, DecisionTypes.ExpertiseOverride,
-                $"Mời {name} vào hội đồng dù không khai lĩnh vực \"{linhVuc}\"",
-                "CouncilMember", $"{council.Id}:{request.UserId}",
-                reason: lyDo, decidedByRole: "Phòng QLKH");
-    }
+    private Task AssertExpertiseAsync(
+        ReviewCouncil council, AddCouncilMemberRequest request, List<Guid> assignedProjectIds) =>
+        ReviewShared.AssertExpertiseAsync(
+            _db, _decisions, council.Id, request.UserId,
+            request.AcceptWithoutExpertise, request.ExpertiseNote, assignedProjectIds);
 
     // Gán reviewer hết rồi gửi thư mời ĐỒNG LOẠT (1 nút) — set deadline xác nhận cho từng người.
     public async Task<int> SendInvitationsAsync(Guid councilId, DateTime? confirmDeadline)
@@ -743,7 +693,8 @@ public class CouncilService : ICouncilService
 
     // Gán 1 đề tài vào hội đồng có sẵn (dropdown ở màn Hội đồng & Chấm).
     // Mỗi đề tài ↔ 1 hội đồng trong CÙNG vòng → gỡ khỏi hội đồng khác của vòng trước (nếu chưa chấm), rồi gán.
-    public async Task AssignProjectToCouncilAsync(Guid councilId, Guid projectId)
+    public async Task AssignProjectToCouncilAsync(
+        Guid councilId, Guid projectId, bool acceptWithoutExpertise = false, string? expertiseNote = null)
     {
         var council = await _review.Query()
             .Include(c => c.Members)
@@ -762,6 +713,16 @@ public class CouncilService : ICouncilService
         // COI (rule #5): thành viên hội đồng không được là PI/thành viên của đề tài.
         var memberUserIds = council.Members.Select(m => m.UserId).ToList();
         await ReviewShared.AssertNoCoiAsync(_proposals, new[] { projectId }, memberUserIds);
+
+        // Chuyên môn (QĐ543 Điều 8.2, rule #35-38) — hội đồng lập kiểu "trọn gói" (CreateCouncilSheet)
+        // luôn tạo với 0 đề tài rồi gán sau qua dropdown này; kiểm ở lúc tạo (assignedProjectIds rỗng)
+        // là một phép so KHÔNG CÓ GÌ để so. Đây mới là chỗ chuyên môn thực sự bị đối chiếu với đề tài
+        // thật trong luồng "trọn gói" — thiếu chỗ này thì cả luật chỉ có tác dụng ở luồng tạo-từng-
+        // hội-đồng-một cũ (CreateCouncilAsync, gán đề tài ngay lúc tạo).
+        foreach (var memberId in memberUserIds)
+            await ReviewShared.AssertExpertiseAsync(
+                _db, _decisions, councilId, memberId,
+                acceptWithoutExpertise, expertiseNote, new List<Guid> { projectId });
 
         // Gỡ khỏi các hội đồng KHÁC của cùng vòng (đảm bảo 1 đề tài chỉ 1 hội đồng/vòng).
         var otherCouncilIds = await _review.Query()
