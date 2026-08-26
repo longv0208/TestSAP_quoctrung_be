@@ -59,10 +59,7 @@ public class ContractSigningTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new ContractService(
-            new ContractRepository(db), new ProposalRepository(db), new FakeClock(),
-            new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db),
-            new DocumentRepository(db));
+        var svc = TestServices.Contracts(db, new FakeClock());
 
         return (svc, db, contract);
     }

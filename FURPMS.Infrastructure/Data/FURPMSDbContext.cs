@@ -97,6 +97,7 @@ public class FURPMSDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
 
     // Domain 10 — Logs
+    public DbSet<ProjectDecision> ProjectDecisions => Set<ProjectDecision>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
 
@@ -252,6 +253,36 @@ public class FURPMSDbContext : DbContext
             b.HasOne(e => e.CreatedByUser)
                 .WithMany()
                 .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── ProjectDecision: sổ quyết định của đề tài (bảo vệ lần 2, yêu cầu 2) ──
+        modelBuilder.Entity<ProjectDecision>(b =>
+        {
+            // Truy vấn chủ đạo là "mở hồ sơ 1 đề tài, xem theo thứ tự thời gian".
+            b.HasIndex(d => new { d.ProjectId, d.DecidedAt });
+            // Dùng cho backfill: nhận ra dòng đã ghi rồi để chạy lại không sinh bản trùng.
+            b.HasIndex(d => new { d.SourceEntityType, d.SourceEntityId, d.DecisionType });
+
+            b.Property(d => d.Summary).HasMaxLength(1000);
+            b.Property(d => d.Reason).HasMaxLength(2000);
+            b.Property(d => d.DocumentNo).HasMaxLength(50);
+            b.Property(d => d.DecidedByRole).HasMaxLength(100);
+            b.Property(d => d.DecisionType).HasMaxLength(50);
+            b.Property(d => d.Result).HasMaxLength(50);
+            b.Property(d => d.SourceEntityType).HasMaxLength(100);
+            b.Property(d => d.SourceEntityId).HasMaxLength(100);
+
+            b.HasOne(d => d.Project)
+                .WithMany()
+                .HasForeignKey(d => d.ProjectId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Người quyết định có thể bị xoá/vô hiệu sau này — hồ sơ vẫn phải giữ nguyên,
+            // nên KHÔNG cascade và cho phép null.
+            b.HasOne(d => d.DecidedByUser)
+                .WithMany()
+                .HasForeignKey(d => d.DecidedBy)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 

@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Contract;
 using FURPMS.Application.Interfaces;
@@ -15,14 +16,17 @@ public class DeliverableService : IDeliverableService
     private readonly INotificationRepository _notifications;
     private readonly INotifier _notifier;
     private readonly IClock _clock;
+    private readonly IDecisionLogger _decisions;
 
     public DeliverableService(
         IContractRepository contracts,
         IUserRepository users,
         INotificationRepository notifications,
         INotifier notifier,
-        IClock clock)
+        IClock clock,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _contracts = contracts;
         _users = users;
         _notifications = notifications;
@@ -222,6 +226,14 @@ public class DeliverableService : IDeliverableService
         deliverable.QualityAssessment = request.QualityAssessment;
         deliverable.IsCompleted = request.AcceptanceStatus == AcceptanceStatus.Passed;
 
+        _decisions.Log(
+            deliverable.ProjectId, DecisionTypes.DeliverableAccepted,
+            $"Nghiệm thu sản phẩm \"{deliverable.ProductName}\": " +
+                (request.AcceptanceStatus == AcceptanceStatus.Passed ? "Đạt" : "Không đạt"),
+            "ProjectDeliverable", deliverable.Id.ToString(),
+            result: request.AcceptanceStatus, reason: request.QualityAssessment,
+            decidedBy: evaluatedBy, decidedByRole: "Hội đồng nghiệm thu");
+
         var contract = deliverable.Contract;
 
         if (request.AcceptanceStatus == AcceptanceStatus.Passed)
@@ -310,7 +322,7 @@ public class DeliverableService : IDeliverableService
             entityId: contract.Id.ToString(),
             priority: "HIGH");
 
-    private static DeliverableResponse Map(Domain.Entities.Projects.ProjectDeliverable d) => new()
+    private DeliverableResponse Map(Domain.Entities.Projects.ProjectDeliverable d) => new()
     {
         Id = d.Id,
         ProjectId = d.ProjectId,
@@ -322,6 +334,7 @@ public class DeliverableService : IDeliverableService
         ScientificRequirements = d.ScientificRequirements,
         Notes = d.Notes,
         DueDate = d.DueDate,
+        DaysLeft = DeadlineMath.DaysLeft(d.DueDate, _clock),
         AcceptanceStatus = d.AcceptanceStatus,
         IsCompleted = d.IsCompleted,
         SubmittedAt = d.SubmittedAt,

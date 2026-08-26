@@ -16,13 +16,16 @@ public class DisbursementService : IDisbursementService
     private readonly ISystemSettingService _settings;
     private readonly INotifier _notifier;
     private readonly IDocumentRepository _documents;
+    private readonly IDecisionLogger _decisions;
 
     public DisbursementService(IContractRepository contracts, IMasterDataRepository masterData,
         IClock clock,
         ISystemSettingService settings,
         INotifier notifier,
-        IDocumentRepository documents)
+        IDocumentRepository documents,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _notifier = notifier;
         _contracts = contracts;
         _masterData = masterData;
@@ -149,6 +152,24 @@ public class DisbursementService : IDisbursementService
         d.Status = DisbursementStatus.Disbursed;
         d.DisbursedAt = _clock.UtcNow;
         d.ProcessedBy = processedBy;
+
+        var disbProjectId = await _contracts.Query()
+            .Where(c => c.Id == d.ContractId)
+            .Select(c => c.ProjectId)
+            .FirstOrDefaultAsync();
+        if (disbProjectId != Guid.Empty)
+        {
+            // Số tiền: ưu tiên số thực chi Phòng Tài chính báo; chưa có thì nói rõ là TẠM TÍNH
+            // theo kế hoạch — hệ thống không được để người đọc tưởng đó là số quyết toán (rule #15).
+            var soTien = d.ActualAmount ?? d.PlannedAmount;
+            var tamTinh = d.ActualAmount is null ? " (tạm tính theo kế hoạch)" : "";
+            _decisions.Log(
+                disbProjectId, DecisionTypes.DisbursementConfirmed,
+                $"Xác nhận giải ngân đợt {d.RoundNumber} — {d.Percentage:0.##}%, {soTien:N0} đ{tamTinh}",
+                "ContractDisbursement", d.Id.ToString(),
+                result: "DISBURSED", reason: d.BankReference,
+                decidedBy: processedBy, decidedByRole: "Phòng QLKH");
+        }
 
         await _contracts.SaveChangesAsync();
 

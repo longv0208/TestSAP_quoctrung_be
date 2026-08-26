@@ -14,6 +14,8 @@ public class SettlementDto
     public Guid? SideASigneeId { get; set; }
     public string? SideASigneeName { get; set; }
     public DateOnly? SettlementDeadline { get; set; }
+    /// <summary>Số ngày còn lại tới hạn quyết toán, âm = quá hạn. Máy chủ tính.</summary>
+    public int? DaysLeft { get; set; }
     public string? Notes { get; set; }
     public DateTime CreatedAt { get; set; }
 }

@@ -46,8 +46,7 @@ public class ContractClosureTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var service = new ContractSettlementService(
-            new ContractRepository(db), new UserRepository(db), new FakeClock());
+        var service = TestServices.Settlements(db);
         return (service, db, contract, staff);
     }
 

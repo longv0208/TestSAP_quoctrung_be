@@ -4,6 +4,7 @@ using FURPMS.Application.DTOs.ReviewRounds;
 using FURPMS.Application.Interfaces;
 using FURPMS.Application.Interfaces.Repositories;
 using FURPMS.Application.Interfaces.Services;
+using FURPMS.Domain.Entities.Cycles;
 using FURPMS.Domain.Entities.Review;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,19 +20,28 @@ public class ReviewRoundService : IReviewRoundService
     private readonly INotificationRepository _notifications;
     private readonly INotifier _notifier;
     private readonly IClock _clock;
+    private readonly ISystemSettingService _settings;
+    private readonly IDeadlineResolver _deadlines;
+    private readonly ICycleRepository _cycles;
 
     public ReviewRoundService(
         IReviewRepository review,
         IProposalRepository proposals,
         INotificationRepository notifications,
         INotifier notifier,
-        IClock clock)
+        IClock clock,
+        ISystemSettingService settings,
+        IDeadlineResolver deadlines,
+        ICycleRepository cycles)
     {
+        _cycles = cycles;
         _review = review;
         _proposals = proposals;
         _notifications = notifications;
         _notifier = notifier;
         _clock = clock;
+        _settings = settings;
+        _deadlines = deadlines;
     }
 
     private async Task<(Guid projectId, int cycleTrackId)> ResolveProjectAsync(Guid proposalId)
@@ -184,9 +194,17 @@ public class ReviewRoundService : IReviewRoundService
 
         round.Status = ReviewRoundStatus.Open;
         round.OpenedAt = _clock.UtcNow;
+
+        // Đặt hạn chấm ngay lúc mở vòng — trước 25/08 giai đoạn chấm là chặng DUY NHẤT không có hạn
+        // nào: vòng mở ra rồi để đấy, không ai biết bao giờ phải xong. Dùng `??=` để mở lại một vòng
+        // đã có hạn (hoặc đã được dời hạn) thì KHÔNG ghi đè mất hạn cũ.
+        var windowDays = await _settings.GetIntAsync(
+            SystemSettingKeys.ScoringWindowDays, SystemSettingKeys.DefaultScoringWindowDays);
+        round.ScoringDeadline ??= DateOnly.FromDateTime(_clock.UtcNow).AddDays(windowDays);
+
         await _review.SaveChangesAsync();
 
-        return MapToResponse(round, null);
+        return await MapWithDeadlineAsync(round, null);
     }
 
     public async Task<ReviewRoundResponse> CloseRoundAsync(Guid roundId, CloseRoundRequest request)
@@ -432,6 +450,83 @@ public class ReviewRoundService : IReviewRoundService
         OpenedAt = r.OpenedAt,
         ClosedAt = r.ClosedAt,
         Result = r.Result,
+        ScoringDeadline = r.ScoringDeadline?.ToString("yyyy-MM-dd"),
         CouncilId = councilId
     };
+
+    public async Task<ReviewRoundResponse> SetRoundDeadlineAsync(
+        Guid roundId, SetRoundDeadlineRequest request, Guid actorId)
+    {
+        if (!DateOnly.TryParse(request.ScoringDeadline, out var newDeadline))
+            throw new ArgumentException("Hạn chấm không hợp lệ — cần dạng ngày yyyy-MM-dd.");
+
+        var round = await _review.GetRoundByIdAsync(roundId)
+            ?? throw new KeyNotFoundException("Không tìm thấy vòng chấm.");
+
+        if (round.Status is ReviewRoundStatus.Passed or ReviewRoundStatus.Failed)
+            throw new InvalidOperationException(
+                $"Vòng đã chốt kết quả ({StatusText.Vi(round.Status)}) — đặt hạn chấm không còn ý nghĩa.");
+
+        var today = DateOnly.FromDateTime(_clock.UtcNow);
+        if (newDeadline < today)
+            throw new ArgumentException(
+                $"Hạn chấm không được đặt vào quá khứ (hôm nay {today:dd/MM/yyyy}).");
+
+        // Hạn ĐANG hiệu lực — có thể đã khác ngày gốc nếu trước đó đã dời.
+        var current = round.ScoringDeadline is { } original
+            ? await _deadlines.EffectiveAsync(
+                IDeadlineResolver.TargetTypeReviewRound, roundId.ToString(), original)
+            : (DateOnly?)null;
+
+        if (current is { } effective)
+        {
+            if (effective == newDeadline)
+                return await MapWithDeadlineAsync(round, null);
+
+            // Rule #19: DỜI hạn là ghi LOG, không ghi đè. `ScoringDeadline` giữ nguyên ngày GỐC để
+            // sau này còn đối chiếu "ban đầu hẹn bao giờ, đã lùi mấy lần, vì sao".
+            if (string.IsNullOrWhiteSpace(request.Reason))
+                throw new ArgumentException(
+                    "Vòng này đã có hạn chấm — dời hạn thì phải ghi rõ lý do.");
+
+            await _cycles.AddDeadlineExtensionAsync(new DeadlineExtension
+            {
+                TargetType = IDeadlineResolver.TargetTypeReviewRound,
+                TargetId = roundId.ToString(),
+                OldDeadline = effective,
+                NewDeadline = newDeadline,
+                Reason = request.Reason.Trim(),
+                CreatedBy = actorId,
+                CreatedAt = _clock.UtcNow
+            });
+            await _cycles.SaveChangesAsync();
+        }
+        else
+        {
+            // Lần đầu đặt hạn: ghi thẳng vào vòng, chưa có gì để "dời".
+            round.ScoringDeadline = newDeadline;
+            await _review.SaveChangesAsync();
+        }
+
+        return await MapWithDeadlineAsync(round, null);
+    }
+
+    /// <summary>
+    /// Như <see cref="MapToResponse"/> nhưng trả hạn <b>HIỆU LỰC</b> (đã tính các lần dời hạn ghi ở
+    /// <c>deadline_extension</c> — rule #19: dời hạn là LOG, không ghi đè) và cờ quá hạn.
+    /// </summary>
+    private async Task<ReviewRoundResponse> MapWithDeadlineAsync(ReviewRound r, Guid? councilId)
+    {
+        var dto = MapToResponse(r, councilId);
+        if (r.ScoringDeadline is not { } original) return dto;
+
+        var effective = await _deadlines.EffectiveAsync(
+            IDeadlineResolver.TargetTypeReviewRound, r.Id.ToString(), original);
+
+        dto.ScoringDeadline = effective.ToString("yyyy-MM-dd");
+        // Chỉ vòng CÒN MỞ mới tính là quá hạn — vòng đã chốt kết quả thì hạn không còn ý nghĩa.
+        dto.IsScoringOverdue = r.Status == ReviewRoundStatus.Open
+                               && DateOnly.FromDateTime(_clock.UtcNow) > effective;
+        return dto;
+    }
 }

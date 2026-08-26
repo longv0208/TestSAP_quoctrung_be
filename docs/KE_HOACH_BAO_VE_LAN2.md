@@ -197,7 +197,61 @@ không chia 0 · vượt trần đánh dấu `CapExceeded` · người ngoài n�
 
 ---
 
-## 6. Nhóm 2 — Deadline (nửa đầu gạch 2 + "vòng 1 vòng 2 phải có hạn") · **1 cột nullable**
+## 5b. Nhóm 2 — Deadline — ✅ **XONG 25/08** (1 cột nullable)
+
+**Đã chạy được, bấm thấy ngay:**
+
+| Việc | Ở đâu |
+|---|---|
+| `GET /api/projects/{id}/timeline` — 12 loại giai đoạn, mỗi mốc kèm `DeadlineSource` + `DeadlineBasis` | `ProjectTimelineService` · `API_CONTRACT` §13.2c |
+| Panel dòng thời gian trong tab **Tiến trình** của chi tiết hợp đồng | `ProjectTimelinePanel.tsx` |
+| **`FinalReport.Deadline` lần đầu được ghi** (Điều 11.2.a: ngày kết thúc − 30 ngày) | `FinalReportService.SubmitAsync` |
+| **`review_rounds.scoring_deadline`** + mở vòng là tự đặt hạn | migration `20260825124530` |
+| `PATCH /api/rounds/{id}/deadline` — đặt/dời hạn, dời thì ghi `deadline_extensions` | `API_CONTRACT` §13.2d |
+| Hộp thoại đặt/dời hạn + badge hạn trên `RoundTimeline` | `SetRoundDeadlineDialog.tsx` |
+| **`Proposal.RevisionDeadline`** — trước chỉ seeder demo ghi, luồng thật chưa bao giờ đụng | `ReviewScoringService` |
+| `ArchivalDeadline` gỡ hardcode `+3 tháng` → `ARCHIVAL_LEAD_DAYS` | `FinalReportService.AcceptAsync` |
+| **6 khoá cấu hình mới** trong `system_settings`, Admin sửa được, hiệu lực ngay | `SystemSettingKeys` + seeder + `Validate` |
+| **3 scanner nhắc hạn mới**: báo cáo nghiệm thu (→PI) · vòng chấm (→Staff) · quyết toán (→Staff) | `DeadlineReminderScanner` |
+| `DeadlineBadge` dùng chung — rút từ `OpenCyclesCard`, chỗ DUY NHẤT trong app biết đếm ngược | `components/shared/DeadlineBadge.tsx` |
+| **`GET /api/me/deadlines?days=30`** — gộp hạn sắp tới/đã quá của mọi đề tài người dùng liên quan | `ProjectTimelineService.GetUpcomingAsync` · `API_CONTRACT` §13.2e |
+| **Thẻ "Hạn sắp tới"** trên bảng điều khiển PI (6 dòng) và Chuyên viên (8 dòng) | `UpcomingDeadlinesCard.tsx` |
+| Badge hạn trong 4 panel còn lại: sản phẩm · báo cáo tiến độ · quyết toán · báo cáo tổng kết | `DeliverablesPanel` · `ProgressReportsPanel` · `SettlementPanel` · `FinalReportPanel` |
+| **`DeadlineMath` — một phép đếm ngược duy nhất**; 4 DTO nay trả `daysLeft` | `Application/Common/DeadlineMath.cs` |
+
+**Ba quyết định thiết kế đáng nhớ:**
+- **`daysLeft` do MÁY CHỦ tính**, FE không tính lại — máy chủ dùng đồng hồ hệ thống (có công cụ tua
+  thời gian), `Date.now()` là giờ máy người dùng; lệch nhau thì badge nói một đằng, email nhắc một nẻo.
+- **Giải ngân CỐ Ý không có hạn** — đợt mở khoá theo điều kiện, không theo ngày. Hiện `NO_DEADLINE`
+  kèm điều kiện, **không bịa ngày cho đẹp dòng thời gian**.
+- **Quá hạn thì GẮN CỜ, không tự đóng vòng** — kết luận Đạt/Không đạt là của Chủ tịch (rule #12).
+
+**Ba lỗi tự bắt được khi chạy thử, đã khoá bằng test:**
+1. Câu giải thích in ra `CONTRACT_SIGN_WINDOW_DAYS ngày kể từ...` — nội suy nhầm hằng **khoá** thay vì
+   **giá trị**. Test `CanCuHan_KhongDuocLoTenKhoaCauHinh` quét mọi `deadlineBasis`, cấm chứa `_DAYS`.
+2. `timeline` đã là namespace i18n của việc khác, gây `TS1117` → đổi thành `projectTimeline`.
+3. **Hai con số khác nhau cho cùng một hạn.** Thẻ "Hạn sắp tới" hiện *"Còn 7 ngày"* trong khi tab
+   Sản phẩm hiện *"Còn 6 ngày"* cho **cùng một sản phẩm** — máy chủ chạy UTC, trình duyệt UTC+7, sát
+   nửa đêm là lệch nguyên ngày. Chữa tận gốc: bỏ hẳn phép trừ phía FE, thêm `DeadlineMath` và cho
+   4 DTO (`DeliverableResponse` · `ProgressReportSummaryDto` · `SettlementDto` · `FinalReportDto`)
+   trả `daysLeft`. Khoá bằng `DaysLeftConsistencyTests`.
+
+**Ghi chú cho ai làm tiếp:** `daysUntil()` bên FE vẫn còn, nhưng **chỉ dùng cho lịch họp** — buổi họp
+là CUỘC HẸN, không phải hạn nộp; nhãn "quá hạn 3 ngày" cho một buổi họp đã diễn ra là sai nghĩa, nên
+`MeetingsAgenda` cố ý không dùng `DeadlineBadge`. Đừng "thống nhất" chỗ này.
+
+> **Kiểm chứng đã chạy thật:** đặt hạn lần đầu OK · dời hạn không lý do 400 đúng câu · dời có lý do
+> ra hạn hiệu lực 20/10 trong khi `review_rounds.scoring_deadline` vẫn là 30/09 (ngày gốc), và
+> `deadline_extensions` có đúng một dòng kèm lý do · đặt hạn vào quá khứ 400.
+
+> **Kiểm chứng thẻ "Hạn sắp tới" (25/08, dữ liệu demo thật):** PI thấy 6 dòng / Chuyên viên thấy 8
+> dòng và là tập cha · tua đồng hồ tới 10 ngày (`POST /api/admin/system-clock`) thì 5 dòng chuyển
+> `OVERDUE` với `daysLeft` âm và nhảy lên đầu · `days=1` vẫn giữ nguyên 5 việc quá hạn (không bị cửa
+> sổ hẹp nuốt mất) · `days=999` bị kẹp về 180 · **đã trả đồng hồ về 0 sau khi thử**.
+
+---
+
+## 6. Nhóm 2 — bản thiết kế gốc *(đang thực hiện, xem §5b)*
 
 **Mô hình**: `ProjectTimeline` là **read-model**, KHÔNG phải bảng mới. Một service lắp "12 giai đoạn
 + hạn từng giai đoạn" từ cột có sẵn; **scanner nhắc hạn dùng lại chính nó** ⇒ màn hình và email
@@ -258,7 +312,54 @@ tới → sinh `DeadlineExtension`) · 2 scanner test chép khuôn.
 
 ---
 
-## 7. Nhóm 3 — Lưu trữ quyết định (nửa sau gạch 2) · **1 bảng mới**
+## 6c. Nhóm 3 — Lưu trữ quyết định — ✅ **XONG 25/08** (1 bảng mới)
+
+**Đã chạy được, bấm thấy ngay:**
+
+| Việc | Ở đâu |
+|---|---|
+| Bảng `project_decisions` — sổ đăng ký MỎNG, trỏ ngược bản gốc | migration `20260825185838_AddProjectDecisions` |
+| `GET /api/projects/{id}/decisions` — gom theo chặng, xếp theo vòng đời | `API_CONTRACT` §13.2g |
+| `POST /api/admin/backfill-decisions` — dựng lại hồ sơ cũ, **chạy lại được** | `API_CONTRACT` §13.2h |
+| `IDecisionLogger` nối vào **12 điểm chốt** của luồng thật | 7 service, xem bảng dưới |
+| Tab **Quyết định** trong chi tiết hợp đồng + mục hồ sơ trong màn Tiến trình của chủ nhiệm | `DecisionDossierPanel.tsx` |
+
+**12 điểm chốt đã nối:** nộp đề cương · rút đề cương · nộp bản chỉnh sửa · Chủ tịch chốt biên bản ·
+kết quả từng vòng · lập hợp đồng · ký hợp đồng · chấm dứt hợp đồng · duyệt/từ chối phụ lục · đánh giá
+báo cáo tiến độ · nghiệm thu sản phẩm · xác nhận giải ngân · lưu trữ báo cáo tổng kết · ký BM13.
+
+**Bốn quyết định thiết kế đáng nhớ:**
+- **Không dùng `AuditLog`.** Bảng đó là nhật ký *kỹ thuật* (`OldValues`/`IpAddress`/`UserAgent`),
+  **không neo vào đề tài**, không có loại quyết định, không có số văn bản. Mở ra trước hội đồng thì
+  thấy một danh sách thao tác CRUD chứ không phải hồ sơ ra quyết định.
+- **Sổ MỎNG, không chép nội dung.** Chi tiết vẫn ở `CouncilDecision`/`ProjectRound`/…; bảng này chỉ
+  giữ đủ để liệt kê theo thời gian và mở đúng bản gốc. Chép lại là tự tạo hai nguồn sự thật.
+- **`DecidedByRole` chép cứng chức danh LÚC CHỐT**, không suy ra từ `user_roles` lúc đọc: người ta
+  đổi vai, nghỉ việc, bị gỡ quyền — hồ sơ vài năm trước phải giữ nguyên "Chủ tịch hội đồng".
+- **Ghi sổ hỏng KHÔNG được kéo đổ nghiệp vụ chính.** `DecisionLogger` nuốt lỗi và ghi log: chặn một
+  kết luận hợp lệ của Chủ tịch chỉ vì không ghi nổi một dòng sổ phụ là đánh đổi sai hướng.
+  Khoá bằng test `GhiSoHong_KhongKeoDoNghiepVuChinh`.
+
+**Hai lỗi tự bắt được, đã khoá bằng test:**
+1. **`DEADLINE_EXTENDED` không thuộc chặng nào** → rơi vào nhóm `OTHER` và tụt xuống cuối hồ sơ. Lỗi
+   im lặng, chỉ lộ ra khi mở hồ sơ trước hội đồng. Test `MoiLoaiQuyetDinh_DeuCoChang_VaThuTuVongDoi`
+   quét mọi hằng loại và cấm rơi vào `OTHER`. Đã thêm chặng riêng `SCHEDULE`.
+2. **Ký hợp đồng nhảy lên TRƯỚC nộp đề cương** trong cùng một ngày. `contracts.signed_at` cố ý là
+   **ngày trần** (hợp đồng ký ngoài hệ thống, người dùng khai lại ngày) nên là 00:00 và xếp trước mọi
+   thứ cùng ngày. Chữa bằng `DecisionTypes.LifecycleOrder`: xếp **ngày → thứ tự vòng đời → giờ**.
+   Khác ngày thì thời gian thật vẫn quyết định.
+
+> ⚠️ **VIỆC PHẢI LÀM SAU KHI DEPLOY:** gọi `POST /api/admin/backfill-decisions?dryRun=true` xem trước,
+> rồi gọi thật. Không chạy thì mọi đề tài có từ trước sẽ mở ra **hồ sơ trống trơn** — đúng lúc bảo vệ.
+
+> **Kiểm chứng đã chạy thật (25/08, dữ liệu demo):** chạy thử ra 62 dòng / 15 đề tài, không ghi gì ·
+> chạy thật thêm 62 · **chạy lại lần hai: thêm 0, bỏ qua 62** · nộp một đề cương qua endpoint thật →
+> sổ có thêm đúng 1 dòng · chạy backfill lần nữa sau đó → thêm 0, và truy vấn đếm bản trùng trong DB
+> trả về **0**.
+
+---
+
+## 7. Nhóm 3 — bản thiết kế gốc *(đã thực hiện, xem §6c)*
 
 **Không dùng `AuditLog`** cho việc này: nó có `OldValues`/`NewValues`/`IpAddress`/`UserAgent` —
 nhật ký **kỹ thuật** ai-sửa-gì; thiếu `ProjectId`, thiếu loại quyết định, thiếu số văn bản. Lấy
@@ -470,8 +571,8 @@ hội đồng thực sự chấm** cho phần AI.
 |---|---|---|---|---|
 | 0 | 5 việc nửa ngày | không | **0** | ✅ **XONG 25/08** |
 | 1 | Ngân sách | không | **0** | ✅ **XONG 25/08** |
-| 2 | Deadline (gồm hạn vòng chấm) | +1 cột nullable | thấp — bản ghi cũ NULL → "chưa đặt hạn" | ⬜ **đang tới** |
-| 3 | Quyết định | +1 bảng | schema thấp; **rủi ro thật ở backfill** | ⬜ |
+| 2 | Deadline (gồm hạn vòng chấm) | +1 cột nullable | thấp — bản ghi cũ NULL → "chưa đặt hạn" | ✅ **XONG 25/08** |
+| 3 | Quyết định | +1 bảng | schema thấp; **rủi ro thật ở backfill** | ✅ **XONG 25/08** |
 | 4 | Cảnh báo điểm lệch | không | **0** — làm xen kẽ, rất rẻ | ⬜ |
 | 5 | Chuyên môn người chấm | +1 bảng nối | thấp | ⬜ |
 | 6 | AI trùng + bộ đo metric | +3 cột nullable trên bảng **rỗng** | thấp nhất trong hạng mục mới | ⬜ |
@@ -490,7 +591,7 @@ sinh `/ai/search` → tầng 2 của AI (giữ tầng 1 + metric). **Đừng c�
 
 ```bash
 cd FURPMS_BEv2 && dotnet build          # 0 error
-cd FURPMS_BEv2 && dotnet test           # xanh hết (255 sau nhóm 1)
+cd FURPMS_BEv2 && dotnet test           # xanh hết (291 sau nhóm 3)
 cd furpms-web  && npm run typecheck     # sạch — PHẢI dùng lệnh này, KHÔNG phải npx tsc
 cd furpms-web  && npm run build         # xanh
 ```

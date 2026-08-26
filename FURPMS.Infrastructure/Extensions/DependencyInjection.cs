@@ -47,6 +47,8 @@ public static class DependencyInjection
         services.AddScoped<IUserService, UserService>();
         // Hạn hiệu lực (đã tính gia hạn) — nhiều service cùng hỏi, phải chung một phép tính.
         services.AddScoped<IDeadlineResolver, DeadlineResolver>();
+        services.AddScoped<IDecisionLogger, DecisionLogger>();
+        services.AddScoped<IProjectDecisionService, ProjectDecisionService>();
         services.AddScoped<ICycleService, CycleService>();
         services.AddScoped<IProposalService, ProposalService>();
         services.AddScoped<IProposalDocumentService, ProposalDocumentService>();
@@ -62,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<IProposalBudgetService, ProposalBudgetService>();
         services.AddScoped<IBudgetPolicyService, BudgetPolicyService>();
         services.AddScoped<IProjectBudgetOverviewService, ProjectBudgetOverviewService>();
+        services.AddScoped<IProjectTimelineService, ProjectTimelineService>();
         services.AddScoped<ITeamMemberService, TeamMemberService>();
         services.AddScoped<IChangeRequestService, ChangeRequestService>();
         services.AddScoped<IDocumentExportService, DocumentExportService>();

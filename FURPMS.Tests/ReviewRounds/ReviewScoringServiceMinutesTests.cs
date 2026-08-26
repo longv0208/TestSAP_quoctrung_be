@@ -56,8 +56,7 @@ public class ReviewScoringServiceMinutesTests
     }
 
     private static ReviewScoringService MakeService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
-        new(new ReviewRepository(db), new MasterDataRepository(db), new ProposalRepository(db), new FakeClock(),
-            new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db));
+        TestServices.ReviewScoring(db);
 
     /// <summary>
     /// Seed phiếu đã nộp cho các thành viên — cần vì QĐ543 Điều 8.3.b bắt buộc ≥2/3 thành viên
@@ -278,8 +277,7 @@ public class ReviewScoringServiceMinutesTests
         await scoring.SaveMinutesAsync(council.Id, secretary.Id, new SaveMinutesRequest { Result = "REVISION_REQUIRED", CouncilComments = "Sửa mục tiêu" });
         await scoring.ApproveMinutesAsync(council.Id, chair.Id); // → council DECIDED, biên bản khóa
 
-        var reviewRounds = new FURPMS.Infrastructure.Services.ReviewRoundService(
-            new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
+        var reviewRounds = TestServices.ReviewRounds(db);
         await reviewRounds.ReopenAfterResubmitAsync(project.Id);
 
         var reopenedCouncil = await db.ReviewCouncils.FindAsync(council.Id);

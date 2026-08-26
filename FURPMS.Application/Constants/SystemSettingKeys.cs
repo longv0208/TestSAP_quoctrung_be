@@ -55,6 +55,46 @@ public static class SystemSettingKeys
     public const string EmailEnabled = "EMAIL_ENABLED";
     public const bool DefaultEmailEnabled = true;
 
+    // ── Hạn của từng GIAI ĐOẠN đề tài (thêm 25/08) ────────────────────────────
+    // Hội đồng bảo vệ lần 2: "cần thể hiện rõ các mốc thời gian deadline cho các giai đoạn của 1
+    // đề tài". Mọi con số ngày đều để ở ĐÂY, không cắm vào code — cẩm nang chống trượt xếp hardcode
+    // tham số nghiệp vụ là nguyên nhân trượt phổ biến thứ 2, và câu hỏi kinh điển của hội đồng là
+    // "đổi con số này rồi demo ngay đi".
+
+    /// <summary>Số ngày hội đồng có để chấm xong một vòng, tính từ lúc vòng được mở.</summary>
+    public const string ScoringWindowDays = "SCORING_WINDOW_DAYS";
+    public const int DefaultScoringWindowDays = 15;
+
+    /// <summary>Số ngày chủ nhiệm có để nộp bản chỉnh sửa sau khi hội đồng yêu cầu sửa.</summary>
+    public const string RevisionDeadlineDays = "REVISION_DEADLINE_DAYS";
+    public const int DefaultRevisionDeadlineDays = 15;
+
+    /// <summary>
+    /// Báo cáo nghiệm thu phải nộp trước ngày kết thúc đề tài bao nhiêu ngày.
+    /// <para><b>QĐ543 Điều 11.2.a</b> (nguyên văn): *"Chủ nhiệm đề tài phải nộp báo cáo nghiệm thu
+    /// cho Phòng QLKH và Đơn vị chủ trì <b>ít nhất 30 ngày trước khi kết thúc đề tài</b>."*</para>
+    /// </summary>
+    public const string FinalReportLeadDays = "FINAL_REPORT_LEAD_DAYS";
+    public const int DefaultFinalReportLeadDays = 30;
+
+    /// <summary>Số ngày để ký hợp đồng sau khi hội đồng chốt duyệt đề cương.</summary>
+    public const string ContractSignWindowDays = "CONTRACT_SIGN_WINDOW_DAYS";
+    public const int DefaultContractSignWindowDays = 30;
+
+    /// <summary>Số ngày để hoàn tất lưu trữ hồ sơ sau khi nộp báo cáo tổng kết.</summary>
+    public const string ArchivalLeadDays = "ARCHIVAL_LEAD_DAYS";
+    public const int DefaultArchivalLeadDays = 90;
+
+    /// <summary>
+    /// Hội đồng phải họp trong bao nhiêu ngày làm việc kể từ khi được lập.
+    /// <para><b>QĐ543 Điều 8.3.a</b> — 15 ngày làm việc.</para>
+    /// </summary>
+    public const string MeetingDeadlineWorkingDays = "MEETING_DEADLINE_WORKING_DAYS";
+    public const int DefaultMeetingDeadlineWorkingDays = 15;
+
+    /// <summary>Chặn trên chung cho mọi khoá "số ngày" ở trên — Admin lỡ tay gõ 99999 thì chặn.</summary>
+    public const int MaxStageWindowDays = 365;
+
     // ── Tài chính ─────────────────────────────────────────────────────────────
     /// <summary>Số đợt giải ngân cho đề tài cấp trọn gói (rule #6: tối thiểu 3 — đầu/giữa/cuối).</summary>
 

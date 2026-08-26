@@ -108,13 +108,13 @@ public class MissingNotificationsTests
         var svc = new ProposalService(
             new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db),
             new UserRepository(db), new FakeClock(),
-            new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db),
-                new NotificationRepository(db), TestNotifier.Create(db), new FakeClock()),
+            TestServices.ReviewRounds(db),
             new ReviewRepository(db),
             new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)),
             TestNotifier.Create(db),
             summaryQueue,
-            new DeadlineResolver(new CycleRepository(db)));
+            new DeadlineResolver(new CycleRepository(db)),
+            TestServices.Decisions(db));
 
         await svc.SubmitProposalAsync(proposal.Id, pi.Id);
 

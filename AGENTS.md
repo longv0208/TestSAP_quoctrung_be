@@ -48,7 +48,7 @@ bộ Railway mất vài giây mới sẵn sàng). Không cần chạy migration 
 Kiểm tra:
 ```bash
 dotnet build            # phải 0 error
-dotnet test             # 255 test, phải xanh hết
+dotnet test             # 291 test, phải xanh hết
 ```
 
 > `dotnet test` dùng **`UseInMemoryDatabase`** (`FURPMS.Tests/Helpers/TestDbContextFactory.cs`) —

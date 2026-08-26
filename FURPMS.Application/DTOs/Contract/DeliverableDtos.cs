@@ -13,6 +13,8 @@ public class DeliverableResponse
     public string? ScientificRequirements { get; set; }
     public string? Notes { get; set; }
     public DateOnly? DueDate { get; set; }
+    /// <summary>Số ngày còn lại tới hạn, âm = quá hạn. Máy chủ tính — xem <see cref="Common.DeadlineMath"/>.</summary>
+    public int? DaysLeft { get; set; }
     public string? AcceptanceStatus { get; set; }
     public bool IsCompleted { get; set; }
     public DateTime? SubmittedAt { get; set; }

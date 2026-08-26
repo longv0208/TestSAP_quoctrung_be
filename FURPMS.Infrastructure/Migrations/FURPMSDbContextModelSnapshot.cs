@@ -1965,6 +1965,88 @@ namespace FURPMS.Infrastructure.Migrations
                     b.ToTable("projects", (string)null);
                 });
 
+            modelBuilder.Entity("FURPMS.Domain.Entities.Projects.ProjectDecision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTime>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<Guid?>("DecidedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by");
+
+                    b.Property<string>("DecidedByRole")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("decided_by_role");
+
+                    b.Property<string>("DecisionType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("decision_type");
+
+                    b.Property<string>("DocumentNo")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("document_no");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("project_id");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Result")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("result");
+
+                    b.Property<string>("SourceEntityId")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("source_entity_id");
+
+                    b.Property<string>("SourceEntityType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("source_entity_type");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("summary");
+
+                    b.HasKey("Id")
+                        .HasName("pk_project_decisions");
+
+                    b.HasIndex("DecidedBy")
+                        .HasDatabaseName("ix_project_decisions_decided_by");
+
+                    b.HasIndex("ProjectId", "DecidedAt")
+                        .HasDatabaseName("ix_project_decisions_project_id_decided_at");
+
+                    b.HasIndex("SourceEntityType", "SourceEntityId", "DecisionType")
+                        .HasDatabaseName("ix_project_decisions_source_entity_type_source_entity_id_decis");
+
+                    b.ToTable("project_decisions", (string)null);
+                });
+
             modelBuilder.Entity("FURPMS.Domain.Entities.Projects.ProjectDeliverable", b =>
                 {
                     b.Property<int>("Id")
@@ -3331,6 +3413,10 @@ namespace FURPMS.Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("rubric_template_id");
 
+                    b.Property<DateOnly?>("ScoringDeadline")
+                        .HasColumnType("date")
+                        .HasColumnName("scoring_deadline");
+
                     b.Property<int>("Sequence")
                         .HasColumnType("integer")
                         .HasColumnName("sequence");
@@ -4356,6 +4442,26 @@ namespace FURPMS.Infrastructure.Migrations
                     b.Navigation("PiUser");
 
                     b.Navigation("ResearchType");
+                });
+
+            modelBuilder.Entity("FURPMS.Domain.Entities.Projects.ProjectDecision", b =>
+                {
+                    b.HasOne("FURPMS.Domain.Entities.Users.User", "DecidedByUser")
+                        .WithMany()
+                        .HasForeignKey("DecidedBy")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_project_decisions_users_decided_by");
+
+                    b.HasOne("FURPMS.Domain.Entities.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_project_decisions_projects_project_id");
+
+                    b.Navigation("DecidedByUser");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("FURPMS.Domain.Entities.Projects.ProjectDeliverable", b =>

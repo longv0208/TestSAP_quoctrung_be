@@ -109,7 +109,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
+        var svc = TestServices.Disbursements(db);
         var result = (await svc.GenerateAsync(contract.Id)).OrderBy(x => x.RoundNumber).ToList();
 
         Assert.Equal(4, result.Count);
@@ -150,7 +150,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
+        var svc = TestServices.Disbursements(db);
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Equal(3, result.Count);
@@ -191,7 +191,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
+        var svc = TestServices.Disbursements(db);
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Single(result);
@@ -224,7 +224,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new DisbursementService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(), new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
+        var svc = TestServices.Disbursements(db);
         var result = (await svc.GenerateAsync(contract.Id)).ToList();
 
         Assert.Single(result);
@@ -285,7 +285,7 @@ public class ContractLifecycleTests
         db.ContractDisbursements.Add(tranche);
         await db.SaveChangesAsync();
 
-        var svc = new DeliverableService(new ContractRepository(db), new UserRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
+        var svc = TestServices.Deliverables(db);
         var staffId = Guid.NewGuid();
         var result = await svc.EvaluateAsync(deliverable.Id,
             new Application.DTOs.Contract.EvaluateDeliverableRequest
@@ -343,7 +343,7 @@ public class ContractLifecycleTests
         db.ProjectDeliverables.Add(deliverable);
         await db.SaveChangesAsync();
 
-        var svc = new DeliverableService(new ContractRepository(db), new UserRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
+        var svc = TestServices.Deliverables(db);
         await svc.EvaluateAsync(deliverable.Id,
             new Application.DTOs.Contract.EvaluateDeliverableRequest
             {
@@ -394,7 +394,7 @@ public class ContractLifecycleTests
         db.AmendmentRequests.Add(amendment);
         await db.SaveChangesAsync();
 
-        var svc = new AmendmentService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock());
+        var svc = TestServices.Amendments(db);
         var staffId = Guid.NewGuid();
 
         await Assert.ThrowsAsync<ArgumentException>(
@@ -444,7 +444,7 @@ public class ContractLifecycleTests
         db.AmendmentRequests.Add(amendment);
         await db.SaveChangesAsync();
 
-        var svc = new AmendmentService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock());
+        var svc = TestServices.Amendments(db);
         await svc.ApproveAsync(amendment.Id,
             new Application.DTOs.Contract.ReviewAmendmentRequest(), Guid.NewGuid());
 
@@ -503,7 +503,7 @@ public class ContractLifecycleTests
         db.AmendmentRequests.Add(amendment);
         await db.SaveChangesAsync();
 
-        var svc = new AmendmentService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock());
+        var svc = TestServices.Amendments(db);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.ApproveAsync(amendment.Id, new Application.DTOs.Contract.ReviewAmendmentRequest(), Guid.NewGuid()));
@@ -538,7 +538,7 @@ public class ContractLifecycleTests
         db.Contracts.Add(contract);
         await db.SaveChangesAsync();
 
-        var svc = new AmendmentService(new ContractRepository(db), new MasterDataRepository(db), new FakeClock());
+        var svc = TestServices.Amendments(db);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             svc.CreateAsync(contract.Id, new Application.DTOs.Contract.CreateAmendmentRequest
@@ -616,8 +616,7 @@ public class ContractLifecycleTests
     }
 
     private static DisbursementService MakeDisbursementService(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
-        new(new ContractRepository(db), new MasterDataRepository(db), new FakeClock(),
-            new SystemSettingService(new MasterDataRepository(db)), TestNotifier.Create(db), new DocumentRepository(db));
+        TestServices.Disbursements(db);
 
     private static void AddDisbursementEvidence(
         FURPMS.Infrastructure.Data.FURPMSDbContext db, int disbursementId, Guid uploadedBy)

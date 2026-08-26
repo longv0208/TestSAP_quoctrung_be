@@ -26,6 +26,7 @@ public class ProposalService : IProposalService
     private readonly INotifier _notifier;
     private readonly IAiSummaryQueue _summaryQueue;
     private readonly IDeadlineResolver _deadlines;
+    private readonly IDecisionLogger _decisions;
 
     public ProposalService(
         IProposalRepository proposals,
@@ -38,8 +39,10 @@ public class ProposalService : IProposalService
         IBudgetPolicyService budgetPolicy,
         INotifier notifier,
         IAiSummaryQueue summaryQueue,
-        IDeadlineResolver deadlines)
+        IDeadlineResolver deadlines,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _budgetPolicy = budgetPolicy;
         _notifier = notifier;
         _summaryQueue = summaryQueue;
@@ -610,6 +613,17 @@ public class ProposalService : IProposalService
         proposal.UpdatedAt = DateTime.UtcNow;
         project.Status = ProjectStatus.UnderReview;
         project.UpdatedAt = DateTime.UtcNow;
+
+        _decisions.Log(
+            project.Id,
+            proposal.VersionNo > 1 ? DecisionTypes.ProposalRevised : DecisionTypes.ProposalSubmitted,
+            proposal.VersionNo > 1
+                ? $"Chủ nhiệm nộp bản chỉnh sửa lần {proposal.VersionNo}"
+                : $"Chủ nhiệm nộp đề cương \"{proposal.TitleVi}\"",
+            "Proposal", proposal.Id.ToString(),
+            result: "SUBMITTED", decidedBy: userId, decidedByRole: "Chủ nhiệm đề tài",
+            decidedAt: proposal.SubmittedAt);
+
         await _proposals.SaveChangesAsync();
 
         // Báo Phòng QLKH có đề cương mới cần xử lý. Trước đây nộp xong hệ thống im lặng — chuyên
@@ -662,6 +676,13 @@ public class ProposalService : IProposalService
         proposal.UpdatedAt = DateTime.UtcNow;
         proposal.Project.Status = ProjectStatus.Proposed;
         proposal.Project.UpdatedAt = DateTime.UtcNow;
+
+        _decisions.Log(
+            proposal.ProjectId, DecisionTypes.ProposalWithdrawn,
+            $"Chủ nhiệm rút lại đề cương \"{proposal.TitleVi}\"",
+            "Proposal", proposal.Id.ToString(),
+            result: "WITHDRAWN", decidedBy: userId, decidedByRole: "Chủ nhiệm đề tài");
+
         await _proposals.SaveChangesAsync();
 
         return await LoadProposalDetailAsync(proposalId);

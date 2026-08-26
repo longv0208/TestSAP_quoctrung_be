@@ -25,7 +25,7 @@
 | **`SOFTWARE_PACKAGE_INSTALLATION_GUIDE.md`** | **Hướng dẫn cài đặt gói phần mềm:** đặt cạnh BE/FE khi nộp; có cấu trúc package, phiên bản, lệnh cài, migration/seed, cách xuất/restore sample SQL, tài khoản theo vai và checklist loại bí mật/file sinh | Khi đóng gói mục 3 “Software Package” và khi kiểm tra cài trên máy sạch |
 | **`GOPY_Thay_Demo_1408.md`** | **Góp ý của thầy buổi demo 14/08** — 10 mục, mỗi mục ghi *thầy nói gì → hiểu thành việc gì → trạng thái* | Trước khi sửa bất cứ gì liên quan tới góp ý sau demo |
 | **`TEST_CHECKLIST.md`** | **Bảng kiểm thử** — mọi thứ đã làm 05→09/08, chia theo vai (PI · Staff · Hội đồng · Admin), mỗi dòng ghi *bấm gì → phải thấy gì*. Kèm mục "chỗ còn mỏng" và "việc còn treo" | **Trước mỗi buổi demo** và khi cần test lại sau thay đổi lớn |
-| **`BUSINESS_RULES.md`** | **Bảng tra quy tắc nghiệp vụ** — 86 luật chia 6 nhóm: luật → căn cứ (điều/biểu mẫu QĐ543 hoặc buổi chốt với thầy) → **nơi thực thi trong code** → mã lỗi. Kèm mục "đã rà và KHÔNG có luật" + độ phủ test | Khi bị hỏi *"quy tắc này ở đâu ra?"*, trước khi sửa một ràng buộc, và khi ôn bảo vệ |
+| **`BUSINESS_RULES.md`** | **Bảng tra quy tắc nghiệp vụ** — 91 luật chia 6 nhóm: luật → căn cứ (điều/biểu mẫu QĐ543 hoặc buổi chốt với thầy) → **nơi thực thi trong code** → mã lỗi. Kèm mục "đã rà và KHÔNG có luật" + độ phủ test | Khi bị hỏi *"quy tắc này ở đâu ra?"*, trước khi sửa một ràng buộc, và khi ôn bảo vệ |
 | **`QD543_Compliance.md`** | **Bảng đối chiếu QĐ543 ↔ code**: từng biểu mẫu map vào entity/endpoint nào, đã làm chưa. §2 map từng mục BM04 ↔ field BE | Mở **cùng lúc** với file .docx ở trên — nó là bản dịch từ văn bản luật sang code |
 
 > ⚠️ File `.docx`/`.xlsx` đọc bằng cách bóc XML (xem lệnh mẫu ở cuối file này), đừng đoán nội dung.

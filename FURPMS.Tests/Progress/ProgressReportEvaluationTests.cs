@@ -23,7 +23,7 @@ namespace FURPMS.Tests.Progress;
 public class ProgressReportEvaluationTests
 {
     private static ProgressReportService MakeService(FURPMSDbContext db) =>
-        new(new ContractRepository(db), new ProposalRepository(db), new FakeClock(), new DocumentRepository(db), TestNotifier.Create(db));
+        TestServices.ProgressReports(db);
 
     private static async Task<(FURPMSDbContext db, ProgressReport report)> SeedSubmittedReportAsync(
         string? reportFileUrl, bool withAttachment)

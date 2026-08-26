@@ -28,6 +28,8 @@ public class ProgressReportSummaryDto
     public DateTime CreatedAt { get; set; }
     // Staff lên lịch: hạn nộp + lịch họp + link Meet/Teams.
     public string? DueDate { get; set; }
+    /// <summary>Số ngày còn lại tới hạn nộp, âm = quá hạn. Máy chủ tính.</summary>
+    public int? DaysLeft { get; set; }
     public DateTime? ScheduledMeetingAt { get; set; }
     public string? MeetingLink { get; set; }
 }

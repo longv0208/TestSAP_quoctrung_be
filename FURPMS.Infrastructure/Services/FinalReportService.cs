@@ -13,12 +13,18 @@ public class FinalReportService : IFinalReportService
 {
     private readonly IContractRepository _contracts;
     private readonly IClock _clock;
+    private readonly ISystemSettingService _settings;
+    private readonly IDecisionLogger _decisions;
 
     public FinalReportService(IContractRepository contracts,
-        IClock clock)
+        IClock clock,
+        ISystemSettingService settings,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _contracts = contracts;
         _clock = clock;
+        _settings = settings;
     }
 
     public async Task<FinalReportDto?> GetByContractAsync(Guid contractId)
@@ -69,6 +75,18 @@ public class FinalReportService : IFinalReportService
         contract.Project.Status = ProjectStatus.Acceptance;
         contract.Project.UpdatedAt = DateTime.UtcNow;
 
+        // QĐ543 Điều 11.2.a (nguyên văn): "Chủ nhiệm đề tài phải nộp báo cáo nghiệm thu cho Phòng
+        // QLKH và Đơn vị chủ trì ÍT NHẤT 30 NGÀY TRƯỚC KHI KẾT THÚC đề tài."
+        //
+        // Cột `deadline` có trong bảng từ đầu nhưng CHƯA BAO GIỜ ĐƯỢC GHI — chỉ được đọc ra DTO, nên
+        // luôn null và không màn nào hiện được hạn này. Ghi tại đây để dòng thời gian đề tài có mốc
+        // thật, và scanner nhắc hạn có cái để quét.
+        //
+        // Số ngày lấy từ system_settings, không cắm vào code: Điều 11.2.a nói "ít nhất 30 ngày" —
+        // trường có thể siết chặt hơn, không được nới lỏng hơn.
+        var leadDays = await _settings.GetIntAsync(
+            SystemSettingKeys.FinalReportLeadDays, SystemSettingKeys.DefaultFinalReportLeadDays);
+
         var report = new FinalReport
         {
             ProjectId = contract.ProjectId,
@@ -76,6 +94,7 @@ public class FinalReportService : IFinalReportService
             SummaryFileUrl = summaryLocation,
             Language = language,
             SubmittedAt = _clock.UtcNow,
+            Deadline = contract.EndDate.AddDays(-leadDays),
             Status = FinalReportStatus.Submitted
         };
 
@@ -113,7 +132,12 @@ public class FinalReportService : IFinalReportService
             throw new InvalidOperationException($"Báo cáo đang ở trạng thái {StatusText.Vi(report.Status)} — chỉ chấp nhận được báo cáo đã nộp.");
 
         report.Status = FinalReportStatus.Accepted;
-        report.ArchivalDeadline = DateOnly.FromDateTime(_clock.UtcNow.AddMonths(3));
+        // Trước 25/08 chỗ này hardcode "+3 tháng". Cẩm nang chống trượt xếp hardcode tham số nghiệp
+        // vụ là nguyên nhân trượt phổ biến thứ 2, và câu hỏi kinh điển của hội đồng là "đổi con số
+        // này rồi demo ngay đi" — nên đưa ra system_settings, Admin sửa được, hiệu lực ngay.
+        var archivalDays = await _settings.GetIntAsync(
+            SystemSettingKeys.ArchivalLeadDays, SystemSettingKeys.DefaultArchivalLeadDays);
+        report.ArchivalDeadline = DateOnly.FromDateTime(_clock.UtcNow).AddDays(archivalDays);
         await _contracts.SaveChangesAsync();
         return Map(report);
     }
@@ -135,11 +159,18 @@ public class FinalReportService : IFinalReportService
 
         report.Status = FinalReportStatus.Archived;
         report.ArchivedAt = _clock.UtcNow;
+
+        _decisions.Log(
+            report.ProjectId, DecisionTypes.FinalReportApproved,
+            "Duyệt và lưu trữ báo cáo tổng kết đề tài",
+            "FinalReport", report.Id.ToString(),
+            result: report.Status, documentNo: "BM12", decidedByRole: "Phòng QLKH");
+
         await _contracts.SaveChangesAsync();
         return Map(report);
     }
 
-    private static FinalReportDto Map(FinalReport r) => new()
+    private FinalReportDto Map(FinalReport r) => new()
     {
         Id = r.Id,
         ProjectId = r.ProjectId,
@@ -148,11 +179,13 @@ public class FinalReportService : IFinalReportService
         SummaryFileUrl = r.SummaryFileUrl,
         Language = r.Language,
         Deadline = r.Deadline?.ToString("yyyy-MM-dd"),
+        DaysLeft = DeadlineMath.DaysLeft(r.Deadline, _clock),
         SubmittedAt = r.SubmittedAt,
         RevisionNotes = r.RevisionNotes,
         RevisionRequestedAt = r.RevisionRequestedAt,
         FinalSubmittedAt = r.FinalSubmittedAt,
         ArchivalDeadline = r.ArchivalDeadline?.ToString("yyyy-MM-dd"),
+        ArchivalDaysLeft = DeadlineMath.DaysLeft(r.ArchivalDeadline, _clock),
         ArchivedAt = r.ArchivedAt
     };
 

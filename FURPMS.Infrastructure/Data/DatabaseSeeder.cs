@@ -967,6 +967,51 @@ public class DatabaseSeeder
                 RecommendedValue = SystemSettingKeys.DefaultDeadlineReminderDays,
                 Description = "Nhắc PI trước hạn nộp sản phẩm bao nhiêu ngày, cách nhau bằng dấu phẩy (vd: 30,14,7)."
             },
+            // ── Hạn từng giai đoạn đề tài (thêm 25/08 — biên bản bảo vệ lần 2) ──
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.ScoringWindowDays,
+                Value = SystemSettingKeys.DefaultScoringWindowDays.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultScoringWindowDays.ToString(),
+                Description = "Hội đồng có bao nhiêu ngày để chấm xong một vòng, tính từ lúc vòng được mở. " +
+                              "Quá hạn thì vòng bị gắn cờ, KHÔNG tự đóng — kết luận vẫn là của Chủ tịch (rule #12)."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.RevisionDeadlineDays,
+                Value = SystemSettingKeys.DefaultRevisionDeadlineDays.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultRevisionDeadlineDays.ToString(),
+                Description = "Chủ nhiệm có bao nhiêu ngày để nộp bản chỉnh sửa sau khi hội đồng yêu cầu sửa."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.FinalReportLeadDays,
+                Value = SystemSettingKeys.DefaultFinalReportLeadDays.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultFinalReportLeadDays.ToString(),
+                Description = "Báo cáo nghiệm thu phải nộp trước ngày kết thúc đề tài bao nhiêu ngày. " +
+                              "QĐ543 Điều 11.2.a quy định ít nhất 30 ngày — đổi số này là đổi luật, cân nhắc kỹ."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.ContractSignWindowDays,
+                Value = SystemSettingKeys.DefaultContractSignWindowDays.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultContractSignWindowDays.ToString(),
+                Description = "Số ngày để ký hợp đồng kể từ khi hội đồng chốt duyệt đề cương."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.ArchivalLeadDays,
+                Value = SystemSettingKeys.DefaultArchivalLeadDays.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultArchivalLeadDays.ToString(),
+                Description = "Số ngày để hoàn tất lưu trữ hồ sơ sau khi nộp báo cáo tổng kết."
+            },
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.MeetingDeadlineWorkingDays,
+                Value = SystemSettingKeys.DefaultMeetingDeadlineWorkingDays.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultMeetingDeadlineWorkingDays.ToString(),
+                Description = "Hội đồng phải họp trong bao nhiêu NGÀY LÀM VIỆC kể từ khi được lập (QĐ543 Điều 8.3.a)."
+            },
             new SystemSetting
             {
                 Key = SystemSettingKeys.EmailEnabled,

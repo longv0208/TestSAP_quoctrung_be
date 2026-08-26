@@ -40,9 +40,7 @@ public class ProgressReportScheduleTests
         await db.SaveChangesAsync();
 
         var clock = new FakeClock { UtcNow = new DateTime(2026, 8, 19, 3, 0, 0, DateTimeKind.Utc) };
-        var service = new ProgressReportService(
-            new ContractRepository(db), new ProposalRepository(db), clock,
-            new DocumentRepository(db), TestNotifier.Create(db));
+        var service = TestServices.ProgressReports(db, clock);
         return (service, report);
     }
 

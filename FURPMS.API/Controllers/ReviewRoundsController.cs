@@ -88,6 +88,20 @@ public class ReviewRoundsController : ControllerBase
         return Ok(ApiResponse.Ok("Member removed from round."));
     }
 
+    /// <summary>
+    /// Đặt hoặc dời hạn chấm của vòng — giai đoạn chấm trước 25/08 là chặng DUY NHẤT không có hạn.
+    /// Dời hạn đã có thì ghi <c>deadline_extension</c> (rule #19), không ghi đè ngày gốc.
+    /// </summary>
+    // PATCH /api/rounds/{roundId}/deadline
+    [HttpPatch("api/rounds/{roundId:guid}/deadline")]
+    [Authorize(Roles = "Staff,Admin")]
+    public async Task<ActionResult<ApiResponse<ReviewRoundResponse>>> SetRoundDeadline(
+        Guid roundId, [FromBody] SetRoundDeadlineRequest request)
+    {
+        var result = await _service.SetRoundDeadlineAsync(roundId, request, GetCurrentUserId());
+        return Ok(ApiResponse<ReviewRoundResponse>.Ok(result, "Đã cập nhật hạn chấm."));
+    }
+
     private Guid GetCurrentUserId()
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier)

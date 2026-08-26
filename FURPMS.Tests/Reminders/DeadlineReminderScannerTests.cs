@@ -95,7 +95,7 @@ public class DeadlineReminderScannerTests
 
         var clock = new FakeClock { UtcNow = today.ToDateTime(TimeOnly.MinValue) };
         var emailSvc = new NullEmailService();
-        var scanner = new DeadlineReminderScanner(new ContractRepository(db), new NotificationRepository(db), clock, emailSvc, new SystemSettingService(new MasterDataRepository(db)));
+        var scanner = TestServices.DeadlineScanner(db, clock, emailSvc);
 
         await scanner.ScanAsync();
 
@@ -160,7 +160,7 @@ public class DeadlineReminderScannerTests
 
         var clock = new FakeClock { UtcNow = today.ToDateTime(TimeOnly.MinValue) };
         var emailSvc = new NullEmailService();
-        var scanner = new DeadlineReminderScanner(new ContractRepository(db), new NotificationRepository(db), clock, emailSvc, new SystemSettingService(new MasterDataRepository(db)));
+        var scanner = TestServices.DeadlineScanner(db, clock, emailSvc);
 
         await scanner.ScanAsync();
 
@@ -218,14 +218,24 @@ public class DeadlineReminderScannerTests
 
         var clock = new FakeClock { UtcNow = today.ToDateTime(TimeOnly.MinValue) };
         var emailSvc = new NullEmailService();
-        var scanner = new DeadlineReminderScanner(new ContractRepository(db), new NotificationRepository(db), clock, emailSvc, new SystemSettingService(new MasterDataRepository(db)));
+        var scanner = TestServices.DeadlineScanner(db, clock, emailSvc);
 
-        // Run twice
+        // Chạy lần 1 rồi lần 2 — điều cần kiểm là lần 2 KHÔNG sinh thêm gì, chứ không phải
+        // "toàn hệ thống chỉ có đúng 1 thông báo". Từ 25/08 scanner còn quét cả báo cáo nghiệm thu
+        // (hạn suy từ ngày kết thúc hợp đồng), nên một lượt quét hợp lệ có thể ra nhiều thông báo
+        // khác loại — khoá cứng số 1 là khoá nhầm thứ.
         await scanner.ScanAsync();
+        var afterFirst = db.Notifications.Count();
+        var emailsAfterFirst = emailSvc.Sent.Count;
+
         await scanner.ScanAsync();
 
-        Assert.Single(db.Notifications);
-        Assert.Single(emailSvc.Sent);
+        Assert.Equal(afterFirst, db.Notifications.Count());
+        Assert.Equal(emailsAfterFirst, emailSvc.Sent.Count);
+
+        // Và đúng cái sản phẩm này chỉ được nhắc MỘT lần.
+        var deliverableId = deliverable.Id.ToString();
+        Assert.Single(db.Notifications.Where(n => n.RelatedEntityId == deliverableId));
     }
 
     // ── Test 3: Overdue deliverable → URGENT priority + amendments action URL ──
@@ -275,7 +285,7 @@ public class DeadlineReminderScannerTests
 
         var clock = new FakeClock { UtcNow = today.ToDateTime(TimeOnly.MinValue) };
         var emailSvc = new NullEmailService();
-        var scanner = new DeadlineReminderScanner(new ContractRepository(db), new NotificationRepository(db), clock, emailSvc, new SystemSettingService(new MasterDataRepository(db)));
+        var scanner = TestServices.DeadlineScanner(db, clock, emailSvc);
 
         await scanner.ScanAsync();
 
@@ -330,7 +340,7 @@ public class DeadlineReminderScannerTests
 
         var clock = new FakeClock { UtcNow = today.ToDateTime(TimeOnly.MinValue) };
         var emailSvc = new NullEmailService();
-        var scanner = new DeadlineReminderScanner(new ContractRepository(db), new NotificationRepository(db), clock, emailSvc, new SystemSettingService(new MasterDataRepository(db)));
+        var scanner = TestServices.DeadlineScanner(db, clock, emailSvc);
 
         await scanner.ScanAsync();
 

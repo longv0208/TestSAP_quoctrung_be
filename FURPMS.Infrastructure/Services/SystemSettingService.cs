@@ -157,6 +157,19 @@ public class SystemSettingService : ISystemSettingService
                     throw new ArgumentException("Tên người đại diện quá dài.");
                 return value;
 
+            // Sáu khoá "số ngày" của các giai đoạn — cùng một luật kiểm, gộp một nhánh.
+            case SystemSettingKeys.ScoringWindowDays:
+            case SystemSettingKeys.RevisionDeadlineDays:
+            case SystemSettingKeys.FinalReportLeadDays:
+            case SystemSettingKeys.ContractSignWindowDays:
+            case SystemSettingKeys.ArchivalLeadDays:
+            case SystemSettingKeys.MeetingDeadlineWorkingDays:
+                if (!int.TryParse(value, out var stageDays) || stageDays < 1
+                    || stageDays > SystemSettingKeys.MaxStageWindowDays)
+                    throw new ArgumentException(
+                        $"Số ngày phải trong khoảng 1–{SystemSettingKeys.MaxStageWindowDays}.");
+                return stageDays.ToString();
+
             default:
                 return value;
         }

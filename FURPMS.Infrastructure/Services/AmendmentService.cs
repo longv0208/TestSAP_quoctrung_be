@@ -14,10 +14,13 @@ public class AmendmentService : IAmendmentService
     private readonly IContractRepository _contracts;
     private readonly IMasterDataRepository _masterData;
     private readonly IClock _clock;
+    private readonly IDecisionLogger _decisions;
 
     public AmendmentService(IContractRepository contracts, IMasterDataRepository masterData,
-        IClock clock)
+        IClock clock,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _contracts = contracts;
         _masterData = masterData;
         _clock = clock;
@@ -107,6 +110,13 @@ public class AmendmentService : IAmendmentService
         if (amendment.Category?.Code == "EXTENSION")
             await ApplyExtensionIfNeededAsync(amendment);
 
+        _decisions.Log(
+            contract.ProjectId, DecisionTypes.AmendmentApproved,
+            $"Duyệt phụ lục điều chỉnh: {amendment.ChangeDescription}",
+            "AmendmentRequest", amendment.Id.ToString(),
+            result: AmendmentStatus.Approved, reason: request.ReviewerComments,
+            decidedBy: reviewedBy, decidedByRole: "Phòng QLKH");
+
         await _contracts.SaveChangesAsync();
         return MapDetail(amendment);
     }
@@ -126,6 +136,20 @@ public class AmendmentService : IAmendmentService
         amendment.ReviewedBy = reviewedBy;
         amendment.ReviewedAt = _clock.UtcNow;
         amendment.ReviewerComments = request.ReviewerComments;
+
+        // Từ chối cũng là MỘT QUYẾT ĐỊNH — hồ sơ chỉ ghi cái được duyệt thì đọc lại sẽ không hiểu
+        // vì sao chủ nhiệm phải nộp đơn lần hai.
+        var rejectProjectId = await _contracts.Query()
+            .Where(c => c.Id == amendment.ContractId)
+            .Select(c => c.ProjectId)
+            .FirstOrDefaultAsync();
+        if (rejectProjectId != Guid.Empty)
+            _decisions.Log(
+                rejectProjectId, DecisionTypes.AmendmentApproved,
+                $"Từ chối phụ lục điều chỉnh: {amendment.ChangeDescription}",
+                "AmendmentRequest", amendment.Id.ToString(),
+                result: AmendmentStatus.Rejected, reason: request.ReviewerComments,
+                decidedBy: reviewedBy, decidedByRole: "Phòng QLKH");
 
         await _contracts.SaveChangesAsync();
         return MapDetail(amendment);

@@ -88,7 +88,7 @@ public class ReviewRoundServiceTests
         db.ReviewRounds.Add(financeRound);
         await db.SaveChangesAsync();
 
-        var service = new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
+        var service = TestServices.ReviewRounds(db);
 
         // Act & Assert
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
@@ -118,7 +118,7 @@ public class ReviewRoundServiceTests
         db.ProjectRounds.Add(new ProjectRound { ProjectId = project.Id, RoundId = round.Id, Status = "PENDING" });
         await db.SaveChangesAsync();
 
-        var service = new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
+        var service = TestServices.ReviewRounds(db);
 
         // Act
         await service.CloseRoundAsync(round.Id, new CloseRoundRequest { Result = "REJECTED" });
@@ -148,7 +148,7 @@ public class ReviewRoundServiceTests
         db.ProjectRounds.Add(new ProjectRound { ProjectId = project.Id, RoundId = round.Id, Status = "PENDING" });
         await db.SaveChangesAsync();
 
-        var service = new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
+        var service = TestServices.ReviewRounds(db);
 
         // Act
         await service.CloseRoundAsync(round.Id, new CloseRoundRequest { Result = "APPROVED" });
@@ -181,7 +181,7 @@ public class ReviewRoundServiceTests
         db.ReviewRounds.Add(financeRound);
         await db.SaveChangesAsync();
 
-        var service = new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock());
+        var service = TestServices.ReviewRounds(db);
 
         // Act
         var result = await service.OpenRoundAsync(financeRound.Id);

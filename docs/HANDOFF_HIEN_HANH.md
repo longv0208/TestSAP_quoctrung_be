@@ -130,8 +130,41 @@ hợp đồng** + bộ lọc giai đoạn · đợt giải ngân hiện **% và 
 > TẠM TÍNH theo kế hoạch, và màn hình phải nói ra**. Im lặng là để người đọc tưởng đó là số quyết
 > toán — hệ thống không được tự quyết thay kế toán.
 
-**Trạng thái công việc bảo vệ lần 2:** Sprint 0 và Nhóm 1 (Ngân sách) ✅ xong 25/08. Việc còn lại
-xem `KE_HOACH_BAO_VE_LAN2.md` §12.
+**Trạng thái công việc bảo vệ lần 2:** Sprint 0, Nhóm 1 (Ngân sách), Nhóm 2 (Deadline) và Nhóm 3
+(Lưu trữ quyết định) ✅ xong 25/08. Việc còn lại xem `KE_HOACH_BAO_VE_LAN2.md` §12.
+
+### 1.6 🔴 SAU KHI DEPLOY phải chạy backfill hồ sơ quyết định (25/08)
+
+Nhóm 3 thêm bảng `project_decisions` — sổ các quyết định đã ra với một đề tài (yêu cầu số 2 của hội
+đồng). **Sổ chỉ bắt đầu ghi từ lúc tính năng lên.** Mọi đề tài đã chạy xong trước đó — gồm cả dữ liệu
+thật đang nằm trên Railway — sẽ mở ra **hồ sơ trống trơn**, đúng lúc bảo vệ.
+
+```bash
+# 1. Xem trước, KHÔNG ghi gì
+POST /api/admin/backfill-decisions?dryRun=true     # Admin
+# 2. Chạy thật
+POST /api/admin/backfill-decisions
+```
+
+**Chạy lại bao nhiêu lần cũng được** — nhận diện theo `sourceEntityType + sourceEntityId +
+decisionType`, đã có thì bỏ qua. Đúng cả khi luồng thật đã ghi trước đó (đã kiểm: chạy lại sau khi
+nộp một đề cương thật → thêm 0, đếm bản trùng trong DB = 0).
+
+### 1.7 Đếm ngược tới hạn — **chỉ máy chủ được tính** (25/08)
+
+Nhóm 2 làm xong thì lộ ra một lỗi rất dễ tái phát: thẻ *"Hạn sắp tới"* trên bảng điều khiển hiện
+**"Còn 7 ngày"** trong khi tab **Sản phẩm** của chi tiết hợp đồng hiện **"Còn 6 ngày"** — cho **cùng
+một sản phẩm**, trên cùng một phiên đăng nhập. Nguyên nhân: máy chủ chạy UTC, trình duyệt chạy giờ
+máy người dùng (UTC+7); sát nửa đêm là lệch nguyên một ngày.
+
+Cách chữa đã áp dụng: **bỏ hẳn phép trừ ngày phía giao diện.** Mọi DTO có hạn nay trả `daysLeft`
+(âm = quá hạn, `null` = chưa đặt hạn), tính tập trung ở `FURPMS.Application/Common/DeadlineMath.cs`
+qua `IClock` — nên công cụ tua thời gian tác động đúng vào đây y như bộ quét nhắc hạn qua email.
+Khoá bằng `FURPMS.Tests/Deadlines/DaysLeftConsistencyTests.cs`.
+
+> **Ngoại lệ duy nhất, đừng "dọn" nhầm:** `daysUntil()` bên FE vẫn còn và chỉ phục vụ **lịch họp**.
+> Buổi họp là *cuộc hẹn*, không phải hạn nộp — nhãn "quá hạn 3 ngày" cho một buổi họp đã diễn ra là
+> sai nghĩa, nên `MeetingsAgenda` cố ý **không** dùng `DeadlineBadge`.
 
 ---
 
@@ -254,7 +287,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 ## 6. Cách kiểm tra nhanh mọi thứ còn chạy
 
 ```bash
-cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 255/255 xanh
+cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 291/291 xanh
 cd furpms-web  && npx tsc -p tsconfig.app.json --noEmit && npm run build
 ```
 

@@ -54,7 +54,7 @@ public class FinalReportServiceTests
         await db.SaveChangesAsync();
 
         var clock = new FakeClock { UtcNow = new DateTime(2026, 8, 19, 4, 0, 0, DateTimeKind.Utc) };
-        return (new FinalReportService(new ContractRepository(db), clock), contract, report);
+        return (TestServices.FinalReports(db, clock), contract, report);
     }
 
     [Fact]

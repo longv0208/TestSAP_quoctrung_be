@@ -1,3 +1,4 @@
+using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Settlements;
 using FURPMS.Application.Interfaces;
@@ -13,10 +14,13 @@ public class ContractSettlementService : IContractSettlementService
     private readonly IContractRepository _contracts;
     private readonly IUserRepository _users;
     private readonly IClock _clock;
+    private readonly IDecisionLogger _decisions;
 
     public ContractSettlementService(IContractRepository contracts, IUserRepository users,
-        IClock clock)
+        IClock clock,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _contracts = contracts;
         _users = users;
         _clock = clock;
@@ -111,6 +115,15 @@ public class ContractSettlementService : IContractSettlementService
         settlement.Contract.Status = ContractStatus.Settled;
         settlement.Contract.UpdatedAt = _clock.UtcNow;
 
+        var hoanTra = settlement.TotalReturnedAmount > 0
+            ? $", hoàn trả {settlement.TotalReturnedAmount:N0} đ" : "";
+        _decisions.Log(
+            settlement.Contract.ProjectId, DecisionTypes.SettlementSigned,
+            $"Ký biên bản thanh lý — đã chi {settlement.TotalDisbursedAmount:N0} đ{hoanTra}",
+            "ContractSettlement", settlement.Id.ToString(),
+            result: "SIGNED", reason: settlement.Notes, documentNo: "BM13",
+            decidedBy: request.SideASigneeId, decidedByRole: "Đại diện Bên A");
+
         await _contracts.SaveChangesAsync();
         return ToDto(settlement);
     }
@@ -162,7 +175,7 @@ public class ContractSettlementService : IContractSettlementService
                 "Muốn sửa phải huỷ chữ ký biên bản thanh lý trước.");
     }
 
-    private static SettlementDto ToDto(ContractSettlement s) => new()
+    private SettlementDto ToDto(ContractSettlement s) => new()
     {
         Id = s.Id,
         ContractId = s.ContractId,
@@ -176,6 +189,7 @@ public class ContractSettlementService : IContractSettlementService
         SideASigneeId = s.SideASigneeId,
         SideASigneeName = s.SideASignee?.FullName,
         SettlementDeadline = s.SettlementDeadline,
+        DaysLeft = DeadlineMath.DaysLeft(s.SettlementDeadline, _clock),
         Notes = s.Notes,
         CreatedAt = s.CreatedAt,
     };

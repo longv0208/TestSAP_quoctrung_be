@@ -118,18 +118,9 @@ public class ProposalSubmissionTests
         Assert.Equal(proposal.Id, asStaff.Id);
     }
 
-    private static ProposalService MakeService(FURPMSDbContext db, FakeClock clock) => new(
-        new ProposalRepository(db),
-        new CycleRepository(db),
-        new MasterDataRepository(db),
-        new UserRepository(db),
-        clock,
-        new ReviewRoundService(new ReviewRepository(db), new ProposalRepository(db), new NotificationRepository(db), TestNotifier.Create(db), new FakeClock()),
-        new ReviewRepository(db),
-        new BudgetPolicyService(new ProposalRepository(db), new CycleRepository(db), new MasterDataRepository(db)),
-        TestNotifier.Create(db),
-        new TestAiSummaryQueue(),
-        new DeadlineResolver(new CycleRepository(db)));
+    // Dựng qua xưởng chung — thêm dependency vào ProposalService thì chỉ sửa TestServices.
+    private static ProposalService MakeService(FURPMSDbContext db, FakeClock clock) =>
+        TestServices.Proposals(db, clock);
 
     // ── 1: nộp quá hạn → 409 (InvalidOperationException) ─────────────────────
     [Fact]

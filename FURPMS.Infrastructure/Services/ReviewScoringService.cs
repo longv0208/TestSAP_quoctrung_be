@@ -19,6 +19,7 @@ public class ReviewScoringService : IReviewScoringService
     private readonly ISystemSettingService _settings;
 
     private readonly INotifier _notifier;
+    private readonly IDecisionLogger _decisions;
 
     public ReviewScoringService(
         IReviewRepository review,
@@ -26,8 +27,10 @@ public class ReviewScoringService : IReviewScoringService
         IProposalRepository proposals,
         IClock clock,
         ISystemSettingService settings,
-        INotifier notifier)
+        INotifier notifier,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _review = review;
         _masterData = masterData;
         _proposals = proposals;
@@ -35,6 +38,24 @@ public class ReviewScoringService : IReviewScoringService
         _settings = settings;
         _notifier = notifier;
     }
+
+    private static string ResultVi(string? result) => result switch
+    {
+        ReviewResult.Approved => "Đạt",
+        ReviewResult.Rejected => "Không đạt",
+        ReviewResult.RevisionRequired => "Yêu cầu chỉnh sửa",
+        null or "" => "chưa có kết luận",
+        _ => result
+    };
+
+    private static string RoundTypeVi(string? roundType) => roundType switch
+    {
+        "SCREENING" => "Sơ loại",
+        "REVIEW" => "Xét duyệt",
+        "ACCEPTANCE" => "Nghiệm thu",
+        null or "" => "Vòng chấm",
+        _ => roundType
+    };
 
     // Phase B: council chấm NHÓM đề tài — suy ra project từ assignment
     // (1 đề tài → tự suy; nhiều đề tài → request phải chỉ rõ projectId).
@@ -498,6 +519,17 @@ public class ReviewScoringService : IReviewScoringService
                     _ => proposal.Status
                 };
                 proposal.UpdatedAt = DateTime.UtcNow;
+
+                // Yêu cầu sửa mà không kèm hạn thì chủ nhiệm không biết phải nộp lại lúc nào, và
+                // Phòng QLKH cũng không có mốc để nhắc. Hai cột này có sẵn trong bảng nhưng trước
+                // 25/08 chỉ được DemoScenarioSeeder ghi — luồng thật chưa bao giờ đụng tới.
+                if (proposal.Status == ProposalStatus.RevisionRequired)
+                {
+                    var revisionDays = await _settings.GetIntAsync(
+                        SystemSettingKeys.RevisionDeadlineDays, SystemSettingKeys.DefaultRevisionDeadlineDays);
+                    proposal.RevisionRequestedAt = _clock.UtcNow;
+                    proposal.RevisionDeadline = _clock.UtcNow.AddDays(revisionDays);
+                }
             }
 
             proposal.Project.Status = isAcceptance
@@ -523,6 +555,30 @@ public class ReviewScoringService : IReviewScoringService
         var projectRound = round?.ProjectRounds.FirstOrDefault(pr => pr.ProjectId == decision.ProjectId);
         if (round != null && projectRound != null)
             ReviewRoundFinalizer.ApplyProjectResult(round, projectRound, decision.Result, _clock.UtcNow);
+
+        // Ghi vào sổ quyết định của đề tài (yêu cầu 2 của hội đồng bảo vệ lần 2). Đây là quyết định
+        // quan trọng nhất trong cả vòng đời, và `Result` là bản CHÉP LẠI kết luận Chủ tịch đã chốt —
+        // hệ thống không tự suy ra Đạt/Không đạt (rule #12).
+        var scoreText = decision.AverageScore is { } avg ? $" (điểm trung bình {avg:0.##})" : "";
+        _decisions.Log(
+            decision.ProjectId, DecisionTypes.CouncilDecision,
+            $"Hội đồng chốt kết luận: {ResultVi(decision.Result)}{scoreText}",
+            "CouncilDecision", decision.Id.ToString(),
+            result: decision.Result, reason: decision.CouncilComments, documentNo: "BM04",
+            decidedBy: chairUserId, decidedByRole: "Chủ tịch hội đồng",
+            decidedAt: decision.FinalizedAt);
+
+        if (round != null && projectRound != null
+            && projectRound.Status is "PASSED" or "FAILED")
+        {
+            _decisions.Log(
+                decision.ProjectId, DecisionTypes.RoundResult,
+                $"{RoundTypeVi(round.RoundType)} — vòng {round.RoundNumber}: " +
+                    (projectRound.Status == "PASSED" ? "Đạt" : "Không đạt"),
+                "ProjectRound", projectRound.Id.ToString(),
+                result: projectRound.Status, decidedByRole: "Hội đồng",
+                decidedAt: projectRound.FinalizedAt);
+        }
 
         await _review.SaveChangesAsync();
 

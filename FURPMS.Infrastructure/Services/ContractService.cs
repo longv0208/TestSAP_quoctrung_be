@@ -19,14 +19,17 @@ public class ContractService : IContractService
 
     private readonly INotifier _notifier;
     private readonly IDocumentRepository _documents;
+    private readonly IDecisionLogger _decisions;
 
     public ContractService(IContractRepository contracts, IProposalRepository proposals,
         IClock clock,
         ISystemSettingService settings,
         INotifier notifier,
-        IDocumentRepository documents)
+        IDocumentRepository documents,
+        IDecisionLogger decisions)
     {
         _documents = documents;
+        _decisions = decisions;
         _contracts = contracts;
         _proposals = proposals;
         _clock = clock;
@@ -142,6 +145,14 @@ public class ContractService : IContractService
             d.ContractId = contract.Id;
             d.AcceptanceStatus ??= AcceptanceStatus.Pending;
         }
+
+        _decisions.Log(
+            contract.ProjectId, DecisionTypes.ContractCreated,
+            $"Lập hợp đồng {contract.ContractNumber} — giá trị {contract.TotalAmount:N0} đ",
+            "Contract", contract.Id.ToString(),
+            documentNo: contract.ContractNumber,
+            decidedBy: createdBy, decidedByRole: "Phòng QLKH");
+
         await _proposals.SaveChangesAsync();
 
         return await GetByIdAsync(contract.Id);
@@ -327,6 +338,15 @@ public class ContractService : IContractService
         // Ký hợp đồng → project sang giai đoạn thực hiện.
         contract.Project.Status = ProjectStatus.InProgress;
         contract.Project.UpdatedAt = DateTime.UtcNow;
+
+        _decisions.Log(
+            contract.ProjectId, DecisionTypes.ContractSigned,
+            $"Ký hợp đồng {contract.ContractNumber}",
+            "Contract", contract.Id.ToString(),
+            result: "SIGNED", documentNo: contract.ContractNumber,
+            decidedBy: signedBy, decidedByRole: "Hai bên ký kết",
+            decidedAt: contract.SignedAt);
+
         await _contracts.SaveChangesAsync();
 
         // Đây là lúc đề tài chính thức được thực hiện và đồng hồ tiến độ bắt đầu chạy — chủ nhiệm
@@ -379,6 +399,15 @@ public class ContractService : IContractService
 
         contract.Project.Status = ProjectStatus.Terminated;
         contract.Project.UpdatedAt = _clock.UtcNow;
+
+        _decisions.Log(
+            contract.ProjectId, DecisionTypes.ContractTerminated,
+            $"Chấm dứt hợp đồng {contract.ContractNumber}",
+            "Contract", contract.Id.ToString(),
+            result: "TERMINATED", reason: contract.TerminatedReason,
+            documentNo: contract.ContractNumber,
+            decidedBy: terminatedBy, decidedByRole: "Phòng QLKH");
+
         await _contracts.SaveChangesAsync();
 
         await _notifier.NotifyAsync(

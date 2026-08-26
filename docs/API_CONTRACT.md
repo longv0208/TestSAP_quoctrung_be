@@ -1122,6 +1122,158 @@ bảo vệ lần 2 — *"thể hiện rõ ngân sách tương ứng cho các đ�
   phải dự toán — dự toán là số xin, hợp đồng mới là số cam kết).
 - `capExceeded` chỉ bật khi trần bị **siết SAU** lúc duyệt (Phòng QLKH sửa master data).
 
+### 13.2c Dòng thời gian đề tài — `GET /api/projects/{projectId}/timeline` (mới 25/08)
+
+Mọi giai đoạn của đề tài kèm **hạn** và **căn cứ của hạn**. Trả lời yêu cầu số (2) của hội đồng bảo
+vệ lần 2. Là **read-model** — không có bảng `timeline` nào; service lắp từ các cột đã có, và
+scanner nhắc hạn dùng lại chính nó nên email và màn hình không bao giờ lệch.
+
+**Quyền:** giống `/budget` — Admin · Staff · chủ nhiệm · ủy viên hội đồng được gán.
+
+```json
+{
+  "projectId": "…", "projectCode": "DT-001", "titleVi": "…", "projectStatus": "IN_PROGRESS",
+  "overdueCount": 1,
+  "stages": [{
+    "code": "FINAL_REPORT", "order": 80,
+    "deadline": "2026-12-01",
+    "deadlineSource": "RULE_QD543",
+    "deadlineBasis": "QĐ543 Điều 11.2.a — nộp ít nhất 30 ngày trước khi kết thúc đề tài",
+    "actualDate": null, "status": "IN_PROGRESS", "daysLeft": 158,
+    "isExtended": false, "entityType": "Contract", "entityId": "…"
+  }]
+}
+```
+
+- `code` ∈ `PROPOSAL_SUBMISSION · REVISION · REVIEW · REVIEW_MEETING · CONTRACT_SIGNING ·
+  PROGRESS_REPORT · DELIVERABLE · DISBURSEMENT · FINAL_REPORT · ACCEPTANCE_MEETING · SETTLEMENT ·
+  ARCHIVAL` — khoá i18n FE là `projectTimeline.stage.*`.
+- `deadlineSource` ∈ `CYCLE · EXTENSION · CONTRACT · RULE_QD543 · DERIVED · NOT_SET`.
+  Cùng `deadlineBasis` (câu tiếng Việt) sinh ra **để trả lời hội đồng**: hỏi *"hạn này ở đâu ra"*
+  thì màn hình tự nói.
+- `status` ∈ `NOT_STARTED · IN_PROGRESS · DONE · AT_RISK (còn ≤7 ngày) · OVERDUE · NO_DEADLINE`.
+- ⚠️ **`daysLeft` do MÁY CHỦ tính** — FE không tính lại. Máy chủ dùng đồng hồ hệ thống (có công cụ
+  tua thời gian để test các mốc), `Date.now()` của trình duyệt là giờ máy người dùng.
+- **Giải ngân cố ý KHÔNG có hạn** (`NOT_SET` / `NO_DEADLINE`): đợt mở khoá theo ĐIỀU KIỆN (nghiệm
+  thu sản phẩm, duyệt báo cáo), không theo ngày. `deadlineBasis` chứa điều kiện đó.
+
+### 13.2d Hạn chấm của vòng — `PATCH /api/rounds/{roundId}/deadline` (mới 25/08)
+
+`Staff,Admin`. Body: `{ "scoringDeadline": "2026-10-20", "reason": "…" }`
+
+Giai đoạn chấm trước 25/08 là chặng **duy nhất không có hạn nào** — vòng mở ra rồi để đấy. Nay mở
+vòng là tự đặt hạn theo `SCORING_WINDOW_DAYS`.
+
+| Tình huống | Kết quả |
+|---|---|
+| Vòng chưa có hạn | ghi thẳng `review_rounds.scoring_deadline`, **không** sinh log |
+| Vòng đã có hạn, có `reason` | sinh dòng `deadline_extensions` (`target_type = REVIEW_ROUND`); **ngày gốc giữ nguyên** (rule #19) |
+| Vòng đã có hạn, thiếu `reason` | **400** — *"đã có hạn chấm — dời hạn thì phải ghi rõ lý do"* |
+| Hạn đặt vào quá khứ | **400** |
+| Vòng đã PASSED/FAILED | **409** — hạn không còn ý nghĩa |
+
+`ReviewRoundResponse` nay có thêm `scoringDeadline` (hạn **hiệu lực**, đã tính dời hạn) và
+`isScoringOverdue`. ⚠️ Quá hạn chỉ **gắn cờ** — hệ thống **không tự đóng vòng**, kết luận vẫn là
+quyết định của Chủ tịch hội đồng (rule #12).
+
+### 13.2e Hạn sắp tới của tôi — `GET /api/me/deadlines?days=30` (mới 25/08)
+
+Mọi vai. Nguồn cho thẻ **"Hạn sắp tới"** trên bảng điều khiển PI và Chuyên viên.
+
+```json
+[ { "projectId": "…", "projectTitle": "…",
+    "stage": { "code": "REVIEW_MEETING", "order": 4, "deadline": "2026-08-28",
+               "deadlineSource": "RULE_QD543", "deadlineBasis": "QĐ543 Điều 8.3.a — …",
+               "status": "AT_RISK", "daysLeft": 3, "isExtended": false } } ]
+```
+
+| Quy tắc | Chi tiết |
+|---|---|
+| Phạm vi | Admin/Staff thấy **mọi** đề tài; còn lại thấy đề tài mình chủ nhiệm + đề tài mình được gán chấm |
+| Đề tài đã đóng | loại bỏ (`COMPLETED / CANCELLED / TERMINATED`) — hạn cũ không còn ý nghĩa |
+| `days` | kẹp về **1–180**; mặc định 30 |
+| Việc **quá hạn** | **luôn hiện**, kể cả khi đã quá xa cửa sổ `days` — bỏ qua là để nó chìm luôn |
+| Sắp xếp | theo `daysLeft` tăng dần ⇒ quá hạn lên đầu. **FE không được sắp lại** — thẻ chỉ hiện N dòng đầu |
+| Trần quét | 60 đề tài gần đây nhất |
+
+Dựng lại từ chính `GET /api/projects/{id}/timeline` chứ **không** viết truy vấn gom cột hạn riêng:
+hai đường tính hạn khác nhau thì sớm muộn cũng lệch, và lúc đó thẻ sẽ nói khác dòng thời gian của
+cùng một đề tài.
+
+### 13.2f `daysLeft` — đếm ngược do MÁY CHỦ tính (mới 25/08)
+
+Mọi DTO có hạn nay đều kèm số ngày còn lại (**âm = quá hạn**, `null` = chưa đặt hạn):
+
+| DTO | Trường |
+|---|---|
+| `DeliverableResponse` | `daysLeft` (theo `dueDate`) |
+| `ProgressReportSummaryDto` / `ProgressReportDto` | `daysLeft` (theo `dueDate`) |
+| `SettlementDto` | `daysLeft` (theo `settlementDeadline`) |
+| `FinalReportDto` | `daysLeft` (theo `deadline`) + `archivalDaysLeft` (theo `archivalDeadline`) |
+| `ProjectStageDto` | `daysLeft` |
+
+⚠️ **FE tuyệt đối không tự trừ ngày.** Đã từng có: thẻ "Hạn sắp tới" hiện *"Còn 7 ngày"* còn tab Sản
+phẩm hiện *"Còn 6 ngày"* cho **cùng một sản phẩm** — máy chủ chạy UTC, trình duyệt chạy UTC+7. Tất cả
+đi qua `Application/Common/DeadlineMath.cs`, vốn dùng `IClock` nên công cụ tua thời gian tác động
+đúng vào đây y như bộ quét nhắc hạn qua email.
+
+### 13.2g Hồ sơ quyết định — `GET /api/projects/{projectId}/decisions` (mới 25/08)
+
+Quyền xem giống màn kinh phí: Quản trị/Phòng QLKH · chủ nhiệm · ủy viên hội đồng được gán. Ngoài ra → **403**.
+
+```json
+{ "projectId": "…", "projectCode": "DT-01", "titleVi": "…", "totalCount": 15,
+  "decisions": [
+    { "id": "…", "decisionType": "COUNCIL_DECISION", "stage": "REVIEW",
+      "result": "APPROVED", "summary": "Hội đồng chốt kết luận: Đạt (điểm trung bình 75)",
+      "reason": "đạt chỉ tiêu", "documentNo": "BM04",
+      "sourceEntityType": "CouncilDecision", "sourceEntityId": "12",
+      "decidedBy": "…", "decidedByName": "PGS.TS. Lê Quang Minh",
+      "decidedByRole": "Chủ tịch hội đồng", "decidedAt": "2026-08-19T09:47:00Z",
+      "attachments": [] } ] }
+```
+
+| Quy tắc | Chi tiết |
+|---|---|
+| `stage` | `PROPOSAL / REVIEW / CONTRACT / EXECUTION / CLOSING / SCHEDULE / OTHER` — giao diện **gom nhóm** theo đây |
+| Sắp xếp | **ngày → thứ tự vòng đời → giờ**. Không phải thuần theo giờ: `contracts.signed_at` cố ý là ngày trần (00:00) vì hợp đồng ký ngoài hệ thống, xếp thuần theo giờ thì ký hợp đồng nhảy lên trước nộp đề cương cùng ngày |
+| `decidedByRole` | chức danh **tại thời điểm chốt**, chép cứng. Không suy ra từ `user_roles` lúc đọc — người ta đổi vai, nghỉ việc, thì hồ sơ cũ vẫn phải đúng |
+| `result` | **chép lại** kết luận bản gốc. Hệ thống không tự sinh kết luận nào (rule #12) |
+| File đính kèm | dùng lại `documents` với `entityType = "ProjectDecision"`, `entityId` = id quyết định |
+
+Đây là **sổ đăng ký mỏng**, không phải bản sao: nội dung đầy đủ vẫn ở `CouncilDecision`,
+`ProjectRound`, `AmendmentRequest`… và `sourceEntityType + sourceEntityId` để mở đúng bản gốc.
+
+### 13.2h Dựng lại hồ sơ — `POST /api/admin/backfill-decisions` (mới 25/08)
+
+`Admin`. Query: `projectId` (bỏ trống = mọi đề tài, trần 500) · `dryRun` (mặc định `false`).
+
+```json
+{ "created": 62, "skipped": 0, "projectsScanned": 15, "dryRun": false,
+  "byType": { "PROPOSAL_SUBMITTED": 14, "COUNCIL_DECISION": 8, "…": 0 } }
+```
+
+⚠️ **Phải gọi một lần sau khi deploy.** Sổ chỉ bắt đầu ghi từ lúc tính năng lên, nên mọi đề tài đã
+chạy xong trước đó sẽ mở ra **hồ sơ trống trơn** — đúng lúc bảo vệ. Gọi `dryRun=true` xem trước rồi
+gọi thật.
+
+**Chạy lại được nhiều lần.** Nhận diện theo bộ ba `sourceEntityType + sourceEntityId + decisionType`;
+đã có thì `skipped++` chứ không thêm bản trùng. Đúng cả khi luồng thật đã ghi trước đó.
+
+### 13.2i Các loại quyết định
+
+| Chặng | Loại |
+|---|---|
+| `PROPOSAL` | `PROPOSAL_SUBMITTED` · `PROPOSAL_REVISED` · `PROPOSAL_WITHDRAWN` · `CHANGE_REQUEST_REVIEWED` · `DUPLICATE_REVIEWED` |
+| `REVIEW` | `COUNCIL_ESTABLISHED` · `COUNCIL_DECISION` · `ROUND_RESULT` · `SCORE_DIVERGENCE_JUSTIFIED` · `EXPERTISE_OVERRIDE` |
+| `CONTRACT` | `CONTRACT_CREATED` · `CONTRACT_SIGNED` · `CONTRACT_TERMINATED` · `AMENDMENT_APPROVED` |
+| `EXECUTION` | `PROGRESS_EVALUATED` · `DELIVERABLE_ACCEPTED` · `DISBURSEMENT_CONFIRMED` |
+| `CLOSING` | `FINAL_REPORT_APPROVED` · `SETTLEMENT_SIGNED` |
+| `SCHEDULE` | `DEADLINE_EXTENDED` |
+
+`OTHER` chỉ dành cho chuỗi lạ đọc lên từ dữ liệu cũ — mọi loại đang khai đều phải có chặng, khoá
+bằng test `MoiLoaiQuyetDinh_DeuCoChang_VaThuTuVongDoi`.
+
 ### 13.3 Tiền công (labor details) — `/api/proposals/{id}/budget/labor`
 ```json
 { "teamMemberId": 3, "workDays": 215, "coefficient": 0.49,

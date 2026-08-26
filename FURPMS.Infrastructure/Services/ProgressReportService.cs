@@ -18,17 +18,28 @@ public class ProgressReportService : IProgressReportService
     private readonly IClock _clock;
     private readonly IDocumentRepository _documents;
     private readonly INotifier _notifier;
+    private readonly IDecisionLogger _decisions;
 
     public ProgressReportService(IContractRepository contracts, IProposalRepository proposals, IClock clock,
         IDocumentRepository documents,
-        INotifier notifier)
+        INotifier notifier,
+        IDecisionLogger decisions)
     {
+        _decisions = decisions;
         _notifier = notifier;
         _contracts = contracts;
         _proposals = proposals;
         _clock = clock;
         _documents = documents;
     }
+
+    /// <summary>Kết quả đánh giá tiến độ ra tiếng Việt — dùng chung cho thông báo và sổ quyết định.</summary>
+    private static string ProgressResultVi(string? result) => result switch
+    {
+        "PASS" => "Đạt",
+        "FAIL" => "Không đạt",
+        _ => "Đạt có điều kiện"
+    };
 
     // QĐ543 Điều 10.1: Ứng dụng 2 kỳ, Cơ bản 1 kỳ. Applied = loại có đặt hàng (RequireOrderingUnit).
     private static int RequiredRounds(FURPMS.Domain.Entities.MasterData.ResearchType? type) =>
@@ -358,6 +369,23 @@ public class ProgressReportService : IProgressReportService
         report.EvaluationResult = request.EvaluationResult;
         report.EvaluationComments = request.EvaluationComments;
         report.UpdatedAt = DateTime.UtcNow;
+
+        var projectId = await _contracts.Query()
+            .Where(c => c.Id == report.ContractId)
+            .Select(c => c.ProjectId)
+            .FirstOrDefaultAsync();
+        if (projectId != Guid.Empty)
+        {
+            var ky = string.IsNullOrWhiteSpace(report.RoundName)
+                ? $"kỳ {report.ReportRound}" : report.RoundName;
+            _decisions.Log(
+                projectId, DecisionTypes.ProgressEvaluated,
+                $"Đánh giá báo cáo tiến độ {ky}: {ProgressResultVi(request.EvaluationResult)}",
+                "ProgressReport", report.Id.ToString(),
+                result: request.EvaluationResult, reason: request.EvaluationComments,
+                documentNo: "BM06", decidedBy: staffId, decidedByRole: "Phòng QLKH");
+        }
+
         await _contracts.SaveChangesAsync();
 
         // Báo chủ nhiệm KẾT QUẢ đánh giá. Trước đây hệ thống im lặng — PI nộp xong không biết
@@ -369,12 +397,7 @@ public class ProgressReportService : IProgressReportService
             .FirstOrDefaultAsync();
         if (info != null)
         {
-            var ketQua = request.EvaluationResult switch
-            {
-                "PASS" => "Đạt",
-                "FAIL" => "Không đạt",
-                _ => "Đạt có điều kiện"
-            };
+            var ketQua = ProgressResultVi(request.EvaluationResult);
             var nhanXet = string.IsNullOrWhiteSpace(report.EvaluationComments)
                 ? ""
                 : $" Nhận xét: {report.EvaluationComments}";
@@ -452,7 +475,7 @@ public class ProgressReportService : IProgressReportService
         return await GetByIdAsync(reportId);
     }
 
-    private static ProgressReportSummaryDto MapSummary(ProgressReport r) => new()
+    private ProgressReportSummaryDto MapSummary(ProgressReport r) => new()
     {
         Id = r.Id,
         ContractId = r.ContractId,
@@ -467,11 +490,12 @@ public class ProgressReportService : IProgressReportService
         SubmittedAt = r.SubmittedAt,
         CreatedAt = r.CreatedAt,
         DueDate = r.DueDate?.ToString("yyyy-MM-dd"),
+        DaysLeft = DeadlineMath.DaysLeft(r.DueDate, _clock),
         ScheduledMeetingAt = r.ScheduledMeetingAt,
         MeetingLink = r.MeetingLink
     };
 
-    private static ProgressReportDto MapDetail(ProgressReport r) => new()
+    private ProgressReportDto MapDetail(ProgressReport r) => new()
     {
         Id = r.Id,
         ContractId = r.ContractId,
@@ -496,6 +520,7 @@ public class ProgressReportService : IProgressReportService
         EvaluatedAt = r.EvaluatedAt,
         CreatedAt = r.CreatedAt,
         DueDate = r.DueDate?.ToString("yyyy-MM-dd"),
+        DaysLeft = DeadlineMath.DaysLeft(r.DueDate, _clock),
         ScheduledMeetingAt = r.ScheduledMeetingAt,
         MeetingLink = r.MeetingLink,
         Items = r.Items.Select(i => new ProgressReportItemDto

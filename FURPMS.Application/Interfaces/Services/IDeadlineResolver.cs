@@ -21,6 +21,8 @@ public interface IDeadlineResolver
     public const string TargetTypeCycle = "CYCLE";
     public const string TargetTypeProject = "PROJECT";
     public const string TargetTypeContract = "CONTRACT";
+    /// <summary>Hạn chấm của một vòng (thêm 25/08) — Staff dời được, mỗi lần dời ghi một dòng log.</summary>
+    public const string TargetTypeReviewRound = "REVIEW_ROUND";
 
     /// <summary>
     /// Hạn hiệu lực của một mốc. Chưa gia hạn lần nào thì trả về đúng <paramref name="original"/>.

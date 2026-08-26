@@ -21,8 +21,7 @@ namespace FURPMS.Tests.Contracts;
 public class DeliverableDeleteTests
 {
     private static DeliverableService MakeService(FURPMSDbContext db) =>
-        new(new ContractRepository(db), new UserRepository(db), new NotificationRepository(db),
-            TestNotifier.Create(db), new FakeClock());
+        TestServices.Deliverables(db);
 
     private static async Task<(FURPMSDbContext db, ProjectDeliverable deliverable, Contract contract)>
         SeedAsync(string? acceptanceStatus = null, bool submitted = false, bool linkedToTranche = false)
