@@ -127,6 +127,15 @@ public static class TestServices
         clock ?? new FakeClock(),
         Decisions(db, clock));
 
+    public static CouncilService Councils(FURPMSDbContext db, IClock? clock = null) => new(
+        new ReviewRepository(db),
+        new ProposalRepository(db),
+        new SystemSettingService(new MasterDataRepository(db)),
+        new NotificationRepository(db),
+        new NullEmailService(),
+        Decisions(db, clock),
+        db);
+
     public static CycleService Cycles(FURPMSDbContext db) => new(
         new CycleRepository(db),
         new MasterDataRepository(db),

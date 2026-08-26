@@ -42,7 +42,7 @@ public class DecisionLogger : IDecisionLogger
                 Result = result,
                 // Cắt cho vừa cột: một câu tóm tắt dài bất thường (tên đề tài rất dài) không được
                 // làm hỏng cả thao tác nghiệp vụ chỉ vì tràn varchar.
-                Summary = Truncate(summary, 1000),
+                Summary = Truncate(summary, 1000)!,   // summary không bao giờ null, Truncate chỉ khai nullable cho các trường khác
                 Reason = Truncate(reason, 2000),
                 DocumentNo = Truncate(documentNo, 50),
                 SourceEntityType = sourceEntityType,

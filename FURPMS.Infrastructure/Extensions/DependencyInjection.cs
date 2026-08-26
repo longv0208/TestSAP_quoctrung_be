@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<IDeadlineResolver, DeadlineResolver>();
         services.AddScoped<IDecisionLogger, DecisionLogger>();
         services.AddScoped<IProjectDecisionService, ProjectDecisionService>();
+        services.AddScoped<ICouncilCandidateService, CouncilCandidateService>();
         services.AddScoped<ICycleService, CycleService>();
         services.AddScoped<IProposalService, ProposalService>();
         services.AddScoped<IProposalDocumentService, ProposalDocumentService>();

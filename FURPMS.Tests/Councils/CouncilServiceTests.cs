@@ -98,10 +98,7 @@ public class CouncilServiceTests
             new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = second.Id });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(
-            new ReviewRepository(db), new ProposalRepository(db),
-            new SystemSettingService(new MasterDataRepository(db)),
-            new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
 
         var memberships = (await service.GetMyMembershipsAsync(reviewer.Id)).ToList();
 
@@ -131,7 +128,7 @@ public class CouncilServiceTests
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
 
         // Act & Assert — adding the PI (COI) should throw ArgumentException → maps to 400
         var ex = await Assert.ThrowsAsync<ArgumentException>(
@@ -166,7 +163,7 @@ public class CouncilServiceTests
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
 
         // Act — adding a non-PI reviewer should succeed
         var result = await service.AddMemberAsync(council.Id, new AddCouncilMemberRequest
@@ -198,7 +195,7 @@ public class CouncilServiceTests
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
         await service.AddMemberAsync(council.Id, new AddCouncilMemberRequest { UserId = reviewer.Id, MemberRole = "MEMBER", IsExternal = false });
 
         await service.DeleteCouncilAsync(council.Id);
@@ -233,7 +230,7 @@ public class CouncilServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
         var member = await service.AddMemberAsync(council.Id, new AddCouncilMemberRequest { UserId = reviewer.Id, MemberRole = "MEMBER", IsExternal = false });
 
         // Phải GỬI THƯ MỜI trước — chưa gửi mà đã ghi nhận trả lời là hồ sơ tự mâu thuẫn.
@@ -338,8 +335,7 @@ public class CouncilServiceTests
         });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db),
-            new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
         var member = await service.AddMemberAsync(council.Id,
             new AddCouncilMemberRequest { UserId = reviewer.Id, MemberRole = "MEMBER", IsExternal = false });
 
@@ -381,7 +377,7 @@ public class CouncilServiceTests
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
 
         var ex = await Assert.ThrowsAsync<ArgumentException>(
             () => service.AddMemberAsync(council.Id, new AddCouncilMemberRequest
@@ -413,7 +409,7 @@ public class CouncilServiceTests
         db.CouncilProjectAssignments.Add(new CouncilProjectAssignment { CouncilId = council.Id, ProjectId = project.Id });
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
 
         // Gate (rule tuần 10): cần Chủ tịch + Thư ký + lịch họp mới gửi được thư mời.
         var chair = MakeUser();
@@ -475,7 +471,7 @@ public class CouncilServiceTests
         db.Proposals.Add(proposal);
         await db.SaveChangesAsync();
 
-        var service = new CouncilService(new ReviewRepository(db), new ProposalRepository(db), new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        var service = TestServices.Councils(db);
 
         // Act & Assert — non-existent roundId should throw KeyNotFoundException
         await Assert.ThrowsAsync<KeyNotFoundException>(
@@ -492,8 +488,7 @@ public class CouncilServiceTests
     // ── Gán / gỡ đề tài vào hội đồng có sẵn (dropdown ở màn Hội đồng & Chấm) ──
 
     private static CouncilService MakeSvc(FURPMS.Infrastructure.Data.FURPMSDbContext db) =>
-        new(new ReviewRepository(db), new ProposalRepository(db),
-            new SystemSettingService(new MasterDataRepository(db)), new NotificationRepository(db), new NullEmailService());
+        TestServices.Councils(db);
 
     private static ReviewRound MakeRound(int cycleTrackId = 1) => new()
     {

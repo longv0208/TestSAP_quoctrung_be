@@ -1,3 +1,4 @@
+using FURPMS.Infrastructure.Data;
 using FURPMS.Application.Common;
 using FURPMS.Application.Constants;
 using FURPMS.Application.DTOs.Councils;
@@ -16,12 +17,18 @@ public class CouncilService : ICouncilService
     private readonly ISystemSettingService _settings;
     private readonly INotificationRepository _notifications;
     private readonly IEmailService _email;
+    private readonly IDecisionLogger _decisions;
+    private readonly FURPMSDbContext _db;
 
     public CouncilService(IReviewRepository review, IProposalRepository proposals,
         ISystemSettingService settings,
         INotificationRepository notifications,
-        IEmailService email)
+        IEmailService email,
+        IDecisionLogger decisions,
+        FURPMSDbContext db)
     {
+        _decisions = decisions;
+        _db = db;
         _review = review;
         _proposals = proposals;
         _settings = settings;
@@ -317,6 +324,8 @@ public class CouncilService : ICouncilService
         if (council.Members.Any(m => m.UserId == request.UserId))
             throw new InvalidOperationException("Người này đã có tên trong hội đồng.");
 
+        await AssertExpertiseAsync(council, request, assignedProjectIds);
+
         // Trước đây `MaxMembersAllowed` chỉ là con số nằm trong DB, không ai kiểm — thêm 10 người
         // vào hội đồng vẫn được.
         if (council.MaxMembersAllowed > 0 && council.Members.Count >= council.MaxMembersAllowed)
@@ -343,6 +352,73 @@ public class CouncilService : ICouncilService
             .FirstOrDefaultAsync(m => m.Id == member.Id);
 
         return MapMember(memberWithUser ?? member);
+    }
+
+    /// <summary>
+    /// QĐ543 Điều 8.2 đòi hội đồng gồm người <b>có chuyên môn trong lĩnh vực</b>. Trước 26/08 hệ
+    /// thống không hề kiểm điều này — chỉ kiểm xung đột lợi ích, trùng tên và số lượng.
+    ///
+    /// <para><b>Chặn có kiểm soát, không khoá cứng:</b> Phòng QLKH vẫn gán được người ngoài lĩnh
+    /// vực (có ca cần thật — mời chuyên gia liên ngành, hoặc lĩnh vực hẹp không đủ người), nhưng
+    /// phải bật cờ và <b>ghi rõ lý do</b>, và lý do đó vào sổ quyết định của đề tài.</para>
+    ///
+    /// <para>Hội đồng chưa được gán đề tài nào thì không có lĩnh vực để so — bỏ qua, không bịa ra
+    /// một phán quyết từ chỗ không có dữ liệu.</para>
+    /// </summary>
+    private async Task AssertExpertiseAsync(
+        ReviewCouncil council, AddCouncilMemberRequest request, List<Guid> assignedProjectIds)
+    {
+        if (assignedProjectIds.Count == 0) return;
+
+        var trackIds = await _db.Projects
+            .IgnoreQueryFilters()
+            .Where(p => assignedProjectIds.Contains(p.Id))
+            .Select(p => p.CycleTrack.TrackId)
+            .Distinct()
+            .ToListAsync();
+        if (trackIds.Count == 0) return;
+
+        var myTracks = await _db.UserResearchTracks
+            .Where(x => x.UserId == request.UserId)
+            .Select(x => x.TrackId)
+            .ToListAsync();
+
+        // Hội đồng chấm nhiều đề tài thuộc nhiều lĩnh vực: khớp MỘT lĩnh vực là đủ — đòi khớp hết
+        // thì gần như không ai gán được.
+        if (myTracks.Intersect(trackIds).Any()) return;
+
+        var trackNames = await _db.ResearchTracks
+            .Where(t => trackIds.Contains(t.Id))
+            .Select(t => t.Name)
+            .ToListAsync();
+        var linhVuc = string.Join(", ", trackNames);
+        var chuaKhai = myTracks.Count == 0;
+
+        if (!request.AcceptWithoutExpertise)
+            throw new ArgumentException(
+                (chuaKhai
+                    ? "Người này chưa khai lĩnh vực chuyên môn nào. "
+                    : $"Người này không khai lĩnh vực \"{linhVuc}\". ") +
+                "QĐ543 Điều 8.2 yêu cầu hội đồng gồm người có chuyên môn trong lĩnh vực của đề tài. " +
+                "Nếu vẫn muốn mời (chuyên gia liên ngành, hoặc lĩnh vực hẹp không đủ người), " +
+                "hãy xác nhận và ghi rõ lý do.");
+
+        var lyDo = request.ExpertiseNote?.Trim();
+        if (string.IsNullOrWhiteSpace(lyDo))
+            throw new ArgumentException(
+                "Gán người ngoài lĩnh vực thì phải ghi rõ lý do — hồ sơ hội đồng cần giải thích được " +
+                "vì sao chọn người này.");
+
+        var name = await _db.Users.Where(u => u.Id == request.UserId)
+            .Select(u => u.FullName).FirstOrDefaultAsync() ?? "ủy viên";
+
+        // Ghi cho TỪNG đề tài hội đồng chấm: hồ sơ là của đề tài, không phải của hội đồng.
+        foreach (var pid in assignedProjectIds)
+            _decisions.Log(
+                pid, DecisionTypes.ExpertiseOverride,
+                $"Mời {name} vào hội đồng dù không khai lĩnh vực \"{linhVuc}\"",
+                "CouncilMember", $"{council.Id}:{request.UserId}",
+                reason: lyDo, decidedByRole: "Phòng QLKH");
     }
 
     // Gán reviewer hết rồi gửi thư mời ĐỒNG LOẠT (1 nút) — set deadline xác nhận cho từng người.

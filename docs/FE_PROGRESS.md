@@ -71,7 +71,7 @@ Thứ tự nghiệp vụ: hợp đồng → ký → **giải ngân** → PI nộ
 
 ### P3 — Nâng cấp/khi có điều kiện
 - Chuyển màn phân công sang **Review Board cấp track** (§8.1) — tránh lặp lại bài học UX của FE cũ.
-- Upload + AI prefill đề cương: ✅ hoàn thiện 18/08 (`POST /api/proposals/extract`, PDF/DOCX, chỉ điền ô trống, lỗi AI vẫn nhập tay). `/ai/search|similarity|suggest-reviewers` + google-meet giữ mock.
+- Upload + AI prefill đề cương: ✅ hoàn thiện 18/08 (`POST /api/proposals/extract`, PDF/DOCX, chỉ điền ô trống, lỗi AI vẫn nhập tay). `/ai/search|similarity` + google-meet giữ mock. `suggest-reviewers` đã **gỡ hẳn** 26/08 — thay bằng `GET /api/councils/candidates` (truy vấn thuần).
 - i18n song ngữ (đã chốt để sau).
 
 ## Bug nhỏ đã biết (sửa nhanh)

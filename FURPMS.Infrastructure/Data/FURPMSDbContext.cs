@@ -97,6 +97,7 @@ public class FURPMSDbContext : DbContext
     public DbSet<Notification> Notifications => Set<Notification>();
 
     // Domain 10 — Logs
+    public DbSet<UserResearchTrack> UserResearchTracks => Set<UserResearchTrack>();
     public DbSet<ProjectDecision> ProjectDecisions => Set<ProjectDecision>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
     public DbSet<EmailLog> EmailLogs => Set<EmailLog>();
@@ -253,6 +254,25 @@ public class FURPMSDbContext : DbContext
             b.HasOne(e => e.CreatedByUser)
                 .WithMany()
                 .HasForeignKey(e => e.CreatedBy)
+                .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // ── UserResearchTrack: người ↔ lĩnh vực chuyên môn (QĐ543 Điều 8.2) ──
+        modelBuilder.Entity<UserResearchTrack>(b =>
+        {
+            // Một người khai một lĩnh vực đúng một lần.
+            b.HasIndex(x => new { x.UserId, x.TrackId }).IsUnique();
+            b.Property(x => x.Note).HasMaxLength(500);
+
+            b.HasOne(x => x.User)
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // Xoá lĩnh vực khỏi danh mục thì không được kéo theo hồ sơ chuyên môn của người ta.
+            b.HasOne(x => x.Track)
+                .WithMany()
+                .HasForeignKey(x => x.TrackId)
                 .OnDelete(DeleteBehavior.NoAction);
         });
 

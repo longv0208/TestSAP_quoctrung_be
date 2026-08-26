@@ -3,6 +3,7 @@ using System;
 using FURPMS.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FURPMS.Infrastructure.Migrations
 {
     [DbContext(typeof(FURPMSDbContext))]
-    partial class FURPMSDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260826023118_AddUserResearchTracks")]
+    partial class AddUserResearchTracks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

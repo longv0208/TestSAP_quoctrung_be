@@ -60,6 +60,10 @@
 | A32 | **Ngưỡng đạt tính bằng PHẦN TRĂM thang điểm** (`REVIEW_PASS_THRESHOLD_PCT`, mặc định 50) | thang điểm là tổng `MaxScore` của bộ tiêu chí, mà Phòng QLKH tự soạn bộ mới được — chôn số tuyệt đối là đặt cược vào trùng hợp của dữ liệu | `SystemSettingKeys.ReviewPassThresholdPct` | — |
 | A33 | **"Yêu cầu chỉnh sửa" không bao giờ tính là lệch** | kết luận đó hợp lý ở cả hai phía ngưỡng | `DivergesFromScore` | — |
 | A34 | **Vòng nghiệm thu không bị đụng tới** — BM11 chỉ Đạt/Không đạt nên không có điểm để so | `AverageScore = null` ⇒ luôn không lệch | `DivergesFromScore` | — |
+| A35 | **Ủy viên hội đồng phải khai đúng lĩnh vực của đề tài** — ngoài lĩnh vực thì phải bật cờ VÀ ghi lý do | QĐ543 Điều 8.2: hội đồng gồm người *"có chuyên môn trong lĩnh vực"*; trước 26/08 hệ thống không có bảng nào nối người với lĩnh vực | `CouncilService.AssertExpertiseAsync` | 400 |
+| A36 | **"Chưa khai chuyên môn" khác "khác lĩnh vực"** — hai câu báo lỗi khác nhau | gộp là oan cho người chưa được ai nhập hồ sơ: hệ thống đang KHÔNG BIẾT chứ không phải đã xác định sai | `AssertExpertiseAsync` · `CouncilCandidateDto.ExpertiseUnknown` | — |
+| A37 | **Danh sách ứng viên xếp "chọn được" TRƯỚC "đúng chuyên môn"** | người vướng COI hoặc đã trong hội đồng bấm vào cũng không được, không được chiếm mấy dòng đầu — nhưng vẫn hiện để hiểu vì sao không chọn được | `CouncilCandidateService` | — |
+| A38 | **Hội đồng chấm nhiều lĩnh vực: khớp MỘT lĩnh vực là đủ** | đòi khớp hết thì gần như không ai gán được | `AssertExpertiseAsync` | — |
 
 ## B. Hội đồng
 

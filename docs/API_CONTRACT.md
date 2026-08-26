@@ -1043,7 +1043,7 @@ và **`isTotalValid`** (`totalCriteriaScore === maxTotalScore`).
 | FE gọi | Mục đích | Trạng thái BE |
 |---|---|---|
 | `POST /api/ai/search` | Tìm kiếm ngữ nghĩa (trang PI) | ❌ Chưa làm — cần embedding + `semantic_search_vector` |
-| `POST /api/ai/suggest-reviewers` | Gợi ý thành viên hội đồng | ❌ Chưa làm — **nên làm bằng truy vấn thuần**, không cần AI |
+| ~~`POST /api/ai/suggest-reviewers`~~ | Gợi ý thành viên hội đồng | ✅ **Đã làm 26/08 bằng truy vấn thuần** — `GET /api/councils/candidates` (§13.2k). Endpoint `/ai/*` này chưa bao giờ tồn tại; mã gọi vào nó ở giao diện đã xoá |
 | `POST /api/ai/similarity-check` | Trùng lặp với đặt hàng | ❌ Chưa làm — **không màn nào dùng**, nên xoá cả 2 đầu |
 
 > ✅ **Cập nhật 19/08:** `POST /api/proposals/extract` nhận multipart field `file` (**PDF hoặc DOCX**, theo giới hạn dung lượng/đuôi file Admin cấu hình). Gemini trích xuất để prefill tên VI/EN, tóm tắt, mục tiêu, phương pháp, sản phẩm dự kiến, tính cấp thiết, tính mới, khả năng ứng dụng/chuyển giao, cơ sở vật chất, thời gian, tổng kinh phí, `budgetItems[]` theo đúng 06 mã hạng mục và `teamMembers[]`. FE chỉ điền **ô trống**, không ghi đè nội dung PI đã nhập. Nếu file chỉ có tổng kinh phí mà không có phân bổ, tổng chỉ hiện tham chiếu để PI tự phân bổ; hệ thống không tự bịa hạng mục. Thành viên thiếu email vẫn được điền tên và thông tin đọc được nhưng PI phải bổ sung email hợp lệ trước khi nộp. Field không thấy → `null`/mảng rỗng; AI lỗi/chưa cấu hình → trả `warning` thân thiện để FE tiếp tục đường nhập tay, không lộ lỗi raw của provider.
@@ -1307,6 +1307,47 @@ sổ quyết định (§13.2g).
 
 **Cấu hình:** `REVIEW_PASS_THRESHOLD_PCT` (mặc định 50, nhận 0–100) trong `system_settings` —
 Admin sửa ở màn Cài đặt, **hiệu lực ngay, không cần khởi động lại**.
+
+### 13.2k Ứng viên hội đồng — `GET /api/councils/candidates` (mới 26/08)
+
+`Staff,Admin`. Query: `councilId` · `projectId` · `trackId` (đưa cái nào cũng được; chỉ có
+`councilId` thì máy chủ tự suy ra lĩnh vực và xung đột lợi ích từ đề tài hội đồng đang chấm).
+
+```json
+{ "trackId": 1, "trackName": "Trí tuệ nhân tạo", "matchingCount": 3, "totalCount": 8,
+  "candidates": [
+    { "userId": "…", "fullName": "PGS.TS. Lê Quang Minh", "academicTitle": "PGS.TS",
+      "unitName": "…", "tracks": ["Trí tuệ nhân tạo", "IT"],
+      "matchesTrack": true, "expertiseUnknown": false,
+      "hasConflictOfInterest": false, "alreadyInCouncil": false, "activeCouncilCount": 2 } ] }
+```
+
+| Quy tắc | Chi tiết |
+|---|---|
+| Ai vào danh sách | người mang vai `Faculty` hoặc `ReviewCommittee`, còn hoạt động |
+| Sắp xếp | **chọn được hay không** → đúng lĩnh vực → đã khai chuyên môn → ai đang rảnh hơn → tên |
+| Người vướng COI / đã trong hội đồng | **vẫn hiện**, nằm cuối — giấu đi thì Phòng QLKH không hiểu vì sao tìm mãi không thấy một cái tên |
+| `expertiseUnknown` | **khác** `!matchesTrack`: chưa ai nhập hồ sơ ≠ đã xác định sai chuyên môn |
+
+⚠️ Đây **không phải AI**. Tài liệu cũ gọi nó là `/ai/suggest-reviewers` (một endpoint chưa bao giờ
+tồn tại ở máy chủ, bấm nút "Gợi ý AI" là 404). Nó là một phép nối bảng người ↔ lĩnh vực rồi sắp xếp,
+và được gọi đúng tên như vậy.
+
+### 13.2l Kiểm chuyên môn khi thêm ủy viên — `POST /api/councils/{id}/members` (mới 26/08)
+
+Body thêm `acceptWithoutExpertise` (bool) và `expertiseNote` (string).
+
+| Tình huống | Kết quả |
+|---|---|
+| Khai đúng lĩnh vực của đề tài | thêm bình thường |
+| Ngoài lĩnh vực, không bật cờ | **400** — *"Người này không khai lĩnh vực … QĐ543 Điều 8.2 …"* |
+| **Chưa khai lĩnh vực nào**, không bật cờ | **400** — *"Người này chưa khai lĩnh vực chuyên môn nào …"* (câu khác hẳn: hệ thống đang KHÔNG BIẾT, chứ không phải đã xác định sai) |
+| Bật cờ, thiếu `expertiseNote` | **400** — buộc giải trình, không phải một ô tick để bấm qua |
+| Bật cờ + có lý do | **200**, sinh dòng `EXPERTISE_OVERRIDE` trong sổ quyết định của **từng** đề tài hội đồng chấm |
+| Hội đồng chưa gán đề tài nào | bỏ qua kiểm — không có lĩnh vực để so |
+
+Hội đồng chấm nhiều đề tài thuộc nhiều lĩnh vực: **khớp một lĩnh vực là đủ** — đòi khớp hết thì gần
+như không ai gán được. Xung đột lợi ích (rule #5) vẫn chặn như cũ, luật chuyên môn không làm yếu nó.
 
 ### 13.3 Tiền công (labor details) — `/api/proposals/{id}/budget/labor`
 ```json

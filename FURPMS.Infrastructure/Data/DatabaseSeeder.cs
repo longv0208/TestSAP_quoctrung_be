@@ -231,6 +231,7 @@ public class DatabaseSeeder
             await _db.SaveChangesAsync();
         }
 
+        await SeedReviewerExpertiseAsync();
         await SeedMultiRoleAccountAsync();
         await RenameDemoAccountsAsync();
     }
@@ -278,6 +279,51 @@ public class DatabaseSeeder
             changed = true;
         }
         if (changed) await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Gán lĩnh vực chuyên môn cho các tài khoản chấm demo (QĐ543 Điều 8.2).
+    ///
+    /// <para>Cố ý <b>không</b> cho ai cũng đủ mọi lĩnh vực: rv5 để trống để demo được cả ca "chưa
+    /// khai chuyên môn", và rv4 chỉ có IT để demo ca "khác lĩnh vực" khi đề tài thuộc AI. Gán đều
+    /// hết thì màn hình lúc nào cũng xanh, chẳng chứng minh được gì.</para>
+    /// </summary>
+    private async Task SeedReviewerExpertiseAsync()
+    {
+        var expertise = new (string Email, string[] TrackCodes)[]
+        {
+            ("reviewer1.demo@furpms.edu.vn", new[] { "AI", "IT" }),
+            ("reviewer2.demo@furpms.edu.vn", new[] { "AI" }),
+            ("reviewer3.demo@furpms.edu.vn", new[] { "AI" }),
+            ("reviewer4.demo@furpms.edu.vn", new[] { "IT" }),
+            // rv5: cố ý bỏ trống — ca "chưa khai chuyên môn".
+        };
+
+        foreach (var (email, codes) in expertise)
+        {
+            var userId = await _db.Users.IgnoreQueryFilters()
+                .Where(u => u.Email == email).Select(u => (Guid?)u.Id).FirstOrDefaultAsync();
+            if (userId is null) continue;
+
+            foreach (var code in codes)
+            {
+                var trackId = await _db.ResearchTracks
+                    .Where(t => t.Code == code).Select(t => (int?)t.Id).FirstOrDefaultAsync();
+                if (trackId is null) continue;
+
+                var exists = await _db.UserResearchTracks
+                    .AnyAsync(x => x.UserId == userId.Value && x.TrackId == trackId.Value);
+                if (exists) continue;
+
+                _db.UserResearchTracks.Add(new UserResearchTrack
+                {
+                    UserId = userId.Value,
+                    TrackId = trackId.Value,
+                    Note = "Dữ liệu demo"
+                });
+            }
+        }
+        await _db.SaveChangesAsync();
     }
 
     private async Task SeedMultiRoleAccountAsync()

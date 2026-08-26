@@ -137,7 +137,7 @@ Card **"Đợt đang nhận đề cương"** (`OpenCyclesCard`): tên đợt · 
 | `POST /ai/proposals/{id}/feedback` | `AiFeedbackCard` (PI) | ✅ **đã làm BE** |
 | *(mới)* score-suggestion | Form chấm của reviewer | ✅ **đã làm** |
 | `POST /ai/search` | Trang tìm kiếm ngữ nghĩa | ⬜ 404 |
-| `POST /ai/suggest-reviewers` | Dialog thêm TV hội đồng | ⬜ 404 |
+| ~~`POST /ai/suggest-reviewers`~~ | Dialog thêm TV hội đồng | ✅ **26/08** — thay bằng `GET /api/councils/candidates` (truy vấn thuần, không AI) |
 | `POST /ai/similarity-check` | *không màn nào dùng* | ⬜ code chết cả 2 đầu → nên xoá |
 
 ### ✅ Bước 1 — nối lại Đường B (upload + AI)
@@ -159,7 +159,7 @@ Không chỉ lệch đường dẫn: `AiExtractionResult` của FE khai `keyword
 - **Staff/Admin: cố ý KHÔNG thêm AI.** Việc của họ là **đối sánh/lọc**, không phải sinh chữ. `suggest-reviewers` nên làm **truy vấn thuần** (chính xác + ổn định + không tốn quota); Admin chỉ cần bật/tắt AI + xem log. Nhét AI cho đủ mâm 4 role sẽ bị hỏi ngược *"giải quyết vấn đề gì?"*.
 
 ### ⬜ Còn lại
-3. `/ai/suggest-reviewers` — nên làm **không cần AI** (truy vấn theo lĩnh vực + lịch sử) → rẻ và ổn định hơn.
+3. ~~`/ai/suggest-reviewers`~~ — ✅ **đã làm 26/08 đúng như khuyến nghị**: truy vấn thuần theo lĩnh vực (`GET /api/councils/candidates`), không gọi AI.
 4. `/ai/search` — xem mục **⏸ Chờ quyết định** bên dưới.
 5. Cache `llm_output` cho các lời gọi còn lại.
 6. Xoá `similarity-check` (chết cả 2 đầu).

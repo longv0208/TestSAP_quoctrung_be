@@ -14,10 +14,30 @@ namespace FURPMS.API.Controllers;
 public class CouncilsController : ControllerBase
 {
     private readonly ICouncilService _service;
+    private readonly ICouncilCandidateService _candidates;
 
-    public CouncilsController(ICouncilService service)
+    public CouncilsController(ICouncilService service, ICouncilCandidateService candidates)
     {
         _service = service;
+        _candidates = candidates;
+    }
+
+    /// <summary>
+    /// Ứng viên ủy viên hội đồng, <b>đã xếp hạng theo chuyên môn</b> (QĐ543 Điều 8.2).
+    ///
+    /// <para>Đúng lĩnh vực lên đầu; người vướng xung đột lợi ích hoặc đã có tên xuống cuối nhưng
+    /// <b>vẫn hiện</b> — giấu đi thì Phòng QLKH không hiểu vì sao tìm mãi không thấy một cái tên.</para>
+    ///
+    /// <para>Đây là thứ tài liệu cũ gọi là <c>/ai/suggest-reviewers</c>. Nó <b>không phải AI</b> —
+    /// là một phép nối bảng rồi sắp xếp, và được gọi đúng tên như vậy.</para>
+    /// </summary>
+    [HttpGet("candidates")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<ActionResult<ApiResponse<CouncilCandidatesResponse>>> GetCandidates(
+        [FromQuery] Guid? projectId, [FromQuery] int? trackId, [FromQuery] Guid? councilId)
+    {
+        var result = await _candidates.GetCandidatesAsync(projectId, trackId, councilId);
+        return Ok(ApiResponse<CouncilCandidatesResponse>.Ok(result));
     }
 
     // GET /api/councils/my-memberships

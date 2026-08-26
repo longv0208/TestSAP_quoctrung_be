@@ -468,7 +468,48 @@ PASS/FAIL) **không bị đụng**.
 
 ---
 
-## 9. Nhóm 5 — Chuyên môn người chấm · **1 bảng nối**
+## 9b. Nhóm 5 — Chuyên môn người chấm — ✅ **XONG 26/08** (1 bảng nối)
+
+**Đã chạy được, bấm thấy ngay:**
+
+| Việc | Ở đâu |
+|---|---|
+| Bảng nối `user_research_tracks` (người ↔ lĩnh vực) | migration `20260826023118` |
+| `GET /api/councils/candidates` — ứng viên **đã xếp hạng**, kèm cờ COI / đã trong hội đồng / chưa khai chuyên môn | `CouncilCandidateService` · `API_CONTRACT` §13.2k |
+| Gán người ngoài lĩnh vực → **400**, trừ khi bật cờ **và** ghi lý do | `CouncilService.AssertExpertiseAsync` |
+| Lý do đó sinh dòng `EXPERTISE_OVERRIDE` trong sổ quyết định | nối sang nhóm 3 |
+| Hộp thoại "Thêm ủy viên" viết lại: badge lĩnh vực, cảnh báo, ô lý do bắt buộc | `AddCouncilMemberDialog.tsx` |
+| Seeder gán chuyên môn cho rv1–rv4, **cố ý để trống rv5** | `DatabaseSeeder.SeedReviewerExpertiseAsync` |
+| **Xoá mã chết**: nút "Gợi ý AI" gọi `/ai/suggest-reviewers` — endpoint chưa bao giờ tồn tại | `ai.service.ts` · `useProposalAi.ts` · `ai-tools.ts` · mock |
+
+**Bốn quyết định thiết kế đáng nhớ:**
+- **Làm bằng SQL, và gọi đúng tên là SQL.** `API_CONTRACT` cũ ghi `/ai/suggest-reviewers`; đây là một
+  phép nối bảng rồi sắp xếp. Dán nhãn AI cho nó là rơi đúng bẫy cẩm nang phạt nặng nhất —
+  *"gọi là AI nhưng thực chất if-else"*.
+- **"Chưa khai chuyên môn" KHÁC "khác lĩnh vực".** Gộp hai thứ là oan cho người chưa được ai nhập hồ
+  sơ: họ bị đẩy xuống cuối như thể đã xác định sai chuyên môn, trong khi hệ thống chỉ đang không biết.
+  Câu báo lỗi cũng nói đúng từng ca.
+- **Chặn có kiểm soát, không khoá cứng.** Có ca cần mời người ngoài lĩnh vực thật (chuyên gia liên
+  ngành, lĩnh vực hẹp không đủ người). Bật cờ **mà thiếu lý do vẫn chặn** — mục đích là buộc giải
+  trình, không phải dựng thêm một ô tick cho người ta bấm qua.
+- **Hội đồng chưa gán đề tài thì không đòi chuyên môn** — không có lĩnh vực để so, không bịa ra một
+  phán quyết từ chỗ không có dữ liệu.
+
+**Một lỗi tự bắt được khi chạy thử — thứ tự danh sách:**
+Ban đầu xếp "đúng lĩnh vực" lên đầu trước tiên. Chạy trên dữ liệu demo thì **ba người đúng ngành
+nhưng đã ở trong hội đồng** chiếm hết mấy dòng đầu, đẩy người duy nhất chọn được xuống dưới. Sửa
+thành: **chọn được hay không xếp trước cả chuyên môn** — bấm vào cũng không được thì không được
+chiếm chỗ đắt nhất của danh sách. Họ vẫn hiện, chỉ nằm cuối.
+
+> **Kiểm chứng đã chạy thật (26/08):** seeder gán đúng rv1(AI+IT) · rv2, rv3(AI) · rv4(IT) · rv5 trống ·
+> endpoint xếp người chọn được lên đầu, người vướng COI/đã trong hội đồng xuống cuối nhưng **vẫn hiện** ·
+> thêm rv5 (chưa khai) vào hội đồng lĩnh vực IT → **400** đúng câu "chưa khai lĩnh vực chuyên môn nào" ·
+> bật cờ mà thiếu lý do → **400** · có lý do → **200** và sổ quyết định có dòng `EXPERTISE_OVERRIDE`
+> kèm lý do · **đã trả dữ liệu demo về nguyên trạng sau khi thử**.
+
+---
+
+## 9. Nhóm 5 — bản thiết kế gốc *(đã thực hiện, xem §9b)*
 
 QĐ543 **Điều 8.2** đòi hội đồng gồm *"nhà khoa học, giảng viên **có chuyên môn trong lĩnh vực**"*.
 Hiện: không có bảng nối; BE gán ủy viên chỉ kiểm COI + trùng tên + số lượng; lọc duy nhất ở FE là
@@ -614,7 +655,7 @@ hội đồng thực sự chấm** cho phần AI.
 | 2 | Deadline (gồm hạn vòng chấm) | +1 cột nullable | thấp — bản ghi cũ NULL → "chưa đặt hạn" | ✅ **XONG 25/08** |
 | 3 | Quyết định | +1 bảng | schema thấp; **rủi ro thật ở backfill** | ✅ **XONG 25/08** |
 | 4 | Cảnh báo điểm lệch | +1 cột nullable | thấp | ✅ **XONG 26/08** |
-| 5 | Chuyên môn người chấm | +1 bảng nối | thấp | ⬜ |
+| 5 | Chuyên môn người chấm | +1 bảng nối | thấp | ✅ **XONG 26/08** |
 | 6 | AI trùng + bộ đo metric | +3 cột nullable trên bảng **rỗng** | thấp nhất trong hạng mục mới | ⬜ |
 | 7 | Tài liệu | — | chạy **song song** từ đầu, không phụ thuộc code | ⬜ |
 
@@ -631,7 +672,7 @@ sinh `/ai/search` → tầng 2 của AI (giữ tầng 1 + metric). **Đừng c�
 
 ```bash
 cd FURPMS_BEv2 && dotnet build          # 0 error
-cd FURPMS_BEv2 && dotnet test           # xanh hết (300 sau nhóm 4)
+cd FURPMS_BEv2 && dotnet test           # xanh hết (308 sau nhóm 5)
 cd furpms-web  && npm run typecheck     # sạch — PHẢI dùng lệnh này, KHÔNG phải npx tsc
 cd furpms-web  && npm run build         # xanh
 ```
