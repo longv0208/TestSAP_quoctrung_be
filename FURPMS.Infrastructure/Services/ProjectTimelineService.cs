@@ -238,7 +238,11 @@ public class ProjectTimelineService : IProjectTimelineService
     private async Task AddReviewStagesAsync(List<ProjectStageDto> stages, int cycleTrackId, Guid projectId)
     {
         var rounds = await _review.ReviewRounds
-            .Where(r => r.CycleTrackId == cycleTrackId)
+            // Một vòng thuộc chung đợt + lĩnh vực, nhưng timeline thuộc RIÊNG một đề tài.
+            // Nếu chỉ lọc CycleTrackId thì mọi vòng của đề tài khác cùng lĩnh vực cũng bị kéo
+            // vào timeline (đã thấy thật với NCKH-2026-008: hiện thêm vòng nghiệm thu của 007).
+            .Where(r => r.CycleTrackId == cycleTrackId
+                     && r.ProjectRounds.Any(pr => pr.ProjectId == projectId))
             .OrderBy(r => r.Sequence).ThenBy(r => r.RoundNumber)
             .Select(r => new { r.Id, r.RoundNumber, r.RoundType, r.Status, r.ScoringDeadline, r.ClosedAt })
             .ToListAsync();

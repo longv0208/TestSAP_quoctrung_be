@@ -1,4 +1,4 @@
-# HANDOFF — trạng thái hiện hành (cập nhật 25/08/2026)
+# HANDOFF — trạng thái hiện hành (cập nhật 26/08/2026)
 
 > **Đọc file này ĐẦU TIÊN** nếu bạn là người/AI mới tiếp nhận dự án. Nó thay cho
 > `HANDOFF_Week10.md` (đã lỗi thời ở phần hạ tầng). Sau file này thì đọc `../CLAUDE.md` (quy tắc
@@ -171,6 +171,17 @@ Khoá bằng `FURPMS.Tests/Deadlines/DaysLeftConsistencyTests.cs`.
 > Buổi họp là *cuộc hẹn*, không phải hạn nộp — nhãn "quá hạn 3 ngày" cho một buổi họp đã diễn ra là
 > sai nghĩa, nên `MeetingsAgenda` cố ý **không** dùng `DeadlineBadge`.
 
+### 1.8 Timeline từng đề tài không được lẫn vòng chung của đề tài khác (26/08)
+
+Vòng chấm thuộc chung `cycle_track`, còn đề tài tham gia qua bảng nối `project_round`. Truy vấn
+timeline trước đây lọc mỗi `CycleTrackId`, nên một đề tài đã hoàn thành có thể hiện thêm vòng nghiệm
+thu của đề tài khác cùng đợt/lĩnh vực. `ProjectTimelineService.AddReviewStagesAsync` nay chỉ lấy vòng
+có `ProjectRound.ProjectId` đúng đề tài đang xem; test hồi quy
+`VongCuaDeTaiKhacCungLinhVuc_KhongDuocXuatHienTrongTimeline` khoá lại lỗi này.
+
+Kiểm lại trên DB demo: timeline `NCKH-2026-008` chỉ còn vòng xét duyệt và vòng nghiệm thu mà chính
+đề tài tham gia; vòng nghiệm thu của `NCKH-2026-007` đã biến mất. Cổng kiểm hiện là **314/314 test**.
+
 ---
 
 ## 2. Chạy dự án
@@ -292,7 +303,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 ## 6. Cách kiểm tra nhanh mọi thứ còn chạy
 
 ```bash
-cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 313/313 xanh
+cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 314/314 xanh
 cd furpms-web  && npx tsc -p tsconfig.app.json --noEmit && npm run build
 ```
 

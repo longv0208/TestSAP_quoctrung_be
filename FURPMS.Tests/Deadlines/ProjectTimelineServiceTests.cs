@@ -7,6 +7,7 @@ using FURPMS.Domain.Entities.MasterData;
 using FURPMS.Domain.Entities.Progress;
 using FURPMS.Domain.Entities.Projects;
 using FURPMS.Domain.Entities.Proposals;
+using FURPMS.Domain.Entities.Review;
 using FURPMS.Domain.Entities.Users;
 using FURPMS.Infrastructure.Data;
 using FURPMS.Infrastructure.Repositories;
@@ -281,5 +282,39 @@ public class ProjectTimelineServiceTests
         {
             Assert.DoesNotContain("_DAYS", stage.DeadlineBasis ?? "");
         }
+    }
+
+    // ── 8: timeline chỉ được lấy vòng mà đề tài thực sự tham gia ─────────────
+    [Fact]
+    public async Task VongCuaDeTaiKhacCungLinhVuc_KhongDuocXuatHienTrongTimeline()
+    {
+        var db = TestDbContextFactory.Create($"test-{Guid.NewGuid()}");
+        var (project, piId, _, track) = await SeedProjectAsync(db, Today.AddDays(30));
+
+        var linkedRound = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = track.Id, RoundNumber = 1, Sequence = 1,
+            Dimension = ReviewRoundDimension.Science, RoundType = "REVIEW",
+            Status = ReviewRoundStatus.Open, ScoringDeadline = Today.AddDays(10)
+        };
+        var unrelatedRound = new ReviewRound
+        {
+            Id = Guid.NewGuid(), CycleTrackId = track.Id, RoundNumber = 2, Sequence = 2,
+            Dimension = ReviewRoundDimension.Science, RoundType = "ACCEPTANCE",
+            Status = ReviewRoundStatus.Open, ScoringDeadline = Today.AddDays(20)
+        };
+        db.ReviewRounds.AddRange(linkedRound, unrelatedRound);
+        db.ProjectRounds.Add(new ProjectRound
+        {
+            ProjectId = project.Id, RoundId = linkedRound.Id, Status = ReviewRoundStatus.Open
+        });
+        await db.SaveChangesAsync();
+
+        var dto = await MakeSvc(db, ClockAtToday()).GetAsync(project.Id, piId, Array.Empty<string>());
+        var reviewStages = dto.Stages.Where(s => s.Code == StageCodes.Review).ToList();
+
+        var stage = Assert.Single(reviewStages);
+        Assert.Equal(linkedRound.Id.ToString(), stage.EntityId);
+        Assert.DoesNotContain(reviewStages, s => s.EntityId == unrelatedRound.Id.ToString());
     }
 }

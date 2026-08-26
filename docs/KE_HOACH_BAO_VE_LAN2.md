@@ -721,7 +721,7 @@ sinh `/ai/search` → tầng 2 của AI (giữ tầng 1 + metric). **Đừng c�
 
 ```bash
 cd FURPMS_BEv2 && dotnet build          # 0 error
-cd FURPMS_BEv2 && dotnet test           # xanh hết (313 sau nhóm 6)
+cd FURPMS_BEv2 && dotnet test           # xanh hết (314 sau test hồi quy timeline 26/08)
 cd furpms-web  && npm run typecheck     # sạch — PHẢI dùng lệnh này, KHÔNG phải npx tsc
 cd furpms-web  && npm run build         # xanh
 ```
