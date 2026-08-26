@@ -28,6 +28,19 @@ public class CouncilDecision
     // Ghi chú lưu ở ĐÂY chứ không chỉ gửi thông báo: Thư ký mở màn soạn ra là thấy ngay cần sửa
     // gì, không phải lục lại chuông báo.
 
+    /// <summary>
+    /// Lý do hội đồng kết luận <b>lệch</b> với điểm trung bình (thêm 25/08).
+    ///
+    /// <para>Trước đây <see cref="AverageScore"/> và <see cref="Result"/> là hai đại lượng độc lập
+    /// tuyệt đối — gán ở hai dòng liền kề mà không một phép so sánh nào. Đề tài trung bình 35/100
+    /// vẫn chốt được "Đạt", chuyển sang HOÀN THÀNH và mở khoá giải ngân đợt cuối, không một tiếng
+    /// cảnh báo.</para>
+    ///
+    /// <para>Nay khi kết luận lệch ngưỡng, Thư ký <b>bắt buộc</b> ghi lý do vào đây. Hệ thống vẫn
+    /// KHÔNG tự kết luận thay hội đồng (rule #12) — chỉ đòi giải trình.</para>
+    /// </summary>
+    public string? ResultJustification { get; set; }
+
     /// <summary>Chủ tịch yêu cầu sửa gì. Null = chưa từng bị trả lại (hoặc Thư ký đã lưu bản mới).</summary>
     public string? RevisionRequestNote { get; set; }
 

@@ -84,13 +84,14 @@ public class CouncilMinutesTests
         var plainMember = new CouncilMember { Id = Guid.NewGuid(), CouncilId = council.Id, UserId = member.Id, MemberRole = CouncilMemberRole.Member, Status = CouncilMemberStatus.Confirmed };
         db.Set<CouncilMember>().AddRange(chairMember, secMember, plainMember);
 
+        await db.SaveChangesAsync();
+
         // QĐ543 Điều 8.3.b: họp phải có ít nhất 2/3 thành viên dự và người dự phải chấm.
         // Hội đồng 3 người ⇒ cần ≥ 2 phiếu, không thì không lưu/chốt được biên bản.
-        db.ProposalReviewScores.AddRange(
-            new ProposalReviewScore { CouncilId = council.Id, ProjectId = project.Id, EvaluatorMemberId = chairMember.Id, TemplateId = 1, SubmittedAt = DateTime.UtcNow, IsValidBallot = true },
-            new ProposalReviewScore { CouncilId = council.Id, ProjectId = project.Id, EvaluatorMemberId = plainMember.Id, TemplateId = 1, SubmittedAt = DateTime.UtcNow, IsValidBallot = true });
-
-        await db.SaveChangesAsync();
+        // Phiếu chấm ĐIỂM THẬT (xem TestBallots) — phiếu rỗng cho trung bình 0/100, mà ngoài đời
+        // không nộp nổi phiếu rỗng vì SubmitScoreAsync bắt chấm đủ mọi tiêu chí.
+        TestBallots.Add(db, council.Id, project.Id, chairMember.Id, TestBallots.PassingScore);
+        TestBallots.Add(db, council.Id, project.Id, plainMember.Id, TestBallots.PassingScore);
         return (council, chair.Id, sec.Id, member.Id, proposal);
     }
 
@@ -103,8 +104,7 @@ public class CouncilMinutesTests
 
         // Hội đồng 3 người ⇒ cần ≥2 phiếu. Bỏ bớt 1 để còn 1 phiếu.
         var one = await db.ProposalReviewScores.FirstAsync(s => s.CouncilId == council.Id);
-        db.ProposalReviewScores.Remove(one);
-        await db.SaveChangesAsync();
+        TestBallots.RemoveWithDetails(db, one);
 
         var svc = MakeService(db);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -133,8 +133,7 @@ public class CouncilMinutesTests
 
         // …rồi một phiếu bị gỡ (vd Staff thay người) — chốt phải bị chặn.
         var one = await db.ProposalReviewScores.FirstAsync(s => s.CouncilId == council.Id);
-        db.ProposalReviewScores.Remove(one);
-        await db.SaveChangesAsync();
+        TestBallots.RemoveWithDetails(db, one);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => svc.ApproveMinutesAsync(council.Id, chairId));
 
@@ -456,7 +455,7 @@ public class CouncilMinutesTests
 
         // Nghiệm thu không có phiếu điểm — thay bằng phiếu Đạt/Không đạt của cùng 2 thành viên.
         var projectId = db.Proposals.First(p => p.Id == proposal.Id).ProjectId;
-        db.ProposalReviewScores.RemoveRange(db.ProposalReviewScores.Where(s => s.CouncilId == council.Id));
+        TestBallots.RemoveWithDetails(db, db.ProposalReviewScores.Where(s => s.CouncilId == council.Id).ToArray());
         var members = db.Set<CouncilMember>().Where(m => m.CouncilId == council.Id).ToList();
         var opponent = members.First(m => m.MemberRole == CouncilMemberRole.Member);
         opponent.MemberRole = CouncilMemberRole.Opponent;   // Điều 12.3.b: phản biện phải dự
@@ -486,7 +485,7 @@ public class CouncilMinutesTests
         await MakeAcceptanceRoundAsync(db, council);
 
         var projectId = db.Proposals.First(p => p.Id == proposal.Id).ProjectId;
-        db.ProposalReviewScores.RemoveRange(db.ProposalReviewScores.Where(s => s.CouncilId == council.Id));
+        TestBallots.RemoveWithDetails(db, db.ProposalReviewScores.Where(s => s.CouncilId == council.Id).ToArray());
         var members = db.Set<CouncilMember>().Where(m => m.CouncilId == council.Id).ToList();
         members.First(m => m.MemberRole == CouncilMemberRole.Member).MemberRole = CouncilMemberRole.Opponent;
 

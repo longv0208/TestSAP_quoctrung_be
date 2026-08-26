@@ -56,6 +56,10 @@
 | A28 | **Chức danh người quyết định được chép cứng tại thời điểm chốt**, không suy ra lúc đọc | người ta đổi vai/nghỉ việc/bị gỡ quyền — hồ sơ cũ phải giữ nguyên "Chủ tịch hội đồng" chứ không biến thành vai hiện tại | `ProjectDecision.DecidedByRole` | — |
 | A29 | **Ghi sổ quyết định hỏng thì nuốt lỗi, không chặn nghiệp vụ chính** | chặn một kết luận hợp lệ của Chủ tịch chỉ vì không ghi nổi một dòng sổ phụ là đánh đổi sai hướng | `DecisionLogger.Log` try/catch + ghi log | — |
 | A30 | **Sổ quyết định là sổ MỎNG, trỏ ngược bản gốc** — không chép lại nội dung | chép lại là tạo hai nguồn sự thật, sửa một bên thì bên kia sai | `SourceEntityType + SourceEntityId` | — |
+| A31 | **Kết luận lệch với điểm chấm phải ghi rõ lý do** — đối xứng hai chiều (điểm thấp mà Đạt, điểm cao mà Không đạt) | trước đó điểm và kết luận độc lập tuyệt đối: 35/100 vẫn chốt Đạt, mở khoá giải ngân đợt cuối, không một tiếng cảnh báo | `SaveMinutesAsync` → 400 nếu thiếu | 400 |
+| A32 | **Ngưỡng đạt tính bằng PHẦN TRĂM thang điểm** (`REVIEW_PASS_THRESHOLD_PCT`, mặc định 50) | thang điểm là tổng `MaxScore` của bộ tiêu chí, mà Phòng QLKH tự soạn bộ mới được — chôn số tuyệt đối là đặt cược vào trùng hợp của dữ liệu | `SystemSettingKeys.ReviewPassThresholdPct` | — |
+| A33 | **"Yêu cầu chỉnh sửa" không bao giờ tính là lệch** | kết luận đó hợp lý ở cả hai phía ngưỡng | `DivergesFromScore` | — |
+| A34 | **Vòng nghiệm thu không bị đụng tới** — BM11 chỉ Đạt/Không đạt nên không có điểm để so | `AverageScore = null` ⇒ luôn không lệch | `DivergesFromScore` | — |
 
 ## B. Hội đồng
 

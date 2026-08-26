@@ -251,7 +251,7 @@ là CUỘC HẸN, không phải hạn nộp; nhãn "quá hạn 3 ngày" cho mộ
 
 ---
 
-## 6. Nhóm 2 — bản thiết kế gốc *(đang thực hiện, xem §5b)*
+## 6. Nhóm 2 — bản thiết kế gốc *(đã thực hiện, xem §5b)*
 
 **Mô hình**: `ProjectTimeline` là **read-model**, KHÔNG phải bảng mới. Một service lắp "12 giai đoạn
 + hạn từng giai đoạn" từ cột có sẵn; **scanner nhắc hạn dùng lại chính nó** ⇒ màn hình và email
@@ -403,7 +403,47 @@ Nhúng vào `ContractDetailSheet` (tab `decisions`), `MyProjectTimelinePage`,
 
 ---
 
-## 8. Nhóm 4 — Cảnh báo kết luận lệch điểm · **0 migration** · rẻ, demo rất "ăn"
+## 8c. Nhóm 4 — Cảnh báo kết luận lệch điểm — ✅ **XONG 26/08** (1 cột nullable)
+
+**Đã chạy được, bấm thấy ngay:**
+
+| Việc | Ở đâu |
+|---|---|
+| Khoá `REVIEW_PASS_THRESHOLD_PCT` (mặc định 50), Admin sửa được, **hiệu lực ngay không cần restart** | `SystemSettingKeys` + seeder + `Validate` |
+| `SaveMinutesAsync` chặn khi kết luận lệch mà không có lý do → **400** kèm con số cụ thể | `ReviewScoringService` |
+| Cột `council_decisions.result_justification` | migration `20260826020703` |
+| Biên bản trả thêm `rubricTotal` · `passThresholdPct` · `resultDivergesFromScore` · `resultJustification` | `CouncilDecisionDto` |
+| Khối cảnh báo + ô lý do bắt buộc, nút Lưu khoá tới khi điền | `MinutesPanel.tsx` |
+| Điểm hiện kèm thang: **"87.25/100"** thay vì "87.25" | `MinutesPanel.tsx` |
+| Chốt biên bản lệch → sinh dòng `SCORE_DIVERGENCE_JUSTIFIED` trong sổ quyết định | nối sang nhóm 3 |
+
+**Bốn quyết định thiết kế đáng nhớ:**
+- **Ngưỡng tính bằng PHẦN TRĂM thang điểm, không phải số tuyệt đối.** Tổng điểm một bộ tiêu chí là
+  tổng `MaxScore` các tiêu chí, mà Phòng QLKH tự soạn bộ mới được. Hai bộ đang dùng đều tròn 100,
+  nhưng chôn số 50 vào mã là đặt cược vào một sự trùng hợp của dữ liệu — bộ nào thang 60 thì ngưỡng
+  50 gần như không thể trượt.
+- **Đối xứng hai chiều.** Điểm thấp mà Đạt *và* điểm cao mà Không đạt đều phải giải trình. Chỉ bắt
+  một chiều thì thành ra hệ thống nghi ngờ hội đồng khi họ rộng tay nhưng im lặng khi họ chặt tay.
+- **"Yêu cầu chỉnh sửa" không bao giờ tính là lệch** — kết luận đó hợp lý ở cả hai phía ngưỡng.
+- **Rule #12 nguyên vẹn:** hệ thống **không** tự kết luận Đạt/Không đạt, chỉ đòi ghi rõ lý do. Vòng
+  NGHIỆM THU (BM11 chỉ Đạt/Không đạt, `AverageScore = null`) không bị đụng tới.
+
+**Một lỗi tự bắt được — nằm ở DỮ LIỆU TEST, không phải ở mã:**
+Thêm luật xong thì **15 test chuyển đỏ**. Nguyên nhân: test cũ tạo `ProposalReviewScore` **rỗng** —
+đủ qua điều kiện 2/3 thành viên chấm của Điều 8.3.b nhưng không có dòng điểm nào, nên điểm trung bình
+tính ra **0**, và hệ thống đúng khi kêu "0/100 mà kết luận Đạt". Ngoài đời chuyện đó không xảy ra:
+`SubmitScoreAsync` bắt chấm đủ mọi tiêu chí mới cho nộp phiếu. Đã sửa **dữ liệu test cho giống thật**
+(xưởng `TestBallots`) thay vì nới lỏng luật để test qua.
+
+> **Kiểm chứng đã chạy thật (26/08, hội đồng có 4 phiếu, trung bình 87.25/100):**
+> kết luận Không đạt không kèm lý do → **400** đúng câu · kèm lý do → 200, `resultDivergesFromScore`
+> đúng, lý do được giữ · kết luận Đạt (khớp điểm) → 200, cờ lệch tắt và lý do bị xoá ·
+> **nâng ngưỡng lên 95% qua màn Cài đặt** thì chính đề tài 87.25 đó thành "điểm thấp" và kết luận
+> Đạt bị chặn — **không cần khởi động lại** · nhập 150 → 400.
+
+---
+
+## 8. Nhóm 4 — bản thiết kế gốc *(đã thực hiện, xem §8c)*
 
 Hiện `AverageScore` và `Result` độc lập tuyệt đối — `ReviewScoringService.cs:298-299` gán chúng ở
 hai dòng liền kề mà không một `if` nào so sánh. Đề tài trung bình 35/100, Thư ký chọn "Đạt", Chủ
@@ -573,7 +613,7 @@ hội đồng thực sự chấm** cho phần AI.
 | 1 | Ngân sách | không | **0** | ✅ **XONG 25/08** |
 | 2 | Deadline (gồm hạn vòng chấm) | +1 cột nullable | thấp — bản ghi cũ NULL → "chưa đặt hạn" | ✅ **XONG 25/08** |
 | 3 | Quyết định | +1 bảng | schema thấp; **rủi ro thật ở backfill** | ✅ **XONG 25/08** |
-| 4 | Cảnh báo điểm lệch | không | **0** — làm xen kẽ, rất rẻ | ⬜ |
+| 4 | Cảnh báo điểm lệch | +1 cột nullable | thấp | ✅ **XONG 26/08** |
 | 5 | Chuyên môn người chấm | +1 bảng nối | thấp | ⬜ |
 | 6 | AI trùng + bộ đo metric | +3 cột nullable trên bảng **rỗng** | thấp nhất trong hạng mục mới | ⬜ |
 | 7 | Tài liệu | — | chạy **song song** từ đầu, không phụ thuộc code | ⬜ |
@@ -591,7 +631,7 @@ sinh `/ai/search` → tầng 2 của AI (giữ tầng 1 + metric). **Đừng c�
 
 ```bash
 cd FURPMS_BEv2 && dotnet build          # 0 error
-cd FURPMS_BEv2 && dotnet test           # xanh hết (291 sau nhóm 3)
+cd FURPMS_BEv2 && dotnet test           # xanh hết (300 sau nhóm 4)
 cd furpms-web  && npm run typecheck     # sạch — PHẢI dùng lệnh này, KHÔNG phải npx tsc
 cd furpms-web  && npm run build         # xanh
 ```

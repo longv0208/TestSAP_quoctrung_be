@@ -64,16 +64,9 @@ public class ReviewScoringServiceMinutesTests
     /// </summary>
     private static void SeedBallots(FURPMSDbContext db, Guid councilId, Guid projectId, params CouncilMember[] members)
     {
+        // Chấm điểm THẬT chứ không phải phiếu rỗng — xem chú thích ở TestBallots.
         foreach (var m in members)
-            db.ProposalReviewScores.Add(new ProposalReviewScore
-            {
-                CouncilId = councilId,
-                ProjectId = projectId,
-                EvaluatorMemberId = m.Id,
-                TemplateId = 1,
-                SubmittedAt = DateTime.UtcNow,
-                IsValidBallot = true
-            });
+            TestBallots.Add(db, councilId, projectId, m.Id, TestBallots.PassingScore);
     }
 
     [Fact]
@@ -151,7 +144,14 @@ public class ReviewScoringServiceMinutesTests
         await db.SaveChangesAsync();
 
         var service = MakeService(db);
-        await service.SaveMinutesAsync(council.Id, secretary.Id, new SaveMinutesRequest { Result = result, CouncilComments = "Biên bản nghiệm thu" });
+        // Kèm lý do sẵn: phiếu chấm 80/100 nên kết luận "Không đạt" là lệch ngưỡng và bị đòi giải
+        // trình. Không lệch thì trường này bị bỏ qua, nên truyền luôn cho cả hai nhánh Theory.
+        await service.SaveMinutesAsync(council.Id, secretary.Id, new SaveMinutesRequest
+        {
+            Result = result,
+            CouncilComments = "Biên bản nghiệm thu",
+            ResultJustification = "Sản phẩm chưa đủ số lượng theo hợp đồng dù điểm chuyên môn cao."
+        });
         await service.ApproveMinutesAsync(council.Id, chair.Id);
 
         var updatedProject = await db.Projects.FindAsync(project.Id);
@@ -270,8 +270,8 @@ public class ReviewScoringServiceMinutesTests
         // Hội đồng 2 người ⇒ cần đủ 2 phiếu (QĐ543 Điều 8.3.b: ≥2/3, làm tròn lên).
         SeedBallots(db, council.Id, project.Id, secMember2);
         // Điểm cũ của 1 ủy viên — phải được GIỮ sau khi reopen.
-        db.ProposalReviewScores.Add(new ProposalReviewScore { CouncilId = council.Id, ProjectId = project.Id, EvaluatorMemberId = chairMember.Id, TemplateId = 1, SubmittedAt = DateTime.UtcNow, IsValidBallot = true });
         await db.SaveChangesAsync();
+        TestBallots.Add(db, council.Id, project.Id, chairMember.Id, TestBallots.PassingScore);
 
         var scoring = MakeService(db);
         await scoring.SaveMinutesAsync(council.Id, secretary.Id, new SaveMinutesRequest { Result = "REVISION_REQUIRED", CouncilComments = "Sửa mục tiêu" });

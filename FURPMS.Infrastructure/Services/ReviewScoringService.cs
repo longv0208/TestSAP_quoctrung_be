@@ -39,6 +39,68 @@ public class ReviewScoringService : IReviewScoringService
         _notifier = notifier;
     }
 
+    // ══════════════════════════════════════════════════════════════════════
+    // CẢNH BÁO KẾT LUẬN LỆCH ĐIỂM (thêm 25/08 — góp ý hội đồng bảo vệ lần 2)
+    // ══════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Kết luận có lệch với điểm trung bình không.
+    ///
+    /// <para>Đối xứng hai chiều: điểm <b>dưới</b> ngưỡng mà kết luận Đạt, hoặc điểm <b>từ</b> ngưỡng
+    /// trở lên mà kết luận Không đạt. Chỉ bắt một chiều thì thành ra hệ thống nghi ngờ hội đồng khi
+    /// họ rộng tay nhưng im lặng khi họ chặt tay — không phải cách đối xử công bằng với một quyết
+    /// định chuyên môn.</para>
+    ///
+    /// <para>Vòng NGHIỆM THU không chấm điểm (BM11 chỉ Đạt/Không đạt) nên <paramref name="avg"/> là
+    /// null — khi đó không có gì để so, luôn trả về false.</para>
+    /// </summary>
+    private static bool DivergesFromScore(decimal? avg, decimal rubricTotal, int thresholdPct, string result)
+    {
+        if (avg is null || rubricTotal <= 0) return false;
+
+        var nguong = rubricTotal * thresholdPct / 100m;
+        var diemThap = avg.Value < nguong;
+
+        return result switch
+        {
+            ReviewResult.Approved => diemThap,
+            ReviewResult.Rejected => !diemThap,
+            // "Yêu cầu chỉnh sửa" hợp lý ở cả hai phía của ngưỡng — không đòi giải trình.
+            _ => false
+        };
+    }
+
+    /// <summary>Thang điểm của phiếu chấm vòng này, lấy từ chính bộ tiêu chí các phiếu đã dùng.</summary>
+    private async Task<decimal> GetRubricTotalAsync(Guid councilId, Guid projectId)
+    {
+        var templateId = await _review.ReviewScores
+            .Where(x => x.CouncilId == councilId && x.ProjectId == projectId && x.SubmittedAt != null)
+            .Select(x => (int?)x.TemplateId)
+            .FirstOrDefaultAsync();
+
+        if (templateId is null) return SystemSettingKeys.FallbackRubricTotal;
+
+        var total = await _masterData.RubricTemplates
+            .Where(t => t.Id == templateId)
+            .Select(t => (decimal?)t.MaxTotalScore)
+            .FirstOrDefaultAsync();
+
+        // Bộ tiêu chí khai MaxTotalScore = 0 thì cộng lại từ các tiêu chí; vẫn không ra thì dùng
+        // thang chuẩn /100 — không được để chia cho 0 làm hỏng cả thao tác lưu biên bản.
+        if (total is > 0) return total.Value;
+
+        var summed = await _masterData.RubricCriteria
+            .Where(c => c.TemplateId == templateId && c.IsActive)
+            .SumAsync(c => (decimal?)c.MaxScore) ?? 0m;
+
+        return summed > 0 ? summed : SystemSettingKeys.FallbackRubricTotal;
+    }
+
+    private async Task<int> GetPassThresholdPctAsync() =>
+        await _settings.GetIntAsync(
+            SystemSettingKeys.ReviewPassThresholdPct,
+            SystemSettingKeys.DefaultReviewPassThresholdPct);
+
     private static string ResultVi(string? result) => result switch
     {
         ReviewResult.Approved => "Đạt",
@@ -318,6 +380,34 @@ public class ReviewScoringService : IReviewScoringService
         decision.InvalidBallots = invalid;
         decision.AverageScore = avg;                 // điểm/phiếu chỉ để tham khảo
         decision.Result = request.Result;            // Thư ký ghi nhận kết quả họp kín
+
+        // ── Kết luận lệch điểm thì phải giải trình ───────────────────────────
+        // Trước 25/08 hai dòng ngay trên đây hoàn toàn độc lập: đề tài trung bình 35/100 vẫn chốt
+        // được "Đạt", chuyển sang HOÀN THÀNH và mở khoá giải ngân đợt cuối mà không một tiếng cảnh
+        // báo. Hệ thống VẪN không tự kết luận thay hội đồng (rule #12) — chỉ đòi ghi rõ lý do.
+        var rubricTotal = await GetRubricTotalAsync(councilId, projectIdM);
+        var thresholdPct = await GetPassThresholdPctAsync();
+        var lech = DivergesFromScore(avg, rubricTotal, thresholdPct, request.Result);
+        var justification = request.ResultJustification?.Trim();
+
+        if (lech && string.IsNullOrWhiteSpace(justification))
+        {
+            var nguong = rubricTotal * thresholdPct / 100m;
+            var chieu = request.Result == ReviewResult.Approved
+                ? $"điểm trung bình {avg:0.##}/{rubricTotal:0.##} thấp hơn ngưỡng {nguong:0.##} " +
+                  "nhưng hội đồng kết luận Đạt"
+                : $"điểm trung bình {avg:0.##}/{rubricTotal:0.##} đạt ngưỡng {nguong:0.##} " +
+                  "nhưng hội đồng kết luận Không đạt";
+            throw new ArgumentException(
+                $"Kết luận lệch với điểm chấm ({chieu}). " +
+                "Hội đồng hoàn toàn có quyền kết luận như vậy, nhưng phải ghi rõ lý do vào biên bản " +
+                "để hồ sơ giải thích được. Vui lòng điền mục \"Lý do kết luận khác điểm chấm\".");
+        }
+
+        // Không lệch thì xoá lý do cũ: Thư ký sửa từ "Đạt" (lệch) sang "Không đạt" (không lệch) mà
+        // vẫn còn treo lý do cũ thì biên bản mâu thuẫn với chính nó.
+        decision.ResultJustification = lech ? justification : null;
+
         decision.CouncilComments = request.CouncilComments;
         decision.Recommendations = request.Recommendations;
         decision.SecretaryUserId = secretaryUserId;
@@ -366,7 +456,7 @@ public class ReviewScoringService : IReviewScoringService
         }
 
         await _review.SaveChangesAsync();
-        return MapDecision(decision);
+        return await WithScoreContextAsync(MapDecision(decision), decision);
     }
 
     /// <inheritdoc/>
@@ -437,7 +527,7 @@ public class ReviewScoringService : IReviewScoringService
                 priority: "HIGH");
         }
 
-        return MapDecision(decision);
+        return await WithScoreContextAsync(MapDecision(decision), decision);
     }
 
     public async Task<CouncilDecisionDto> ApproveMinutesAsync(Guid councilId, Guid chairUserId, Guid? projectId = null)
@@ -568,6 +658,23 @@ public class ReviewScoringService : IReviewScoringService
             decidedBy: chairUserId, decidedByRole: "Chủ tịch hội đồng",
             decidedAt: decision.FinalizedAt);
 
+        // Kết luận lệch điểm là một quyết định riêng, phải tra ra được về sau: hồ sơ chỉ ghi
+        // "Đạt" mà không ghi vì sao Đạt với 35/100 thì đọc lại không hiểu nổi. Đây cũng chính là
+        // bằng chứng có người chịu trách nhiệm, không phải hệ thống tự quyết.
+        if (!string.IsNullOrWhiteSpace(decision.ResultJustification))
+        {
+            var rubricTotal = await GetRubricTotalAsync(councilId, decision.ProjectId);
+            _decisions.Log(
+                decision.ProjectId, DecisionTypes.ScoreDivergenceJustified,
+                $"Kết luận {ResultVi(decision.Result)} khác điểm chấm " +
+                    $"({decision.AverageScore:0.##}/{rubricTotal:0.##})",
+                "CouncilDecision", decision.Id.ToString(),
+                result: decision.Result, reason: decision.ResultJustification,
+                documentNo: "BM04",
+                decidedBy: chairUserId, decidedByRole: "Chủ tịch hội đồng",
+                decidedAt: decision.FinalizedAt);
+        }
+
         if (round != null && projectRound != null
             && projectRound.Status is "PASSED" or "FAILED")
         {
@@ -622,7 +729,7 @@ public class ReviewScoringService : IReviewScoringService
                 priority: "HIGH");
         }
 
-        return MapDecision(decision);
+        return await WithScoreContextAsync(MapDecision(decision), decision);
     }
 
     // Council chỉ chuyển DECIDED khi MỌI đề tài được gán đều đã có biên bản khoá.
@@ -843,7 +950,9 @@ public class ReviewScoringService : IReviewScoringService
             .Include(d => d.QaEntries)
             .Include(d => d.MemberOpinions)
             .FirstOrDefaultAsync(d => d.CouncilId == councilId && d.ProjectId == pid);
-        return decision == null ? null : MapDecision(decision);
+        return decision == null
+            ? null
+            : await WithScoreContextAsync(MapDecision(decision), decision);
     }
 
     // ── Mappers ───────────────────────────────────────────────────────────────
@@ -888,6 +997,22 @@ public class ReviewScoringService : IReviewScoringService
         }).ToList()
     };
 
+    /// <summary>
+    /// Bơm thang điểm, ngưỡng đang áp dụng và cờ lệch vào biên bản trả về.
+    ///
+    /// <para>Giao diện cần cả ba: hiện "35/100" thay vì "35", vẽ cảnh báo đúng ngưỡng Admin đang
+    /// đặt, và biết có phải mở ô lý do bắt buộc hay không. Tính ở máy chủ để màn hình và luật chặn
+    /// dùng chung một phép so — hai bên tự tính thì sớm muộn cũng lệch.</para>
+    /// </summary>
+    private async Task<CouncilDecisionDto> WithScoreContextAsync(CouncilDecisionDto dto, CouncilDecision d)
+    {
+        dto.RubricTotal = await GetRubricTotalAsync(d.CouncilId, d.ProjectId);
+        dto.PassThresholdPct = await GetPassThresholdPctAsync();
+        dto.ResultDivergesFromScore = DivergesFromScore(
+            d.AverageScore, dto.RubricTotal.Value, dto.PassThresholdPct, d.Result);
+        return dto;
+    }
+
     private static CouncilDecisionDto MapDecision(CouncilDecision d) => new()
     {
         Id = d.Id,
@@ -901,6 +1026,7 @@ public class ReviewScoringService : IReviewScoringService
         CouncilComments = d.CouncilComments,
         Recommendations = d.Recommendations,
         FinalizedAt = d.FinalizedAt,
+        ResultJustification = d.ResultJustification,
         RevisionRequestNote = d.RevisionRequestNote,
         RevisionRequestedAt = d.RevisionRequestedAt,
         QaEntries = d.QaEntries.OrderBy(q => q.Order).Select(q => new QaEntryDto

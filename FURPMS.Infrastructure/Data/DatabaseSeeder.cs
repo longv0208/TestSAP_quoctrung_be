@@ -967,6 +967,16 @@ public class DatabaseSeeder
                 RecommendedValue = SystemSettingKeys.DefaultDeadlineReminderDays,
                 Description = "Nhắc PI trước hạn nộp sản phẩm bao nhiêu ngày, cách nhau bằng dấu phẩy (vd: 30,14,7)."
             },
+            // ── Ngưỡng cảnh báo kết luận lệch điểm (thêm 25/08 — góp ý hội đồng) ──
+            new SystemSetting
+            {
+                Key = SystemSettingKeys.ReviewPassThresholdPct,
+                Value = SystemSettingKeys.DefaultReviewPassThresholdPct.ToString(),
+                RecommendedValue = SystemSettingKeys.DefaultReviewPassThresholdPct.ToString(),
+                Description = "Điểm trung bình dưới bao nhiêu phần trăm thang điểm thì coi là thấp. " +
+                              "Kết luận LỆCH với ngưỡng này (điểm thấp mà Đạt, hoặc điểm cao mà Không đạt) " +
+                              "buộc Thư ký phải ghi rõ lý do. Hệ thống KHÔNG tự kết luận thay hội đồng."
+            },
             // ── Hạn từng giai đoạn đề tài (thêm 25/08 — biên bản bảo vệ lần 2) ──
             new SystemSetting
             {

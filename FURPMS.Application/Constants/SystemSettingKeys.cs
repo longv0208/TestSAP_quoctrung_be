@@ -95,6 +95,23 @@ public static class SystemSettingKeys
     /// <summary>Chặn trên chung cho mọi khoá "số ngày" ở trên — Admin lỡ tay gõ 99999 thì chặn.</summary>
     public const int MaxStageWindowDays = 365;
 
+    /// <summary>
+    /// Ngưỡng điểm coi là "đạt", tính bằng <b>phần trăm thang điểm của phiếu chấm</b>.
+    ///
+    /// <para><b>Vì sao phần trăm chứ không phải số tuyệt đối:</b> tổng điểm của một bộ tiêu chí là
+    /// tổng <c>MaxScore</c> các tiêu chí, mà Phòng QLKH tự soạn được bộ mới. Hai bộ đang dùng đều
+    /// tròn 100, nhưng chôn con số 50 vào mã là đặt cược vào một sự trùng hợp của dữ liệu — bộ nào
+    /// thang 60 thì ngưỡng 50 gần như không thể trượt.</para>
+    ///
+    /// <para>⚠️ Ngưỡng này <b>chỉ để cảnh báo</b>. Hệ thống không tự kết luận Đạt/Không đạt —
+    /// đó là quyết định của Chủ tịch hội đồng (rule #12).</para>
+    /// </summary>
+    public const string ReviewPassThresholdPct = "REVIEW_PASS_THRESHOLD_PCT";
+    public const int DefaultReviewPassThresholdPct = 50;
+
+    /// <summary>Thang điểm dùng khi không tra được bộ tiêu chí của vòng (phiếu chấm chuẩn là /100).</summary>
+    public const decimal FallbackRubricTotal = 100m;
+
     // ── Tài chính ─────────────────────────────────────────────────────────────
     /// <summary>Số đợt giải ngân cho đề tài cấp trọn gói (rule #6: tối thiểu 3 — đầu/giữa/cuối).</summary>
 

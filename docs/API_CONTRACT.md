@@ -1274,6 +1274,40 @@ gọi thật.
 `OTHER` chỉ dành cho chuỗi lạ đọc lên từ dữ liệu cũ — mọi loại đang khai đều phải có chặng, khoá
 bằng test `MoiLoaiQuyetDinh_DeuCoChang_VaThuTuVongDoi`.
 
+### 13.2j Cảnh báo kết luận lệch điểm — `POST /api/review-scoring/councils/{id}/minutes` (mới 26/08)
+
+Body thêm `resultJustification`. `CouncilDecisionDto` thêm 4 trường:
+
+| Trường | Ý nghĩa |
+|---|---|
+| `rubricTotal` | thang điểm của phiếu chấm vòng này (lấy từ bộ tiêu chí các phiếu đã dùng) |
+| `passThresholdPct` | ngưỡng đạt Admin đang đặt, tính bằng **% thang điểm** |
+| `resultDivergesFromScore` | kết luận **đã lưu** có lệch với điểm không |
+| `resultJustification` | lý do Thư ký ghi khi lệch |
+
+**Khi nào coi là lệch** (đối xứng hai chiều):
+
+| Điểm trung bình | Kết luận | Lệch? |
+|---|---|---|
+| < ngưỡng | `APPROVED` | ✅ phải giải trình |
+| ≥ ngưỡng | `REJECTED` | ✅ phải giải trình |
+| bất kỳ | `REVISION_REQUIRED` | ❌ hợp lý ở cả hai phía |
+| `null` (vòng nghiệm thu — BM11 chỉ Đạt/Không đạt) | bất kỳ | ❌ không có gì để so |
+
+Lệch mà thiếu `resultJustification` → **400** kèm câu nêu rõ con số:
+*"Kết luận lệch với điểm chấm (điểm trung bình 87.25/100 đạt ngưỡng 50 nhưng hội đồng kết luận
+Không đạt). … Vui lòng điền mục "Lý do kết luận khác điểm chấm"."*
+
+Lưu lại mà kết luận **hết lệch** thì lý do cũ bị xoá — giữ lại thì biên bản mâu thuẫn với chính nó.
+
+Khi Chủ tịch chốt biên bản có lý do lệch, hệ thống sinh một dòng `SCORE_DIVERGENCE_JUSTIFIED` trong
+sổ quyết định (§13.2g).
+
+⚠️ **Hệ thống KHÔNG tự kết luận Đạt/Không đạt** (rule #12). Ngưỡng chỉ để cảnh báo và đòi giải trình.
+
+**Cấu hình:** `REVIEW_PASS_THRESHOLD_PCT` (mặc định 50, nhận 0–100) trong `system_settings` —
+Admin sửa ở màn Cài đặt, **hiệu lực ngay, không cần khởi động lại**.
+
 ### 13.3 Tiền công (labor details) — `/api/proposals/{id}/budget/labor`
 ```json
 { "teamMemberId": 3, "workDays": 215, "coefficient": 0.49,

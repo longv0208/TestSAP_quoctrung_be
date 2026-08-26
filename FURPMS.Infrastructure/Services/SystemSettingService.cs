@@ -170,6 +170,11 @@ public class SystemSettingService : ISystemSettingService
                         $"Số ngày phải trong khoảng 1–{SystemSettingKeys.MaxStageWindowDays}.");
                 return stageDays.ToString();
 
+            case SystemSettingKeys.ReviewPassThresholdPct:
+                if (!int.TryParse(value, out var pct) || pct < 0 || pct > 100)
+                    throw new ArgumentException("Ngưỡng điểm đạt phải là phần trăm từ 0 đến 100.");
+                return pct.ToString();
+
             default:
                 return value;
         }

@@ -130,8 +130,9 @@ hợp đồng** + bộ lọc giai đoạn · đợt giải ngân hiện **% và 
 > TẠM TÍNH theo kế hoạch, và màn hình phải nói ra**. Im lặng là để người đọc tưởng đó là số quyết
 > toán — hệ thống không được tự quyết thay kế toán.
 
-**Trạng thái công việc bảo vệ lần 2:** Sprint 0, Nhóm 1 (Ngân sách), Nhóm 2 (Deadline) và Nhóm 3
-(Lưu trữ quyết định) ✅ xong 25/08. Việc còn lại xem `KE_HOACH_BAO_VE_LAN2.md` §12.
+**Trạng thái công việc bảo vệ lần 2:** Sprint 0, Nhóm 1 (Ngân sách), Nhóm 2 (Deadline), Nhóm 3
+(Lưu trữ quyết định) và Nhóm 4 (Cảnh báo điểm lệch) ✅ xong. Còn lại: Nhóm 5 (chuyên môn người chấm),
+Nhóm 6 (AI trùng), Nhóm 7 (tài liệu) — xem `KE_HOACH_BAO_VE_LAN2.md` §12.
 
 ### 1.6 🔴 SAU KHI DEPLOY phải chạy backfill hồ sơ quyết định (25/08)
 
@@ -287,7 +288,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 ## 6. Cách kiểm tra nhanh mọi thứ còn chạy
 
 ```bash
-cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 291/291 xanh
+cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 300/300 xanh
 cd furpms-web  && npx tsc -p tsconfig.app.json --noEmit && npm run build
 ```
 

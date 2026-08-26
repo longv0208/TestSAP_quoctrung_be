@@ -14,6 +14,18 @@ public class CouncilDecisionDto
     public string? Recommendations { get; set; }
     public DateTime? FinalizedAt { get; set; }
 
+    /// <summary>Thang điểm của phiếu chấm vòng này — để giao diện hiện "35/100" chứ không phải "35".</summary>
+    public decimal? RubricTotal { get; set; }
+
+    /// <summary>Ngưỡng điểm đạt (phần trăm thang điểm) đang áp dụng — giao diện cảnh báo theo số này.</summary>
+    public int PassThresholdPct { get; set; }
+
+    /// <summary>Kết luận hiện tại có lệch với điểm trung bình không.</summary>
+    public bool ResultDivergesFromScore { get; set; }
+
+    /// <summary>Lý do kết luận lệch điểm, do Thư ký ghi.</summary>
+    public string? ResultJustification { get; set; }
+
     /// <summary>
     /// Chủ tịch yêu cầu sửa gì (QĐ543 Điều 8.3.c — Thư ký ghi, hội đồng thông qua).
     /// Có giá trị = biên bản đang bị trả lại, Thư ký cần sửa rồi lưu lại.
