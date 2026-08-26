@@ -1388,6 +1388,19 @@ model đó không còn phục vụ `embedContent` (kiểm bằng `ListModels` ng
 Vòng HTTP/retry tách thành `SendAsync` dùng chung cho `generateContent` lẫn `embedContent` — nó đang
 giữ lời giải cho các lỗi 429/503 gặp thật hồi 17/08, chép lần hai là chép luôn cả phần dễ chép sai.
 
+### 13.2n Cờ trùng lặp hàng loạt — `POST /api/proposals/duplicate-flags` (mới 26/08)
+
+`Staff,Admin`. Body: mảng Guid. Trả `Dictionary<proposalId, DuplicateFlagDto>` —
+`{ indexed, maxSeverity, maxSimilarity }`. Dùng cho cột "Trùng lặp" trên danh sách Đề cương, để
+thấy đề tài nào cần xem trước thay vì phải mở từng cái một.
+
+### 13.2o Hạn chấm ở màn "Hội đồng & Chấm" (mới 26/08)
+
+`ReviewBoardRoundDto` (trong `GET /api/cycles/{cycleId}/tracks/{trackId}/review-board`) nay có
+thêm `scoringDeadline` / `isScoringOverdue` / `scoringDaysLeft` — cùng nguồn tính với màn "Đề cương"
+(`IDeadlineResolver.EffectiveManyAsync` + fallback về hạn gốc khi chưa từng gia hạn). `daysLeft` do
+máy chủ tính, không được tự trừ ở FE (rule A24).
+
 ### 13.3 Tiền công (labor details) — `/api/proposals/{id}/budget/labor`
 ```json
 { "teamMemberId": 3, "workDays": 215, "coefficient": 0.49,

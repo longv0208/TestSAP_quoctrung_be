@@ -62,7 +62,7 @@
 |---|---|
 | `HANDOFF_Week10.md` | Bàn giao: chạy dự án thế nào, lỗi thường gặp khi clone (env FE, docker SQL) |
 | `Review2_Tech_Stack.md` | Stack đang dùng và vì sao |
-| `DEMO_GUIDE.md` | **Hướng dẫn chạy + kịch bản demo** (viết lại 08/08): tài khoản · bảng 8 đề tài demo và mỗi cái đứng ở bước nào · kịch bản ①→⑧ đóng vai nào bấm gì. Đọc trước mỗi buổi demo |
+| `DEMO_GUIDE.md` | **Hướng dẫn chạy + kịch bản demo** (viết lại 08/08, thêm §8 ngày 26/08): tài khoản · bảng 8 đề tài demo và mỗi cái đứng ở bước nào · kịch bản ①→⑧ đóng vai nào bấm gì · §8 tính năng bảo vệ lần 2 (ngân sách, hạn/deadline, sổ quyết định, AI rà trùng lặp, chuyên môn hội đồng, cảnh báo lệch điểm). Đọc trước mỗi buổi demo |
 | `EXPORT_TEST_GUIDE.md` | Cách test chức năng export |
 | `FE_PROGRESS.md` | Tiến độ FE (ảnh chụp cũ) |
 

@@ -175,7 +175,49 @@ Khoá bằng `FURPMS.Tests/Deadlines/DaysLeftConsistencyTests.cs`.
 > Buổi họp là *cuộc hẹn*, không phải hạn nộp — nhãn "quá hạn 3 ngày" cho một buổi họp đã diễn ra là
 > sai nghĩa, nên `MeetingsAgenda` cố ý **không** dùng `DeadlineBadge`.
 
-### 1.8 Timeline từng đề tài không được lẫn vòng chung của đề tài khác (26/08)
+### 1.9 Bốn lỗ hổng lộ ra khi user tự bấm thử luồng rà trùng lặp + hạn chấm (26/08)
+
+User hỏi bốn câu sau khi đọc hướng dẫn test, cả bốn đều đúng là thiếu:
+
+1. **Chốt kết luận rà trùng lặp không báo cho chủ nhiệm.** `DuplicateCheckService.ReviewAsync`
+   chỉ ghi sổ quyết định, PI không hề biết đề cương mình bị đối chiếu — kể cả khi kết luận là
+   "cần chỉnh sửa"/"trùng lặp" và họ phải làm gì đó ngay. Đã thêm `NotifyAsync` cho cả ba kết luận
+   (kể cả "không trùng" — minh bạch cả tin tốt, không chỉ tin xấu).
+2. **Hồ sơ quyết định không xem được trước khi có hợp đồng.** `DecisionDossierPanel` chỉ nằm trong
+   tab hợp đồng — đề tài chưa qua vòng 1 (chưa có hợp đồng) không có chỗ nào xem chuỗi quyết định
+   của chính nó, dù sổ đã ghi từ lúc nộp đề cương. Thêm tab "Hồ sơ quyết định" vào
+   `ProposalReviewWorkspace` (màn Đề cương), dùng `proposal.projectId` — trường có sẵn ở BE
+   (`ProposalDto.ProjectId`) nhưng FE chưa khai (đúng bẫy DTO chép tay, AGENTS §3.2).
+3. **Không có cách nào xem tổng quan đề tài nào cần chú ý.** Phải mở từng đề cương một mới biết có
+   bị cảnh báo trùng lặp không. Thêm `POST /api/proposals/duplicate-flags` (batch, so cosine trong
+   bộ nhớ — kho nhỏ nên rẻ) + cột "Trùng lặp" trên danh sách Đề cương.
+4. **Không có chỗ đặt hạn chấm ở màn quản lý vòng.** Luật hạn chấm (nhóm 2) chỉ lộ ra ở màn
+   "Đề cương" của TỪNG đề tài — phải mở đúng đề tài rồi đúng vòng mới đặt được, trong khi
+   "Hội đồng & Chấm" mới là màn Staff thực sự quản lý vòng. Thêm badge hạn + nút đặt hạn ngay trên
+   thanh vòng của `ReviewBoardPage`; `ReviewBoardDto` nay trả kèm `scoringDeadline`/`isScoringOverdue`.
+
+**Ba lỗi tự bắt được khi VIẾT TEST cho bốn việc trên — không lỗi nào lộ ra khi chạy tay:**
+- `DuplicateCheckService.ReviewAsync` gọi `_db.LlmOutputs.Update()` cho một bản ghi CHƯA TỪNG được
+  EF theo dõi (`Add()` mới đúng) → `DbUpdateConcurrencyException`. Không lộ ra khi chạy tay vì mọi
+  lần thử trước đó đều gọi "giải thích AI" (tạo sẵn bản ghi) trước khi chốt kết luận — nhánh "chốt
+  luôn không cần AI" (một nhánh hợp lệ, tài liệu ghi rõ) chưa từng được test.
+- `ReviewBoardService`: `IDeadlineResolver.EffectiveManyAsync` chỉ trả về vòng **đã từng gia hạn**
+  (nó đọc bảng `deadline_extensions`, không biết `ScoringDeadline` gốc) — thiếu bước rơi về hạn gốc
+  khi tra không ra, nên MỌI vòng chưa từng dời hạn (đa số) hiện `null` dù rõ ràng đã có hạn.
+- Badge hạn ở `ReviewBoardPage` quên truyền `daysLeft` — chỉ hiện ngày trơ ("20/10/2026") thay vì
+  "Còn 55 ngày". Bắt được khi bấm thử trên trình duyệt, không phải qua API.
+
+**Một khoá i18n bỏ sót:** tab mới thêm hiện nguyên literal `"staff.decisionsTab"` thay vì bản dịch —
+quên thêm khoá. Cũng chỉ lộ ra khi mở màn thật.
+
+> **Kiểm chứng đã chạy thật (26/08):** rà trùng lặp trên toàn kho demo lộ thêm hai đề tài trùng tên
+> y hệt (0.9953) mà trước đó chưa ai để ý · badge hạn "Hội đồng & Chấm" hiện đúng "Còn 55 ngày" cho
+> vòng đã dời hạn tới 2026-10-20 · tab "Hồ sơ quyết định" mở được cho đề tài CHƯA có hợp đồng, hiện
+> đủ 2 quyết định · chốt kết luận "Không trùng lặp" sinh đúng thông báo `DUPLICATE_CHECK_REVIEWED`
+> cho chủ nhiệm · **đã dọn sạch dữ liệu thử**. 323/323 test xanh (từ 314, cộng cả test hồi quy cho
+> 3 lỗi bắt được ở trên).
+
+### 1.8 Timeline từng đề tài không được lẫn vòng chung của đề tài khác (26/08)### 1.8 Timeline từng đề tài không được lẫn vòng chung của đề tài khác (26/08)
 
 Vòng chấm thuộc chung `cycle_track`, còn đề tài tham gia qua bảng nối `project_round`. Truy vấn
 timeline trước đây lọc mỗi `CycleTrackId`, nên một đề tài đã hoàn thành có thể hiện thêm vòng nghiệm
@@ -307,7 +349,7 @@ tên máy chủ (`.internal` → tắt, công khai → bật).
 ## 6. Cách kiểm tra nhanh mọi thứ còn chạy
 
 ```bash
-cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 314/314 xanh
+cd FURPMS_BEv2 && dotnet build && dotnet test        # phải 323/323 xanh
 cd furpms-web  && npx tsc -p tsconfig.app.json --noEmit && npm run build
 ```
 

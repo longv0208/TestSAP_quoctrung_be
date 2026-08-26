@@ -204,3 +204,84 @@ Tham khảo nếu sau này muốn nâng cấp khâu test/demo:
 5. **Bộ sưu tập request (Postman/Bruno/.http)** — lưu sẵn các request theo luồng, "Run collection" để dựng trạng thái bằng API thay vì click. Kết hợp với Swagger là đủ cho FE tự test.
 
 > Khi bàn giao FE cho team khác: gửi kèm **`API_CONTRACT.md` + Swagger URL + file này**. Đó là bộ đủ để họ bắt tay làm mà không cần hỏi lại nhiều.
+
+---
+
+## 8. Tính năng mới — biên bản bảo vệ lần 2 (26/08)
+
+Bốn gạch của biên bản hội đồng bảo vệ lần 2 + 3 góp ý miệng. **Không phải kịch bản riêng** — gắn
+thẳng vào luồng ①→⑧ ở mục 4: mở đúng màn cũ, tính năng mới nằm ngay trong đó, không phải học một
+lối đi khác.
+
+### 8.1 Ngân sách (gạch 1)
+
+Hợp đồng → mở `HĐ-001` (hoặc bất kỳ hợp đồng nào) → tab **Ngân sách**: dự toán duyệt · giá trị hợp
+đồng · đã giải ngân · còn lại, cơ cấu 6 mục Điều 15 (%), tiến độ từng đợt giải ngân, khối Quyết toán
+(BM13). Chân panel luôn nhắc: *"Hệ thống hiển thị kế hoạch kinh phí và mốc giải ngân; việc chi trả do
+Phòng Tài chính thực hiện."*
+
+KPI "Tổng kinh phí" ở Bảng điều khiển/Thống kê và cột "Giá trị hợp đồng" ở danh sách Hợp đồng giờ
+đọc đúng số (trước đây luôn ra 0 vì FE không khai báo trường, dữ liệu vẫn có sẵn ở BE).
+
+### 8.2 Deadline (nửa đầu gạch 2 + góp ý miệng "hạn cho từng vòng chấm")
+
+- Tab **Tiến trình** của hợp đồng: trục dọc 12 giai đoạn, mỗi mốc kèm **nguồn hạn** (vd *"QĐ543 Điều
+  11.2.a — nộp ít nhất 30 ngày trước khi kết thúc đề tài"*) — hỏi "hạn này ở đâu ra" thì màn tự trả lời.
+- **Hạn chấm vòng** (đúng cái chủ dự án nhấn): mở **"Hội đồng & Chấm"** → chọn đợt + lĩnh vực → hạn
+  hiện ngay cạnh tên vòng dạng badge — xám "Chưa đặt hạn", thường "Còn N ngày", đỏ "Quá hạn N ngày".
+  Bấm vào badge mở hộp thoại **"Dời hạn chấm"**: đổi ngày + **lý do bắt buộc**; hạn gốc không mất,
+  mỗi lần dời ghi thành một dòng trong sổ gia hạn (rule #19 — không ghi đè).
+- 6 khoá cấu hình ở **Admin → Cấu hình hệ thống**, đổi là áp dụng ngay, không cần khởi động lại:
+  `SCORING_WINDOW_DAYS`(15) · `REVISION_DEADLINE_DAYS`(15) · `FINAL_REPORT_LEAD_DAYS`(30) ·
+  `CONTRACT_SIGN_WINDOW_DAYS`(30) · `ARCHIVAL_LEAD_DAYS`(90) · `MEETING_DEADLINE_WORKING_DAYS`(15).
+- Demo "sắp đến hạn"/"quá hạn" mà không phải sửa dữ liệu tay: dùng **Công cụ tua thời gian** (mục 6).
+
+### 8.3 Sổ quyết định (nửa sau gạch 2)
+
+Hai lối vào cùng một sổ: tab **Quyết định** trên hợp đồng, hoặc tab **Hồ sơ quyết định** trên màn
+chi tiết đề cương (Đề cương → "Xem chi tiết"). Mỗi dòng: kết quả (badge) + tóm tắt 1 câu + ai quyết/
+khi nào/số văn bản (BM04, BM06, BM12…) + link mở bản gốc.
+
+Dữ liệu cũ (đề tài đã nghiệm thu xong trước 26/08) đã được **backfill** — mở `HĐ-001` là thấy đủ
+chuỗi từ "Chủ nhiệm nộp đề cương" tới "Duyệt và lưu trữ báo cáo tổng kết", không phải sổ trống.
+
+### 8.4 AI rà trùng lặp đề cương (gạch 3)
+
+- **Staff**: Đề cương → cột **"Trùng lặp"** hiện badge mức cảnh báo cho những đề tài đã vượt ngưỡng
+  (không phải mở từng cái mới biết) → "Xem chi tiết" → tab **Rà trùng lặp**: top-5 đề tài giống nhất
+  kèm % (vd "0.995 — Gần như trùng khít") · nút **"Nhờ AI giải thích"** (gọi Gemini thật, có cache —
+  bấm lại không tốn quota lần hai) · form ghi kết luận (Không trùng lặp / Cần chỉnh sửa / Trùng lặp,
+  **lý do bắt buộc** trừ khi chọn "Không trùng lặp").
+- Ghi kết luận xong: tự thông báo cho PI **và** PI thấy lại kết quả ở trang chi tiết đề cương của
+  chính mình (thẻ cố định ngay dưới dòng trạng thái) — không chỉ thoáng qua trong chuông rồi mất.
+- Ngưỡng `AI_DUPLICATE_THRESHOLD` = 0.86 (đo thật trên bộ 35 cặp, xem `docs/AI_Duplicate_Detection.md`
+  để biết vì sao chọn đúng con số này), chỉnh ở Cấu hình hệ thống, áp dụng ngay không cần khởi động lại.
+
+### 8.5 Chuyên môn hội đồng (góp ý miệng "người chấm phải có chuyên môn")
+
+- Danh sách chọn ủy viên — **cả hai lối tạo hội đồng** đều đã xếp hạng theo chuyên môn: lúc **tạo
+  hội đồng trọn gói** ("Hội đồng & Chấm" → "Tạo hội đồng") lẫn lúc **thêm 1 người** vào hội đồng có
+  sẵn (màn quản lý hội đồng của một đề cương). Mỗi ứng viên có badge "Đúng lĩnh vực" / "Khác lĩnh
+  vực" / "Chưa khai chuyên môn" / "Xung đột lợi ích", đúng ngành xếp trước.
+- Chọn người khác lĩnh vực → chặn kèm câu dẫn **QĐ543 Điều 8.2** → hộp thoại xin lý do → điền xong
+  mới gán được, và lý do đó vào thẳng sổ quyết định của đề tài (không khoá cứng, chỉ đòi giải trình).
+- Dữ liệu demo có sẵn 2 ca để diễn ngay trên lĩnh vực **Trí tuệ nhân tạo**: `reviewer4.demo` (TS.
+  Đặng Hoài Anh) khai lĩnh vực **IT** (khác ngành) · `reviewer5.demo` (ThS. Bùi Thanh Hà) **chưa khai
+  gì** — chọn 1 trong 2 người này khi lập hội đồng AI là badge/hộp thoại hiện ra ngay.
+- Gán đề tài **SAU** vào hội đồng đã có (dropdown "— Chưa gán" ở cột đề tài trong "Hội đồng & Chấm")
+  cũng kiểm lại chuyên môn của các thành viên đã có — không chỉ kiểm đúng lúc tạo mới.
+
+### 8.6 Cảnh báo kết luận lệch điểm (góp ý miệng "điểm thấp mà vẫn đạt")
+
+Ngưỡng `REVIEW_PASS_THRESHOLD_PCT` = 50%. Ở màn soạn biên bản: Thư ký chọn "Đạt" mà điểm trung bình
+< ngưỡng (hoặc "Không đạt" mà điểm TB ≥ ngưỡng) → khối cảnh báo đỏ hiện ra ngay dưới dropdown kết
+luận, ô lý do bắt buộc, nút Lưu khoá tới khi điền xong. Lý do vào cả biên bản lẫn sổ quyết định
+(`SCORE_DIVERGENCE_JUSTIFIED`). Vòng NGHIỆM THU (chỉ Đạt/Không đạt, không có điểm trung bình) không
+bị đụng tới.
+
+### 8.7 Thông báo — dọn lại hành vi bấm
+
+Chuông (góc phải header) trước đây có nút "Xem chi tiết" ẩn dưới một số thông báo, nhưng nhiều loại
+lại trỏ tới đường **API** thay vì đường giao diện (bấm vào rơi vào trang 404) — bug thật, phát hiện
+qua bấm thử trực tiếp. Đã dọn: chuông giờ chỉ hiện đầy đủ nội dung thông báo (tiêu đề + nội dung đã
+hiện sẵn, không cắt bớt), bấm vào chỉ đánh dấu đã đọc, không có nút dẫn đi nơi khác nữa.
