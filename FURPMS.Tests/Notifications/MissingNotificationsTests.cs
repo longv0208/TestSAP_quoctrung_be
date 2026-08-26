@@ -114,7 +114,8 @@ public class MissingNotificationsTests
             TestNotifier.Create(db),
             summaryQueue,
             new DeadlineResolver(new CycleRepository(db)),
-            TestServices.Decisions(db));
+            TestServices.Decisions(db),
+            new EmbeddingQueue());
 
         await svc.SubmitProposalAsync(proposal.Id, pi.Id);
 

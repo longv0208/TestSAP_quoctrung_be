@@ -53,7 +53,8 @@ public static class TestServices
         TestNotifier.Create(db),
         new TestAiSummaryQueue(),
         new DeadlineResolver(new CycleRepository(db)),
-        Decisions(db, clock));
+        Decisions(db, clock),
+        new EmbeddingQueue());
 
     public static DeadlineReminderScanner DeadlineScanner(
         FURPMSDbContext db, IClock clock, IEmailService email) => new(

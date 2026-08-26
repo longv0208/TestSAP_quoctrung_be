@@ -27,6 +27,7 @@ public class ProposalService : IProposalService
     private readonly IAiSummaryQueue _summaryQueue;
     private readonly IDeadlineResolver _deadlines;
     private readonly IDecisionLogger _decisions;
+    private readonly IEmbeddingQueue _embeddings;
 
     public ProposalService(
         IProposalRepository proposals,
@@ -40,9 +41,11 @@ public class ProposalService : IProposalService
         INotifier notifier,
         IAiSummaryQueue summaryQueue,
         IDeadlineResolver deadlines,
-        IDecisionLogger decisions)
+        IDecisionLogger decisions,
+        IEmbeddingQueue embeddings)
     {
         _decisions = decisions;
+        _embeddings = embeddings;
         _budgetPolicy = budgetPolicy;
         _notifier = notifier;
         _summaryQueue = summaryQueue;
@@ -649,6 +652,12 @@ public class ProposalService : IProposalService
         // gọi Gemini mất 30–60 giây, nhét vào đây là bắt PI ngồi nhìn màn hình quay tròn một phút
         // cho một việc họ không cần. Việc sinh chạy nền, xong lúc nào người chấm mở ra là có.
         _summaryQueue.Enqueue(proposal.Id, userId);
+
+        // Vector hoá để đề cương này vào kho đối chiếu trùng lặp (nhóm 6). Cũng CHỈ XẾP HÀNG:
+        // gọi model nhúng mất một hai giây, nhét vào đây là bắt chủ nhiệm chờ cho một việc họ
+        // không cần. Không xếp hàng thì Phòng QLKH mở tab "Rà trùng lặp" sẽ thấy "chưa lập chỉ
+        // mục" — đúng lúc tính năng cần hoạt động nhất thì nó im lặng.
+        _embeddings.Enqueue(proposal.Id);
 
         // Rule #1: nộp lại bản REVISION (v2+) → mở lại hội đồng đã chốt "cần chỉnh sửa" để chấm lại
         // (giữ điểm cũ). No-op nếu không có biên bản REVISION nào.

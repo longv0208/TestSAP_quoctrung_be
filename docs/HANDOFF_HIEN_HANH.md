@@ -135,8 +135,12 @@ trữ quyết định · Cảnh báo điểm lệch · Chuyên môn người ch�
 Còn lại **Nhóm 7** (tài liệu — nhóm tự sửa `.docx`) — xem `KE_HOACH_BAO_VE_LAN2.md` §12.
 
 ⚠️ **Sau khi deploy, ngoài backfill hồ sơ quyết định (§1.6) còn phải:** gọi
-`POST /api/admin/reindex-embeddings` một lần để vector hoá kho đề cương — không chạy thì tab
-"Rà trùng lặp" báo *"chưa lập chỉ mục"* cho mọi đề tài. Cần `GeminiAI:ApiKey` trên môi trường deploy.
+`POST /api/admin/reindex-embeddings` **một lần** để vector hoá kho đề cương đã có từ trước — không
+chạy thì tab "Rà trùng lặp" báo *"chưa lập chỉ mục"* cho những đề tài cũ. Cần `GeminiAI:ApiKey` trên
+môi trường deploy.
+
+> Từ 26/08, **đề cương nộp MỚI tự vector hoá** (`EmbeddingWorker`, chạy nền), và worker còn quét bù
+> lúc khởi động. Nên lệnh trên chỉ cần cho **kho cũ**, không phải chạy định kỳ.
 
 ### 1.6 🔴 SAU KHI DEPLOY phải chạy backfill hồ sơ quyết định (25/08)
 

@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddScoped<IProjectDecisionService, ProjectDecisionService>();
         services.AddScoped<ICouncilCandidateService, CouncilCandidateService>();
         services.AddScoped<IDuplicateCheckService, DuplicateCheckService>();
+        services.AddSingleton<IEmbeddingQueue, EmbeddingQueue>();
         services.AddScoped<ICycleService, CycleService>();
         services.AddScoped<IProposalService, ProposalService>();
         services.AddScoped<IProposalDocumentService, ProposalDocumentService>();
@@ -101,6 +102,7 @@ public static class DependencyInjection
         // hai vòng đời khác nhau, đăng ký scoped là mỗi bên cầm một hàng đợi riêng.
         services.AddSingleton<IAiSummaryQueue, AiSummaryQueue>();
         services.AddHostedService<AiSummaryPregenerationService>();
+        services.AddHostedService<EmbeddingWorker>();
         services.AddHostedService<DeadlineReminderService>();
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<DemoScenarioSeeder>();

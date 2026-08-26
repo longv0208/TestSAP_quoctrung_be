@@ -59,6 +59,13 @@ Chỉ lấy mỗi tên thì hai đề tài đặt tên na ná nhau đã báo đ�
 tên khác thì lọt. Bộ đo cũng ghép **đúng công thức này** — đo trên thứ khác với thứ chạy thật thì
 con số metric không nói lên điều gì về hệ thống.
 
+**Vector hoá lúc nào:** nộp đề cương là **tự xếp hàng** vector hoá chạy nền (`IEmbeddingQueue` →
+`EmbeddingWorker`). Chỉ xếp hàng chứ không gọi thẳng — gọi model mất một hai giây, nhét vào lời gọi
+"Nộp đề cương" là bắt chủ nhiệm chờ cho một việc họ không cần. Worker còn **quét bù lúc khởi động**
+vì hàng đợi nằm trong bộ nhớ: khởi động lại mà không quét thì đề cương nộp ngay trước đó sẽ vĩnh
+viễn không vào kho đối chiếu. Lệnh `POST /api/admin/reindex-embeddings` giữ lại cho việc vector hoá
+hàng loạt (lần đầu sau deploy, hoặc khi đổi model).
+
 **Khống chế quota:** cột `content_hash` (vốn đã có sẵn trong bảng) so nội dung; không đổi thì bỏ
 qua. Chạy lại lệnh lập chỉ mục mười lần cũng chỉ tốn cho những bản thật sự mới.
 
